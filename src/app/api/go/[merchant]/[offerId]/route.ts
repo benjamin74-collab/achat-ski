@@ -1,14 +1,11 @@
-import { NextRequest, NextResponse } from "next/server";
-
 export async function GET(
-  req: NextRequest,
-  { params }: { params: { merchant: string; offerId: string } }
+  request: Request,
+  context: { params: Promise<{ merchant: string; offerId: string }> }
 ) {
-  const url = new URL(req.url);
+  const { merchant, offerId } = await context.params;
+  const url = new URL(request.url);
   const pid = url.searchParams.get("pid") ?? "";
 
-  // TODO: plus tard => récupérer l’URL affiliée en DB
-  const target = `https://example.com/?m=${params.merchant}&oid=${params.offerId}&pid=${pid}`;
-
-  return NextResponse.redirect(target, { status: 302 });
+  const target = `https://example.com/?m=${merchant}&oid=${offerId}&pid=${pid}`;
+  return Response.redirect(target, 302);
 }
