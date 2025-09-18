@@ -1,12 +1,19 @@
 import { prisma } from "../../lib/prisma";
 
+type ProductRow = { slug: string; createdAt: Date };
+
 export async function GET() {
   const base = `https://${process.env.VERCEL_PROJECT_PRODUCTION_URL ?? "achat-ski.vercel.app"}`;
-  const products = await prisma.product.findMany({ select: { slug: true, updatedAt: false, createdAt: true } });
-  const urls = products.map(p => {
-    const lastmod = (p as any).createdAt?.toISOString?.() ?? new Date().toISOString(); // fallback
-    return `<url><loc>${base}/p/${p.slug}</loc><lastmod>${lastmod}</lastmod></url>`;
-  }).join("");
+
+  const products: ProductRow[] = await prisma.product.findMany({
+    select: { slug: true, createdAt: true },
+    orderBy: { id: "desc" },
+    take: 1000,
+  });
+
+  const urls = products
+    .map((p) => `<url><loc>${base}/p/${p.slug}</loc><lastmod>${p.createdAt.toISOString()}</lastmod></url>`)
+    .join("");
 
   const xml = `<?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
