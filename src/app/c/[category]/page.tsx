@@ -1,16 +1,11 @@
 import { prisma } from "../../../lib/prisma";
 import ProductCard from "../../../components/ProductCard";
 import { categoryLabel } from "../../../lib/categories";
+import { totalCents } from "../../../lib/format";
 
-// Revalidation douce (ISR)
 export const revalidate = 120;
 
 type PageParams = { category: string };
-
-function getSearchParam(searchParams: URLSearchParams, key: string, def: string) {
-  const v = searchParams.get(key);
-  return v ?? def;
-}
 
 export default async function CategoryPage({
   params,
@@ -21,22 +16,27 @@ export default async function CategoryPage({
 }) {
   const { category } = await params;
 
-  // pagination
   const pageSize = 12;
   const page = Number(
     Array.isArray(searchParams?.page) ? searchParams?.page[0] : searchParams?.page ?? "1"
   );
   const skip = (Math.max(1, page) - 1) * pageSize;
 
-  // total + items
-  const [total, items] = await Promise.all([
+  // Récupérer produits + prix minimum (offres des skus)
+  const [total, products] = await Promise.all([
     prisma.product.count({ where: { category } }),
     prisma.product.findMany({
       where: { category },
       orderBy: { id: "desc" },
       skip,
       take: pageSize,
-      select: { id: true, brand: true, model: true, season: true, slug: true },
+      include: {
+        skus: {
+          include: {
+            offers: true,
+          },
+        },
+      },
     }),
   ]);
 
@@ -44,31 +44,42 @@ export default async function CategoryPage({
   const title = categoryLabel(category);
 
   return (
-    <main className="mx-auto max-w-6xl px-6 py-12">
-      <h1 className="text-2xl font-bold">{title}</h1>
-      <p className="mt-2 text-neutral-600">
-        {total} produit{total > 1 ? "s" : ""} trouvé{total > 1 ? "s" : ""}.
-      </p>
+    <div className="container-page py-8">
+      <div className="card p-6">
+        <h1 className="text-2xl font-bold">{title}</h1>
+        <p className="mt-2 text-neutral-600">
+          {total} produit{total > 1 ? "s" : ""} trouvé{total > 1 ? "s" : ""}.
+        </p>
+      </div>
 
       <div className="mt-6 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
-        {items.map((p) => (
-          <ProductCard
-            key={p.id}
-            slug={p.slug}
-            brand={p.brand}
-            model={p.model}
-            season={p.season}
-          />
-        ))}
+        {products.map((p) => {
+          const allOffers = p.skus.flatMap((s) => s.offers);
+          const min = allOffers.length
+            ? allOffers
+                .map((o) => totalCents(o.priceCents, o.shippingCents ?? 0))
+                .reduce((a, b) => Math.min(a, b), Number.POSITIVE_INFINITY)
+            : null;
+
+          return (
+            <ProductCard
+              key={p.id}
+              slug={p.slug}
+              brand={p.brand}
+              model={p.model}
+              season={p.season}
+              minTotalCents={min}
+              currency="EUR"
+            />
+          );
+        })}
       </div>
 
       {/* Pagination simple */}
       {pages > 1 && (
         <nav className="mt-8 flex items-center gap-2">
           <a
-            className={`rounded-lg border px-3 py-1.5 ${
-              page <= 1 ? "pointer-events-none opacity-50" : "hover:bg-neutral-50"
-            }`}
+            className={`btn ${page <= 1 ? "pointer-events-none opacity-50" : ""}`}
             href={`?page=${page - 1}`}
             aria-disabled={page <= 1}
           >
@@ -78,9 +89,7 @@ export default async function CategoryPage({
             Page {page} / {pages}
           </span>
           <a
-            className={`rounded-lg border px-3 py-1.5 ${
-              page >= pages ? "pointer-events-none opacity-50" : "hover:bg-neutral-50"
-            }`}
+            className={`btn ${page >= pages ? "pointer-events-none opacity-50" : ""}`}
             href={`?page=${page + 1}`}
             aria-disabled={page >= pages}
           >
@@ -88,11 +97,10 @@ export default async function CategoryPage({
           </a>
         </nav>
       )}
-    </main>
+    </div>
   );
 }
 
-// SEO basique
 export async function generateMetadata({ params }: { params: Promise<PageParams> }) {
   const { category } = await params;
   const title = `${categoryLabel(category)} — Achat-Ski`;

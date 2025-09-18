@@ -1,4 +1,4 @@
-import { money, totalCents } from "@/lib/format";
+import { money, totalCents } from "../lib/format";
 
 type OfferRow = {
   id: number;
