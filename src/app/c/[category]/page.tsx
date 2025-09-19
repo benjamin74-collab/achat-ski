@@ -2,6 +2,7 @@ import { prisma } from "../../../lib/prisma";
 import ProductCard from "../../../components/ProductCard";
 import { categoryLabel } from "../../../lib/categories";
 import { totalCents } from "../../../lib/format";
+import Link from "next/link";
 
 export const revalidate = 120;
 
@@ -76,27 +77,27 @@ export default async function CategoryPage({
       </div>
 
       {/* Pagination simple */}
-      {pages > 1 && (
-        <nav className="mt-8 flex items-center gap-2">
-          <a
-            className={`btn ${page <= 1 ? "pointer-events-none opacity-50" : ""}`}
-            href={`?page=${page - 1}`}
-            aria-disabled={page <= 1}
-          >
-            ← Précédent
-          </a>
-          <span className="text-sm text-neutral-600">
-            Page {page} / {pages}
-          </span>
-          <a
-            className={`btn ${page >= pages ? "pointer-events-none opacity-50" : ""}`}
-            href={`?page=${page + 1}`}
-            aria-disabled={page >= pages}
-          >
-            Suivant →
-          </a>
-        </nav>
-      )}
+		{pages > 1 && (
+		  <nav className="mt-8 flex items-center gap-2">
+			<Link
+			  className={`btn ${page <= 1 ? "pointer-events-none opacity-50" : ""}`}
+			  href={`?page=${page - 1}`}
+			  aria-disabled={page <= 1}
+			>
+			  ← Précédent
+			</Link>
+			<span className="text-sm text-neutral-600">
+			  Page {page} / {pages}
+			</span>
+			<Link
+			  className={`btn ${page >= pages ? "pointer-events-none opacity-50" : ""}`}
+			  href={`?page=${page + 1}`}
+			  aria-disabled={page >= pages}
+			>
+			  Suivant →
+			</Link>
+		  </nav>
+		)}
     </div>
   );
 }

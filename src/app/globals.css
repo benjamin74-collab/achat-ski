@@ -21,7 +21,8 @@
   @apply inline-flex items-center rounded-lg px-2 py-0.5 text-xs font-medium;
 }
 .badge-green {
-  @apply badge bg-green-100 text-green-700;
+  /* répète les utilitaires au lieu de @apply badge */
+  @apply inline-flex items-center rounded-lg px-2 py-0.5 text-xs font-medium bg-green-100 text-green-700;
 }
 
 .table-grid {

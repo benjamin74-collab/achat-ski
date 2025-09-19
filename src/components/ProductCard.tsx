@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { money } from "../lib/format";
 
 type Props = {
@@ -11,7 +12,7 @@ type Props = {
 
 export default function ProductCard({ slug, brand, model, season, minTotalCents, currency = "EUR" }: Props) {
   return (
-    <a href={`/p/${slug}`} className="card p-4 hover:shadow-sm transition">
+    <Link href={`/p/${slug}`} className="card p-4 hover:shadow-sm transition">
       <div className="text-sm text-neutral-500">{brand}</div>
       <div className="text-lg font-semibold leading-tight">{model}</div>
       {season ? <div className="text-xs text-neutral-500 mt-1">{season}</div> : null}
@@ -28,6 +29,6 @@ export default function ProductCard({ slug, brand, model, season, minTotalCents,
       </div>
 
       <div className="mt-3 text-blue-600 text-sm">Voir la fiche →</div>
-    </a>
+    </Link>
   );
 }
