@@ -1,4 +1,5 @@
-type Props = { attributes?: Record<string, unknown> | null };
+type AttrValue = string | number | boolean | null;
+type Props = { attributes?: Record<string, AttrValue> | null };
 
 export default function Specs({ attributes }: Props) {
   if (!attributes || Object.keys(attributes).length === 0) return null;

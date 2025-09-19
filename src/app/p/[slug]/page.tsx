@@ -108,7 +108,7 @@ export default async function ProductPage({ params }: { params: Promise<Params> 
 
           <PriceTable offers={offersFlat} />
 
-          <Specs attributes={product.attributes as any} />
+          <Specs attributes={product.attributes as Record<string, string | number | boolean | null> | null} />
         </div>
       </div>
 
