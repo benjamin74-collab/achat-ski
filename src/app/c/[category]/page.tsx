@@ -1,4 +1,5 @@
 import Link from "next/link";
+import type { Prisma } from "@prisma/client";
 import { prisma } from "../../../lib/prisma";
 import ProductCard from "../../../components/ProductCard";
 import FiltersBar from "../../../components/FiltersBar";
@@ -9,22 +10,32 @@ import { totalCents } from "../../../lib/format";
 export const revalidate = 120;
 
 type PageParams = { category: string };
+type SortKey = "newest" | "price-asc" | "price-desc";
 
 function parseSearchParams(input?: { [key: string]: string | string[] | undefined }) {
-  const get = (k: string) => {
+  const get = (k: string): string | null => {
     const v = input?.[k];
-    return Array.isArray(v) ? v[0] : v ?? null;
+    return Array.isArray(v) ? v[0] ?? null : (v ?? null);
   };
-  const getAll = (k: string) => {
+  const getAll = (k: string): string[] => {
     const v = input?.[k];
-    return Array.isArray(v) ? v : v ? [v] : [];
+    return Array.isArray(v) ? v.filter(Boolean) as string[] : v ? [v] : [];
   };
   return {
     page: Number(get("page") ?? "1"),
-    sort: (get("sort") as "newest" | "price-asc" | "price-desc" | null) ?? "newest",
+    sort: (get("sort") as SortKey | null) ?? "newest",
     brands: getAll("brand"),
     season: get("season"),
   };
+}
+
+function buildHref(baseQuery: { page: number; sort: SortKey; brands: string[]; season: string | null }, nextPage: number) {
+  const params = new URLSearchParams();
+  params.set("sort", baseQuery.sort);
+  if (baseQuery.season) params.set("season", baseQuery.season);
+  for (const b of baseQuery.brands) params.append("brand", b);
+  params.set("page", String(nextPage));
+  return `?${params.toString()}`;
 }
 
 export default async function CategoryPage({
@@ -35,12 +46,13 @@ export default async function CategoryPage({
   searchParams?: { [key: string]: string | string[] | undefined };
 }) {
   const { category } = await params;
-  const { page, sort, brands, season } = parseSearchParams(searchParams);
+  const parsed = parseSearchParams(searchParams);
+  const { page, sort, brands, season } = parsed;
 
   const pageSize = 12;
   const skip = (Math.max(1, page) - 1) * pageSize;
 
-  // listes pour filtres (marques, saisons) — centrées sur la catégorie
+  // listes pour filtres (marques, saisons)
   const [brandRows, seasonRows] = await Promise.all([
     prisma.product.findMany({
       where: { category },
@@ -58,8 +70,8 @@ export default async function CategoryPage({
   const allBrands = brandRows.map(b => b.brand).filter(Boolean);
   const allSeasons = seasonRows.map(s => s.season!).filter(Boolean);
 
-  // Filtre DB basique (brand/season)
-  const where: any = { category };
+  // Filtre DB typé
+  const where: Prisma.ProductWhereInput = { category };
   if (brands.length) where.brand = { in: brands };
   if (season) where.season = season;
 
@@ -68,7 +80,7 @@ export default async function CategoryPage({
     prisma.product.count({ where }),
     prisma.product.findMany({
       where,
-      orderBy: { id: "desc" }, // ordre par défaut (newest)
+      orderBy: sort === "newest" ? { id: "desc" } : undefined, // tri par défaut pour "newest"
       skip,
       take: pageSize,
       include: {
@@ -88,11 +100,16 @@ export default async function CategoryPage({
     return { ...p, minTotal };
   });
 
-  // Tri en mémoire si on trie par prix (sinon newest par id desc déjà appliqué)
-  const sorted = sort === "price-asc"
-    ? [...products].sort((a, b) => (a.minTotal ?? Number.POSITIVE_INFINITY) - (b.minTotal ?? Number.POSITIVE_INFINITY))
-    : sort === "price-desc"
-      ? [...products].sort((a, b) => (b.minTotal ?? -1) - (a.minTotal ?? -1))
+  // Tri en mémoire si tri par prix
+  const sorted =
+    sort === "price-asc"
+      ? [...products].sort(
+          (a, b) => (a.minTotal ?? Number.POSITIVE_INFINITY) - (b.minTotal ?? Number.POSITIVE_INFINITY)
+        )
+      : sort === "price-desc"
+      ? [...products].sort(
+          (a, b) => (b.minTotal ?? -1) - (a.minTotal ?? -1)
+        )
       : products;
 
   const pages = Math.max(1, Math.ceil(total / pageSize));
@@ -137,7 +154,7 @@ export default async function CategoryPage({
             <nav className="mt-2 mb-4 flex items-center gap-2">
               <Link
                 className={`btn ${page <= 1 ? "pointer-events-none opacity-50" : ""}`}
-                href={`?${new URLSearchParams({ ...(season ? { season } : {}), ...brands.reduce((acc,b)=>{acc["brand"]=b; return acc;}, {} as any), sort, page: String(page - 1) }).toString()}`}
+                href={buildHref({ ...parsed, page }, page - 1)}
                 aria-disabled={page <= 1}
               >
                 ← Précédent
@@ -147,7 +164,7 @@ export default async function CategoryPage({
               </span>
               <Link
                 className={`btn ${page >= pages ? "pointer-events-none opacity-50" : ""}`}
-                href={`?${new URLSearchParams({ ...(season ? { season } : {}), ...brands.reduce((acc,b)=>{acc["brand"]=b; return acc;}, {} as any), sort, page: String(page + 1) }).toString()}`}
+                href={buildHref({ ...parsed, page }, page + 1)}
                 aria-disabled={page >= pages}
               >
                 Suivant →
