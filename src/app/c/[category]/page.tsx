@@ -6,6 +6,7 @@ import FiltersBar from "../../../components/FiltersBar";
 import SortSelect from "../../../components/SortSelect";
 import { categoryLabel } from "../../../lib/categories";
 import { totalCents } from "../../../lib/format";
+import Breadcrumbs from "../../../components/Breadcrumbs";
 
 export const revalidate = 120;
 
@@ -125,6 +126,11 @@ export default async function CategoryPage({
 
         {/* Contenu (colonne droite) */}
         <div className="md:col-span-9 flex flex-col gap-4">
+			<Breadcrumbs items={[
+			  { href: "/", label: "Accueil" },
+			  { label: "Catégories", href: "/#categories" },
+			  { label: title }
+			]} />
           <div className="card p-4 flex items-center justify-between">
             <div>
               <h1 className="text-xl font-bold">{title}</h1>

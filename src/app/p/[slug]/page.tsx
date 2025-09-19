@@ -1,5 +1,6 @@
 import PriceTable from "../../../components/PriceTable";
 import { prisma } from "../../../lib/prisma";
+import Breadcrumbs from "../../../components/Breadcrumbs";
 
 export const revalidate = 300; // ISR 5 min
 
@@ -44,6 +45,11 @@ export default async function ProductPage({ params }: { params: { slug: string }
 
   return (
     <main className="mx-auto max-w-5xl px-6 py-12">
+	<Breadcrumbs items={[
+	  { href: "/", label: "Accueil" },
+	  { href: `/c/${product.category ?? "skis-all-mountain"}`, label: product.category ?? "Catégorie" },
+	  { label: `${product.brand} ${product.model}` }
+	]} />
       <h1 className="text-2xl font-bold">
         {product.brand} {product.model} {product.season ?? ""}
       </h1>
