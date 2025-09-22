@@ -93,7 +93,7 @@ export default async function ProductPage({ params }: PageProps) {
     name: title,
     brand: product.brand ?? undefined,
     category: product.category ?? undefined,
-    sku: product.skus[0]?.code ?? undefined,
+    sku: product.skus[0]?.gtin ?? undefined,
     offers:
       offersFlat.length > 0
         ? offersFlat.map((o) => ({
