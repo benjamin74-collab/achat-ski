@@ -1,114 +1,96 @@
-import { searchProducts } from "@/lib/search";
+// src/app/search/page.tsx
 import Link from "next/link";
-import SearchBar from "@/components/SearchBar";
+import { searchProducts } from "@/lib/search";
+import { money } from "@/lib/format";
 
-function formatPrice(cents: number | null) {
-  if (cents == null) return "—";
-  return (cents / 100).toLocaleString("fr-FR", { style: "currency", currency: "EUR" });
-}
+export const runtime = "nodejs";
 
-export const dynamic = "force-dynamic"; // si tu veux éviter la mise en cache statique
+type SP = { [key: string]: string | string[] | undefined };
 
-export default async function SearchPage({
-  searchParams,
-}: {
-  searchParams: { q?: string; page?: string; category?: string; stock?: string };
-}) {
-  const q = (searchParams.q ?? "").trim();
-  const page = Number(searchParams.page ?? "1") || 1;
-  const category = searchParams.category || undefined;
-  const inStockOnly = (searchParams.stock ?? "").toLowerCase() === "1";
+export default async function SearchPage({ searchParams }: { searchParams: SP }) {
+  const q = (searchParams?.q as string) ?? "";
+  const page = Number((searchParams?.page as string) ?? "1") || 1;
+  const category = (searchParams?.category as string) || undefined;
+  const inStockOnly = ((searchParams?.stock as string) ?? "").toLowerCase() === "1";
 
-  const res = await searchProducts({ q, page, pageSize: 20, category, inStockOnly });
+  const data = await searchProducts({ q, page, pageSize: 20, category, inStockOnly });
 
   return (
-    <main className="mx-auto max-w-5xl px-4 py-8 space-y-6">
-      <h1 className="text-2xl font-semibold">Recherche</h1>
+    <main className="container mx-auto max-w-5xl px-4 py-6">
+      <h1 className="text-2xl font-semibold">
+        Résultats de recherche {q ? <>pour “{q}”</> : null}
+      </h1>
 
-      <SearchBar />
-
-      <div className="flex gap-2 text-sm">
-        <Link
-          href={`/search?${new URLSearchParams({ q, ...(category ? { category } : {}), ...(inStockOnly ? { stock: "1" } : {}) }).toString()}`}
-          className="hidden"
+      {/* Filtres rapides */}
+      <form className="mt-4 flex flex-wrap items-center gap-3">
+        <input
+          defaultValue={q}
+          name="q"
+          placeholder="Rechercher…"
+          className="rounded-xl border px-4 py-2"
         />
-        {/* Filtres simples */}
-        <form className="flex items-center gap-2">
-          <select
-            name="category"
-            defaultValue={category ?? ""}
-            className="rounded-lg border px-3 py-2"
-            onChange={(e) => {
-              const params = new URLSearchParams();
-              if (q) params.set("q", q);
-              if (e.target.value) params.set("category", e.target.value);
-              if (inStockOnly) params.set("stock", "1");
-              window.location.href = `/search?${params.toString()}`;
-            }}
-          >
-            <option value="">Toutes catégories</option>
-            <option value="skis-all-mountain">Skis all-mountain</option>
-            <option value="skis-freeride">Skis freeride</option>
-            <option value="skis-rando">Skis rando</option>
-            <option value="fixations">Fixations</option>
-            <option value="chaussures">Chaussures</option>
-          </select>
+        <select name="category" defaultValue={category ?? ""} className="rounded-xl border px-3 py-2">
+          <option value="">Toutes catégories</option>
+          <option value="skis-all-mountain">Skis All-Mountain</option>
+          <option value="skis-freeride">Skis Freeride</option>
+          <option value="skis-rando">Skis de rando</option>
+          <option value="fixations">Fixations</option>
+          <option value="chaussures">Chaussures</option>
+        </select>
+        <label className="flex items-center gap-2 text-sm">
+          <input type="checkbox" name="stock" value="1" defaultChecked={inStockOnly} />
+          En stock seulement
+        </label>
+        <button className="rounded-xl border px-4 py-2">Filtrer</button>
+      </form>
 
-          <label className="inline-flex items-center gap-2">
-            <input
-              type="checkbox"
-              defaultChecked={inStockOnly}
-              onChange={(e) => {
-                const params = new URLSearchParams();
-                if (q) params.set("q", q);
-                if (category) params.set("category", category);
-                if (e.target.checked) params.set("stock", "1");
-                window.location.href = `/search?${params.toString()}`;
-              }}
-            />
-            En stock
-          </label>
-        </form>
-      </div>
-
-      <p className="text-sm opacity-70">
-        {res.total} résultat{res.total > 1 ? "s" : ""}{q ? <> pour <span className="font-medium">{q}</span></> : null}
-      </p>
-
-      <ul className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-        {res.items.map((p) => (
-          <li key={p.id} className="rounded-2xl border p-4 hover:shadow-sm transition">
-            <Link href={`/p/${p.slug}`} className="block">
-              <div className="text-sm opacity-60">{p.brand} {p.season ? `• ${p.season}` : ""}</div>
-              <div className="text-lg font-semibold">{p.model}</div>
-              <div className="mt-2 text-blue-600 font-medium">
-                {formatPrice(p.minPriceCents)} {p.offerCount ? <span className="text-sm opacity-70">({p.offerCount} offre{p.offerCount>1?"s":""})</span> : null}
+      {/* Résultats */}
+      {data.items.length === 0 ? (
+        <p className="mt-6 text-neutral-600">Aucun produit trouvé.</p>
+      ) : (
+        <ul className="mt-6 grid gap-4">
+          {data.items.map((p) => (
+            <li key={p.id} className="rounded-xl border p-4">
+              <div className="flex items-center justify-between gap-4">
+                <div className="min-w-0">
+                  <Link href={`/p/${p.slug}`} className="text-lg font-medium hover:underline">
+                    {[p.brand, p.model, p.season].filter(Boolean).join(" ")}
+                  </Link>
+                  <div className="text-sm text-neutral-600">
+                    {p.category ?? "—"} · {p.offerCount} offre{p.offerCount > 1 ? "s" : ""}
+                  </div>
+                </div>
+                <div className="text-right">
+                  <div className="text-sm text-neutral-500">à partir de</div>
+                  <div className="text-lg font-semibold">
+                    {p.minPriceCents != null ? money(p.minPriceCents, "EUR") : "—"}
+                  </div>
+                </div>
               </div>
-              {p.category && <div className="mt-1 text-xs opacity-60">Catégorie : {p.category}</div>}
-            </Link>
-          </li>
-        ))}
-      </ul>
+            </li>
+          ))}
+        </ul>
+      )}
 
-      {/* Pagination */}
-      {res.totalPages > 1 && (
+      {/* Pagination simple */}
+      {data.totalPages > 1 && (
         <nav className="mt-6 flex items-center justify-center gap-2">
-          {Array.from({ length: res.totalPages }, (_, i) => i + 1).map((n) => {
+          {Array.from({ length: data.totalPages }).map((_, i) => {
+            const n = i + 1;
             const params = new URLSearchParams();
-            if (q) params.set("q", q);
+            if (q.trim()) params.set("q", q.trim());
             if (category) params.set("category", category);
             if (inStockOnly) params.set("stock", "1");
             params.set("page", String(n));
             const href = `/search?${params.toString()}`;
-            const active = n === res.page;
             return (
-              <a
+              <Link
                 key={n}
                 href={href}
-                className={`rounded-lg border px-3 py-1 text-sm ${active ? "bg-blue-600 text-white border-blue-600" : "hover:bg-gray-50"}`}
+                className={`rounded-md px-3 py-1 text-sm ${n === page ? "bg-black text-white" : "border"}`}
               >
                 {n}
-              </a>
+              </Link>
             );
           })}
         </nav>
