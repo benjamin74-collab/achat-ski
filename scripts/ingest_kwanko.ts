@@ -1,6 +1,8 @@
 // @ts-nocheck
 import { PrismaClient } from "@prisma/client";
 import { parse } from "csv-parse/sync";
+import fs from "fs";
+import path from "path";
 import { slugify } from "../src/lib/slug";
 
 const prisma = new PrismaClient();
@@ -34,7 +36,6 @@ function pick(obj: RawRow, keys: string[]): string | undefined {
 
 function toCents(s?: string): number | null {
   if (!s) return null;
-  // supporte "1 234,56 €", "1234.56", etc.
   const cleaned = String(s).replace(/\s/g, "").replace(",", ".").replace(/[^\d.]/g, "");
   const n = Number(cleaned);
   return Number.isFinite(n) ? Math.round(n * 100) : null;
@@ -43,8 +44,7 @@ function toCents(s?: string): number | null {
 function titleCaseBrand(s: string) {
   if (!s) return s;
   const lower = s.toLowerCase();
-  // capitalise simple (garde sigles type "ATK", "ARMADA")
-  if (lower.length <= 4) return s.toUpperCase();
+  if (lower.length <= 4) return s.toUpperCase(); // sigles
   return lower.charAt(0).toUpperCase() + lower.slice(1);
 }
 
@@ -98,7 +98,7 @@ async function upsertOne(n: NormRow) {
     create: { slug: merchantSlug, name: n.merchant },
   });
 
-  // 2) Produit
+  // 2) Produit (⚠️ pas de updatedAt: ce champ n'existe pas dans ton schéma)
   const productSlug = slugify([n.brand, n.model, n.season ?? ""].filter(Boolean).join(" "));
   const product = await prisma.product.upsert({
     where: { slug: productSlug },
@@ -107,7 +107,7 @@ async function upsertOne(n: NormRow) {
       model: n.model,
       season: n.season,
       category: n.category ?? null,
-      updatedAt: new Date(),
+      // attributes: ... (si tu veux stocker d'autres infos)
     },
     create: {
       slug: productSlug,
@@ -132,8 +132,7 @@ async function upsertOne(n: NormRow) {
     });
   }
 
-  // 4) Offre
-  // clé simple MVP: (merchantId, skuId, affiliateUrl)
+  // 4) Offre (clé MVP: merchantId + skuId + affiliateUrl)
   const existing = await prisma.offer.findFirst({
     where: { merchantId: merchant.id, skuId: sku.id, affiliateUrl: n.affiliateUrl },
   });
@@ -176,18 +175,26 @@ function detectDelimiter(sample: string): "," | ";" | "\t" {
   return ",";
 }
 
-async function ingestCsv(url: string, defaultCategory: string) {
-  console.log(`→ Téléchargement: ${url}`);
-  const res = await fetch(url);
-  if (!res.ok) {
-    console.warn(`  ⚠️  HTTP ${res.status} sur ${url}`);
-    return { parsed: 0, kept: 0 };
+function readTextFromSource(src: string): Promise<string> {
+  if (/^https?:\/\//i.test(src)) {
+    return fetch(src).then(async (r) => {
+      if (!r.ok) throw new Error(`HTTP ${r.status} sur ${src}`);
+      return r.text();
+    });
   }
-  let text = await res.text();
+  const p = path.isAbsolute(src) ? src : path.join(process.cwd(), src);
+  if (!fs.existsSync(p)) {
+    throw new Error(`Fichier introuvable: ${p}`);
+  }
+  return Promise.resolve(fs.readFileSync(p, "utf-8"));
+}
 
-  // Nettoyage BOM/encodage
+async function ingestSource(source: string, defaultCategory: string) {
+  console.log(`→ Lecture: ${source}`);
+  let text = await readTextFromSource(source);
+
   if (text.charCodeAt(0) === 0xFEFF) text = text.slice(1);
-  // Détermine un délimiteur probable sur un échantillon
+
   const sample = text.slice(0, 5000);
   const delimiter = detectDelimiter(sample);
 
@@ -218,37 +225,47 @@ async function ingestCsv(url: string, defaultCategory: string) {
 }
 
 async function main() {
-  const urls = (process.env.KWANKO_FEED_URLS || "").split(",").map(s => s.trim()).filter(Boolean);
-  if (!urls.length) throw new Error("KWANKO_FEED_URLS est vide.");
+  // Fallback local si KWANKO_FEED_URLS absent
+  const rawList = (process.env.KWANKO_FEED_URLS || "data/kwanko_sample.csv")
+    .split(",")
+    .map((s) => s.trim())
+    .filter(Boolean);
+
   const defaultCategory = process.env.KWANKO_DEFAULT_CATEGORY || "skis-all-mountain";
 
   console.log("=== Ingestion Kwanko (CSV) ===");
-
-  // Marque temporelle pour la grâce / obsolescence
   const startedAt = new Date();
 
   let totalParsed = 0;
   let totalKept = 0;
-  for (const u of urls) {
+
+  for (const src of rawList) {
     try {
-      const { parsed, kept } = await ingestCsv(u, defaultCategory);
-      console.log(`  ✓ ${u} — ${kept}/${parsed} lignes importées`);
+      const { parsed, kept } = await ingestSource(src, defaultCategory);
+      console.log(`  ✓ ${src} — ${kept}/${parsed} lignes importées`);
       totalParsed += parsed;
       totalKept += kept;
     } catch (e) {
-      console.error(`  ✗ ${u} — erreur:`, (e as Error).message);
+      console.error(`  ✗ ${src} — erreur:`, (e as Error).message);
     }
   }
 
-  // Grâce : toutes les offres non revues pendant ce run passent inStock=false (mais restent en DB)
-  const grace = await prisma.offer.updateMany({
-    where: { lastSeen: { lt: startedAt } },
-    data: { inStock: false },
-  });
-
-  console.log(`=== Terminé: ${totalKept}/${totalParsed} offres importées; ${grace.count} offres marquées hors stock ===`);
+  // Appliquer la "grâce" seulement si on a effectivement parsé des lignes
+  if (totalParsed > 0) {
+    const grace = await prisma.offer.updateMany({
+      where: { lastSeen: { lt: startedAt } },
+      data: { inStock: false },
+    });
+    console.log(`=== Terminé: ${totalKept}/${totalParsed} offres importées; ${grace.count} offres marquées hors stock ===`);
+  } else {
+    console.log(`=== Terminé: ${totalKept}/${totalParsed} offres importées; aucune grâce appliquée (aucune source valide) ===`);
+  }
 }
 
 main()
   .then(() => prisma.$disconnect())
-  .catch((e) => { console.error(e); prisma.$disconnect(); process.exit(1); });
+  .catch((e) => {
+    console.error(e);
+    prisma.$disconnect();
+    process.exit(1);
+  });
