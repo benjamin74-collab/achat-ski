@@ -53,17 +53,21 @@ export async function GET(
   const finalUrl = withQueryParam(offer.affiliateUrl, subParam, subValue);
 
   // Log du clic (MVP)
-  try {
-    await prisma.click.create({
-      data: {
-        offerId: offer.id,
-        productId: offer.sku.productId,
-        // si ton modèle Click a d'autres champs (ip, ua, attributes...), tu peux les ajouter ici
-      },
-    });
-  } catch {
-    // pas bloquant : on redirige même si le log plante
-  }
+	try {
+		await prisma.click.create({
+		  data: {
+			offerId: offer.id,
+			productId: offer.sku.productId,
+			// 💡 enregistre le prix total au moment du clic (prix + port si dispo)
+			priceCentsAtClick: (offer.priceCents ?? 0) + (offer.shippingCents ?? 0),
+			// Si ton modèle possède ces colonnes, tu peux aussi ajouter :
+			// currencyAtClick: offer.currency,
+			// attributes: { ua: req.headers.get("user-agent") ?? null },
+		  },
+		});
+	  } catch {
+		// pas bloquant : on redirige même si le log plante
+	  }
 
   // Redirection 302 vers l’affilié
   return NextResponse.redirect(finalUrl, { status: 302 });
