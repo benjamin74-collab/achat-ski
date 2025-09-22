@@ -1,3 +1,4 @@
+// src/components/PriceTable.tsx
 import { money, totalCents } from "../lib/format";
 
 type OfferRow = {
@@ -22,7 +23,7 @@ export default function PriceTable({ offers }: { offers: OfferRow[] }) {
   const bestId = sorted[0]?.id;
 
   const lastUpdated = sorted
-    .map(o => (o.lastSeen ? new Date(o.lastSeen).getTime() : 0))
+    .map((o) => (o.lastSeen ? new Date(o.lastSeen).getTime() : 0))
     .reduce((a, b) => Math.max(a, b), 0);
 
   return (
@@ -31,7 +32,7 @@ export default function PriceTable({ offers }: { offers: OfferRow[] }) {
         <div>Marchand</div><div>Prix</div><div>Port</div><div>Total</div><div>Stock</div><div></div>
       </div>
 
-      {sorted.map(o => {
+      {sorted.map((o) => {
         const total = totalCents(o.priceCents, o.shippingCents);
         const isBest = o.id === bestId && o.inStock;
         return (
@@ -47,12 +48,14 @@ export default function PriceTable({ offers }: { offers: OfferRow[] }) {
               {o.inStock ? "En stock" : "Hors stock"}
             </div>
             <div>
-				<a
-				  href={`/api/go/${offer.merchant.slug}/${offer.id}`}
-				  className="inline-flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium border hover:shadow transition"
-				>
-				  Voir chez {offer.merchant.name}
-				</a>
+              {/* Lien vers la route d’affiliation (API), <a> est OK ici ; on neutralise la règle Next.js */}
+              {/* eslint-disable-next-line @next/next/no-html-link-for-pages */}
+              <a
+                href={`/api/go/${o.merchantSlug}/${o.id}`}
+                className="inline-flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium border hover:shadow transition"
+              >
+                Voir chez {o.merchantName}
+              </a>
             </div>
           </div>
         );
