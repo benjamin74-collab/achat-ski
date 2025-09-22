@@ -16,7 +16,7 @@ export default async function Home() {
           accessoires) chez Ekosport, Snowleader, Glisshop et d’autres marchands.
         </p>
 
-        <form action="/recherche" className="mt-6 flex gap-2">
+        <form action="/search" method="GET" className="mt-6 flex gap-2">
           <input
             name="q"
             placeholder="Rechercher un modèle (ex. Atomic Bent 100)"
