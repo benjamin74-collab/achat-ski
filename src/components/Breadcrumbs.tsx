@@ -1,21 +1,22 @@
+// src/components/Breadcrumbs.tsx
 import Link from "next/link";
 
-type Crumb = { href?: string; label: string };
+type Item = { label: string; href?: string };
 
-export default function Breadcrumbs({ items }: { items: Crumb[] }) {
+export default function Breadcrumbs({ items }: { items: Item[] }) {
   return (
-    <nav className="text-sm text-neutral-600" aria-label="Fil d’Ariane">
+    <nav aria-label="Fil d’Ariane" className="text-sm text-neutral-600">
       <ol className="flex flex-wrap items-center gap-1">
-        {items.map((c, i) => {
+        {items.map((it, i) => {
           const last = i === items.length - 1;
           return (
-            <li key={i} className="flex items-center gap-1">
-              {c.href && !last ? (
-                <Link href={c.href} className="hover:underline">{c.label}</Link>
+            <li key={`${it.label}-${i}`} className="flex items-center gap-1">
+              {it.href && !last ? (
+                <Link className="hover:underline" href={it.href}>
+                  {it.label}
+                </Link>
               ) : (
-                <span aria-current={last ? "page" : undefined} className={last ? "text-neutral-900" : ""}>
-                  {c.label}
-                </span>
+                <span className="text-neutral-900">{it.label}</span>
               )}
               {!last && <span className="text-neutral-400">/</span>}
             </li>
