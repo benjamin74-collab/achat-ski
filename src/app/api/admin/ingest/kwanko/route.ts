@@ -21,7 +21,8 @@ async function runIngestion() {
 }
 
 export async function POST(req: NextRequest) {
-  const keyFromHeader = headers().get("x-api-key");
+  // ✅ lire la clé directement depuis la requête
+  const keyFromHeader = req.headers.get("x-api-key");
   const keyFromQuery = new URL(req.url).searchParams.get("key");
   const expected = process.env.KWANKO_INGEST_SECRET;
 
