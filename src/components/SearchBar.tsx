@@ -1,14 +1,13 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState, useTransition } from "react";
-import { usePathname, useRouter, useSearchParams } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 
 type Suggestion = { label: string; href: string };
 
 export default function SearchBar({ placeholder = "Rechercher un produit…" }: { placeholder?: string }) {
   const sp = useSearchParams();
   const router = useRouter();
-  const pathname = usePathname();
 
   const initial = sp.get("q") ?? "";
   const [value, setValue] = useState(initial);
@@ -18,22 +17,20 @@ export default function SearchBar({ placeholder = "Rechercher un produit…" }: 
   const [isPending, startTransition] = useTransition();
   const abortRef = useRef<AbortController | null>(null);
   const boxRef = useRef<HTMLDivElement>(null);
-  const inputRef = useRef<HTMLInputElement>(null);
 
-  // debounce navigation (page résultats)
+  // debounce navigation -> toujours /search
   const debouncedPush = useMemo(() => {
     let t: ReturnType<typeof setTimeout> | null = null;
     return (v: string) => {
       if (t) clearTimeout(t);
       t = setTimeout(() => {
-        const params = new URLSearchParams(Array.from(sp.entries()));
+        const params = new URLSearchParams();
         if (v.trim()) params.set("q", v.trim());
-        else params.delete("q");
-        params.delete("page");
-        startTransition(() => router.push(`${pathname}?${params.toString()}`));
+        params.set("page", "1");
+        startTransition(() => router.push(`/search?${params.toString()}`));
       }, 300);
     };
-  }, [pathname, router, sp]);
+  }, [router]);
 
   // fetch suggestions (debounced)
   const debouncedSuggest = useMemo(() => {
@@ -51,7 +48,7 @@ export default function SearchBar({ placeholder = "Rechercher un produit…" }: 
           abortRef.current = new AbortController();
           const res = await fetch(`/api/suggest?q=${encodeURIComponent(v)}`, {
             signal: abortRef.current.signal,
-            headers: { "accept": "application/json" },
+            headers: { accept: "application/json" },
           });
           if (!res.ok) return;
           const data = (await res.json()) as { suggestions: Suggestion[] };
@@ -59,7 +56,7 @@ export default function SearchBar({ placeholder = "Rechercher un produit…" }: 
           setActive(0);
           setOpen(data.suggestions.length > 0);
         } catch {
-          /* abort ou réseau, on ignore */
+          /* ignore */
         }
       }, 200);
     };
@@ -83,7 +80,6 @@ export default function SearchBar({ placeholder = "Rechercher un produit…" }: 
       setOpen(false);
       window.location.href = s.href;
     } else {
-      // pas de suggestion ciblée -> Aller à la page /search
       const params = new URLSearchParams();
       if (value.trim()) params.set("q", value.trim());
       window.location.href = `/search?${params.toString()}`;
@@ -94,7 +90,6 @@ export default function SearchBar({ placeholder = "Rechercher un produit…" }: 
     <div ref={boxRef} className="w-full max-w-2xl relative">
       <label className="sr-only">Recherche</label>
       <input
-        ref={inputRef}
         value={value}
         onChange={(e) => {
           const v = e.target.value;
@@ -129,16 +124,13 @@ export default function SearchBar({ placeholder = "Rechercher un produit…" }: 
         aria-controls="search-suggest"
         aria-activedescendant={open ? `search-suggest-${active}` : undefined}
       />
+
       {isPending && (
         <span className="absolute right-3 top-1/2 -translate-y-1/2 text-sm opacity-60">…</span>
       )}
 
       {open && items.length > 0 && (
-        <ul
-          id="search-suggest"
-          role="listbox"
-          className="absolute z-20 mt-2 w-full overflow-hidden rounded-xl border bg-white shadow-lg"
-        >
+        <ul id="search-suggest" role="listbox" className="absolute z-20 mt-2 w-full overflow-hidden rounded-xl border bg-white shadow-lg">
           {items.map((s, i) => (
             <li
               key={`${s.href}-${i}`}
@@ -147,16 +139,12 @@ export default function SearchBar({ placeholder = "Rechercher un produit…" }: 
               aria-selected={i === active}
               className={`cursor-pointer px-4 py-2 text-sm ${i === active ? "bg-blue-50" : "hover:bg-gray-50"}`}
               onMouseEnter={() => setActive(i)}
-              onMouseDown={(e) => { e.preventDefault(); }}  // évite blur avant click
-              onClick={() => {
-                setOpen(false);
-                window.location.href = s.href;
-              }}
+              onMouseDown={(e) => e.preventDefault()}
+              onClick={() => { setOpen(false); window.location.href = s.href; }}
             >
               {s.label}
             </li>
           ))}
-          {/* Lien pour voir tous les résultats */}
           <li
             className="border-t px-4 py-2 text-sm text-blue-700 cursor-pointer hover:bg-gray-50"
             onMouseDown={(e) => e.preventDefault()}
