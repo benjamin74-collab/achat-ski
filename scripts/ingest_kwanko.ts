@@ -44,7 +44,7 @@ function toCents(s?: string): number | null {
 function titleCaseBrand(s: string) {
   if (!s) return s;
   const lower = s.toLowerCase();
-  if (lower.length <= 4) return s.toUpperCase(); // sigles
+  if (lower.length <= 4) return s.toUpperCase();
   return lower.charAt(0).toUpperCase() + lower.slice(1);
 }
 
@@ -98,7 +98,7 @@ async function upsertOne(n: NormRow) {
     create: { slug: merchantSlug, name: n.merchant },
   });
 
-  // 2) Produit (⚠️ pas de updatedAt: ce champ n'existe pas dans ton schéma)
+  // 2) Produit
   const productSlug = slugify([n.brand, n.model, n.season ?? ""].filter(Boolean).join(" "));
   const product = await prisma.product.upsert({
     where: { slug: productSlug },
@@ -107,7 +107,6 @@ async function upsertOne(n: NormRow) {
       model: n.model,
       season: n.season,
       category: n.category ?? null,
-      // attributes: ... (si tu veux stocker d'autres infos)
     },
     create: {
       slug: productSlug,
@@ -119,16 +118,21 @@ async function upsertOne(n: NormRow) {
   });
 
   // 3) SKU
-  const skuCode = n.gtin ?? "default";
+  // Ton schéma a: id, variant?, gtin?, attributes?, productId...
+  // → on utilise gtin si dispo, sinon variant="default"
   let sku = await prisma.sku.findFirst({
     where: {
       productId: product.id,
-      ...(n.gtin ? { gtin: n.gtin } : { code: "default" }),
+      ...(n.gtin ? { gtin: n.gtin } : { variant: "default" }),
     },
   });
+
   if (!sku) {
     sku = await prisma.sku.create({
-      data: { productId: product.id, code: skuCode, gtin: n.gtin ?? undefined },
+      data: {
+        productId: product.id,
+        ...(n.gtin ? { gtin: n.gtin } : { variant: "default" }),
+      },
     });
   }
 
@@ -194,7 +198,6 @@ async function ingestSource(source: string, defaultCategory: string) {
   let text = await readTextFromSource(source);
 
   if (text.charCodeAt(0) === 0xFEFF) text = text.slice(1);
-
   const sample = text.slice(0, 5000);
   const delimiter = detectDelimiter(sample);
 
@@ -225,7 +228,6 @@ async function ingestSource(source: string, defaultCategory: string) {
 }
 
 async function main() {
-  // Fallback local si KWANKO_FEED_URLS absent
   const rawList = (process.env.KWANKO_FEED_URLS || "data/kwanko_sample.csv")
     .split(",")
     .map((s) => s.trim())
@@ -250,7 +252,6 @@ async function main() {
     }
   }
 
-  // Appliquer la "grâce" seulement si on a effectivement parsé des lignes
   if (totalParsed > 0) {
     const grace = await prisma.offer.updateMany({
       where: { lastSeen: { lt: startedAt } },
