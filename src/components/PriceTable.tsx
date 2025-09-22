@@ -47,13 +47,12 @@ export default function PriceTable({ offers }: { offers: OfferRow[] }) {
               {o.inStock ? "En stock" : "Hors stock"}
             </div>
             <div>
-              <a
-                className={`rounded-lg border px-3 py-1.5 ${o.inStock ? "hover:bg-neutral-50" : "opacity-50 pointer-events-none"}`}
-                href={`/api/go/${o.merchantSlug}/${o.id}?pid=${o.productId}`}
-                rel="nofollow sponsored"
-              >
-                Voir l’offre
-              </a>
+				<a
+				  href={`/api/go/${offer.merchant.slug}/${offer.id}`}
+				  className="inline-flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium border hover:shadow transition"
+				>
+				  Voir chez {offer.merchant.name}
+				</a>
             </div>
           </div>
         );
