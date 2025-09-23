@@ -51,17 +51,17 @@ export async function GET(req: NextRequest) {
   for (const r of rows) {
     const prod = r.offer.sku.product;
     const march = r.offer.merchant;
+	const createdAtIso = (r as any).createdAt ? new Date((r as any).createdAt).toISOString() : "";
     const line = [
-      toCsvValue(r.createdAt.toISOString()),
-      toCsvValue(march.name),
-      toCsvValue([prod.brand, prod.model, prod.season].filter(Boolean).join(" ")),
-      toCsvValue(prod.slug),
-      toCsvValue(r.priceCentsAtClick ?? ""),
-      toCsvValue(r.currencyAtClick || "EUR"),
-      toCsvValue(r.ip || ""),
-      toCsvValue(r.userAgent || ""),
-    ].join(",");
-    lines.push(line);
+	  toCsvValue(createdAtIso),
+	  toCsvValue(march.name),
+	  toCsvValue([prod.brand, prod.model, prod.season].filter(Boolean).join(" ")),
+	  toCsvValue(prod.slug),
+	  toCsvValue(r.priceCentsAtClick ?? ""),
+	  toCsvValue(r.currencyAtClick || "EUR"),
+	  toCsvValue(r.ip || ""),
+	  toCsvValue(r.userAgent || ""),
+	].join(",");
   }
 
   const body = lines.join("\n");

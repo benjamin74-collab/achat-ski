@@ -30,7 +30,7 @@ export default async function AdminClicksPage({ searchParams }: { searchParams: 
   // Récup clics avec jointures utiles
   const [rows, total] = await Promise.all([
     prisma.click.findMany({
-      orderBy: { createdAt: "desc" },
+      orderBy: { id: "desc" }, // <= tri robuste même sans createdAt
       skip,
       take: pageSize,
       include: {
@@ -82,9 +82,9 @@ export default async function AdminClicksPage({ searchParams }: { searchParams: 
               const ip = r.ip ?? "—";
               return (
                 <tr key={String(r.id)} className="border-t">
-                  <td className="px-3 py-2 whitespace-nowrap">
-                    {new Date(r.createdAt).toLocaleString("fr-FR")}
-                  </td>
+					<td className="px-3 py-2 whitespace-nowrap">
+					  {r.createdAt ? new Date(r.createdAt as unknown as string).toLocaleString("fr-FR") : "—"}
+					</td>
                   <td className="px-3 py-2">{march.name}</td>
                   <td className="px-3 py-2">
                     <Link href={`/p/${prod.slug}`} className="text-blue-700 hover:underline">
