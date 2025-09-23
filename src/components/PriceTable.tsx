@@ -1,5 +1,5 @@
-// src/components/PriceTable.tsx
 import Link from "next/link";
+import MerchantLogo from "./MerchantLogo"; // <--- ajout
 import { money, totalCents } from "../lib/format";
 
 type OfferRow = {
@@ -13,29 +13,6 @@ type OfferRow = {
   inStock: boolean;
   lastSeen?: string | null;
 };
-
-function MerchantLogo({ slug, name }: { slug: string; name: string }) {
-  const srcSvg = `/logos/${slug}.svg`;
-  const srcPng = `/logos/${slug}.png`;
-  // On tente SVG puis PNG via <img srcSet>, si pas de logo → fallback initiale
-  return (
-    <div className="flex items-center gap-2">
-      <img
-        src={srcSvg}
-        srcSet={`${srcSvg} 1x, ${srcPng} 1x`}
-        alt={`${name} logo`}
-        className="h-5 w-auto"
-        onError={(e) => {
-          const el = e.currentTarget;
-          // masque l'image si pas trouvée
-          el.style.display = "none";
-          // on laisse le fallback texte à côté
-        }}
-      />
-      <span className="truncate">{name}</span>
-    </div>
-  );
-}
 
 export default function PriceTable({ offers }: { offers: OfferRow[] }) {
   if (!offers.length) return <p className="mt-4 text-neutral-500">Aucune offre pour le moment.</p>;
@@ -63,7 +40,6 @@ export default function PriceTable({ offers }: { offers: OfferRow[] }) {
       {sorted.map((o) => {
         const total = totalCents(o.priceCents, o.shippingCents);
         const isBest = o.id === bestId && o.inStock;
-
         return (
           <div key={o.id} className="grid grid-cols-6 gap-3 py-3 border-t items-center">
             <div className="flex items-center gap-2">
