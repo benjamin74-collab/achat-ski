@@ -1,6 +1,7 @@
 // src/app/api/admin/clicks/route.ts
 import { NextRequest } from "next/server";
 import { prisma } from "@/lib/prisma";
+import type { Click, Offer, Merchant, Sku, Product } from "@prisma/client";
 
 export const runtime = "nodejs";
 
@@ -13,6 +14,16 @@ function toCsvValue(v: unknown) {
   return s;
 }
 
+// Typage fort du résultat avec includes
+type Row = Click & {
+  offer: Offer & {
+    merchant: Merchant;
+    sku: Sku & {
+      product: Product;
+    };
+  };
+};
+
 export async function GET(req: NextRequest) {
   const url = new URL(req.url);
   const key = url.searchParams.get("key") || req.headers.get("x-admin-key") || "";
@@ -20,11 +31,11 @@ export async function GET(req: NextRequest) {
     return new Response("Forbidden", { status: 403 });
   }
 
-  // Limite d’export (éviter d’exploser la mémoire)
-  const limit = Math.min(10000, Number(url.searchParams.get("limit") || 5000));
+  const limitParam = Number(url.searchParams.get("limit") || 5000);
+  const limit = Number.isFinite(limitParam) ? Math.min(10000, Math.max(1, Math.floor(limitParam))) : 5000;
 
-  const rows = await prisma.click.findMany({
-    orderBy: { createdAt: "desc" },
+  const rows: Row[] = await prisma.click.findMany({
+    orderBy: { id: "desc" }, // robuste même sans createdAt
     take: limit,
     include: {
       offer: {
@@ -47,21 +58,28 @@ export async function GET(req: NextRequest) {
     "userAgent",
   ];
 
-  const lines = [header.join(",")];
+  const lines: string[] = [header.join(",")];
+
   for (const r of rows) {
+    // Accès optionnel sans 'any'
+    const createdAtUnknown = (r as Record<string, unknown>)["createdAt"];
+    const createdAtIso = createdAtUnknown instanceof Date ? createdAtUnknown.toISOString() : "";
+
     const prod = r.offer.sku.product;
     const march = r.offer.merchant;
-	const createdAtIso = (r as any).createdAt ? new Date((r as any).createdAt).toISOString() : "";
-    const line = [
-	  toCsvValue(createdAtIso),
-	  toCsvValue(march.name),
-	  toCsvValue([prod.brand, prod.model, prod.season].filter(Boolean).join(" ")),
-	  toCsvValue(prod.slug),
-	  toCsvValue(r.priceCentsAtClick ?? ""),
-	  toCsvValue(r.currencyAtClick || "EUR"),
-	  toCsvValue(r.ip || ""),
-	  toCsvValue(r.userAgent || ""),
-	].join(",");
+
+    lines.push(
+      [
+        toCsvValue(createdAtIso),
+        toCsvValue(march.name),
+        toCsvValue([prod.brand, prod.model, prod.season].filter(Boolean).join(" ")),
+        toCsvValue(prod.slug),
+        toCsvValue(r.priceCentsAtClick ?? ""),
+        toCsvValue(r.currencyAtClick || "EUR"),
+        toCsvValue(r.ip || ""),
+        toCsvValue(r.userAgent || ""),
+      ].join(",")
+    );
   }
 
   const body = lines.join("\n");
