@@ -4,26 +4,32 @@ import { prisma } from "@/lib/prisma";
 import PriceTable from "@/components/PriceTable";
 import Breadcrumbs from "@/components/Breadcrumbs";
 import { money } from "@/lib/format";
+import type { Metadata } from "next";
 
 export const runtime = "nodejs";
 export const revalidate = 60; // ISR 60s
 
 type PageProps = { params: { slug: string } };
 
-export async function generateMetadata({ params }: PageProps) {
+export async function generateMetadata({ params }: { params: { slug: string } }): Promise<Metadata> {
   const p = await prisma.product.findUnique({
     where: { slug: params.slug },
-    select: { brand: true, model: true, season: true, category: true },
+    select: { brand: true, model: true, season: true, slug: true },
   });
-  if (!p) return {};
-  const title = [p.brand, p.model, p.season].filter(Boolean).join(" ");
-  const desc = `Comparez les prix de ${title} (${p.category ?? "matériel de ski"}) parmi les principaux marchands.`;
-  const url = `https://achat-ski.vercel.app/p/${params.slug}`;
+
+  if (!p) return { title: "Produit introuvable" };
+
+  const name = [p.brand, p.model, p.season].filter(Boolean).join(" ");
+  const url = `${process.env.NEXT_PUBLIC_SITE_URL ?? "https://achat-ski.vercel.app"}/p/${p.slug}`;
+
   return {
-    title: `${title} | Achat-Ski`,
-    description: desc,
+    title: `${name} — meilleur prix`,
+    description: `Compare les prix ${name} chez les meilleurs marchands de ski.`,
     alternates: { canonical: url },
-    openGraph: { title, description: desc, url },
+    openGraph: {
+      title: `${name} — meilleur prix`,
+      url,
+    },
   };
 }
 
@@ -107,8 +113,74 @@ export default async function ProductPage({ params }: PageProps) {
         : undefined,
   };
 
+	const canonicalUrl = `${process.env.NEXT_PUBLIC_SITE_URL ?? "https://achat-ski.vercel.app"}/p/${product.slug}`;
+
+	// Prix min / max et disponibilité globale (si au moins une offre en stock)
+	const inStockOffers = offersFlat.filter(o => o.inStock);
+	const hasStock = inStockOffers.length > 0;
+
+	const minPriceOffer = offersFlat
+	  .filter(o => o.inStock)
+	  .sort((a,b) => (a.priceCents + (a.shippingCents ?? 0)) - (b.priceCents + (b.shippingCents ?? 0)))[0];
+
+	const currency = minPriceOffer?.currency ?? "EUR";
+	const minPrice = minPriceOffer ? (minPriceOffer.priceCents + (minPriceOffer.shippingCents ?? 0)) / 100 : undefined;
+	const maxPrice = offersFlat.length
+	  ? Math.max(...offersFlat.map(o => (o.priceCents + (o.shippingCents ?? 0)) / 100))
+	  : undefined;
+
+	// JSON-LD Product
+	const productJsonLd: Record<string, any> = {
+	  "@context": "https://schema.org",
+	  "@type": "Product",
+	  name: [product.brand, product.model, product.season].filter(Boolean).join(" "),
+	  brand: product.brand ? { "@type": "Brand", name: product.brand } : undefined,
+	  sku: product.skus?.[0]?.variant ?? undefined,
+	  gtin13: product.skus?.[0]?.gtin ?? undefined,
+	  category: product.category ?? undefined,
+	  url: canonicalUrl,
+	};
+
+	// Ajoute AggregateRating plus tard si tu as des avis réels
+	// Ajoute image[] si tu as des URLs d'images produits stables
+	// productJsonLd.image = ["https://cdn.../image1.jpg", "https://.../image2.jpg"];
+
+	if (offersFlat.length > 0) {
+	  if (offersFlat.length > 1) {
+		productJsonLd.offers = {
+		  "@type": "AggregateOffer",
+		  priceCurrency: currency,
+		  lowPrice: typeof minPrice === "number" ? minPrice.toFixed(2) : undefined,
+		  highPrice: typeof maxPrice === "number" ? maxPrice.toFixed(2) : undefined,
+		  offerCount: offersFlat.length,
+		  availability: hasStock
+			? "https://schema.org/InStock"
+			: "https://schema.org/OutOfStock",
+		  url: canonicalUrl,
+		};
+	  } else {
+		const o = offersFlat[0];
+		productJsonLd.offers = {
+		  "@type": "Offer",
+		  priceCurrency: o.currency,
+		  price: ((o.priceCents + (o.shippingCents ?? 0)) / 100).toFixed(2),
+		  availability: o.inStock ? "https://schema.org/InStock" : "https://schema.org/OutOfStock",
+		  url: canonicalUrl,
+		};
+	  }
+	}
+
   return (
     <main className="container mx-auto max-w-6xl px-4 py-6">
+	{/* Canonical explicite (utile si tu varies d’environnement) */}
+		<link rel="canonical" href={canonicalUrl} />
+
+		{/* JSON-LD Product */}
+		<script
+		  type="application/ld+json"
+		  // eslint-disable-next-line react/no-danger
+		  dangerouslySetInnerHTML={{ __html: JSON.stringify(productJsonLd) }}
+		/>
       {/* JSON-LD */}
       <script
         type="application/ld+json"
