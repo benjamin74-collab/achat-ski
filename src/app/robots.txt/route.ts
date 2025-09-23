@@ -5,6 +5,7 @@ export function GET() {
   const body = `
 User-agent: *
 Allow: /
+Disallow: /admin/
 
 Sitemap: https://achat-ski.vercel.app/sitemap.xml
   `.trim();
@@ -16,3 +17,4 @@ Sitemap: https://achat-ski.vercel.app/sitemap.xml
     },
   });
 }
+
