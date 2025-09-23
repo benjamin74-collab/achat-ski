@@ -119,8 +119,8 @@ export default function SearchBar({ placeholder = "Rechercher un produit…" }: 
         }}
         placeholder={placeholder}
         className="w-full rounded-xl border px-4 py-3 text-base outline-none focus:ring-2 focus:ring-blue-500"
-        aria-autocomplete="list"
-        aria-expanded={open}
+//        aria-autocomplete="list"
+//        aria-expanded={open}
         aria-controls="search-suggest"
         aria-activedescendant={open ? `search-suggest-${active}` : undefined}
       />

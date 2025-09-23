@@ -1,5 +1,5 @@
 // src/app/admin/clicks/page.tsx
-import { headers } from "next/headers";
+// import { headers } from "next/headers";
 import { notFound } from "next/navigation";
 import Link from "next/link";
 import { prisma } from "@/lib/prisma";
@@ -17,7 +17,8 @@ function asInt(v: string | undefined, dflt: number) {
 
 export default async function AdminClicksPage({ searchParams }: { searchParams: SP }) {
   // Protection par clé
-  const key = (searchParams?.key as string) ?? headers().get("x-admin-key") ?? "";
+  //const key = (searchParams?.key as string) ?? headers().get("x-admin-key") ?? "";
+  const key = (searchParams?.key as string) ?? "";
   if (!process.env.ADMIN_DASHBOARD_KEY || key !== process.env.ADMIN_DASHBOARD_KEY) {
     return notFound();
   }
