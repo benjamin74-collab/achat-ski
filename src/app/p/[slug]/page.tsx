@@ -44,7 +44,6 @@ export default async function ProductPage({ params }: PageProps) {
 
   if (!product) return notFound();
 
-  // Aplatit toutes les offres
   const offersFlat = product.skus.flatMap((s) =>
     s.offers.map((o) => ({
       id: o.id,
@@ -61,7 +60,7 @@ export default async function ProductPage({ params }: PageProps) {
 
   const title = [product.brand, product.model, product.season].filter(Boolean).join(" ");
 
-  // --- Prix mini pour l’UI (CENTIMES) ---
+  // Prix mini pour l’UI (centimes)
   const minPriceCents = offersFlat
     .filter((o) => o.inStock)
     .reduce<number | null>((acc, o) => {
@@ -69,7 +68,6 @@ export default async function ProductPage({ params }: PageProps) {
       return acc == null || total < acc ? total : acc;
     }, null);
 
-  // Spécs simples
   const specs: Array<[string, string]> = [
     ["Marque", product.brand ?? "—"],
     ["Modèle", product.model ?? "—"],
@@ -77,7 +75,6 @@ export default async function ProductPage({ params }: PageProps) {
     ["Catégorie", product.category ?? "—"],
   ];
 
-  // Produits similaires
   const related = await prisma.product.findMany({
     where: {
       id: { not: product.id },
@@ -89,10 +86,9 @@ export default async function ProductPage({ params }: PageProps) {
     select: { id: true, slug: true, brand: true, model: true, season: true },
   });
 
-  // Canonical
   const canonicalUrl = `${process.env.NEXT_PUBLIC_SITE_URL ?? "https://achat-ski.vercel.app"}/p/${product.slug}`;
 
-  // --- Données JSON-LD (en EUROS) ---
+  // Données JSON-LD (euros)
   const inStockOffers = offersFlat.filter((o) => o.inStock);
   const hasStock = inStockOffers.length > 0;
 
@@ -112,13 +108,12 @@ export default async function ProductPage({ params }: PageProps) {
 
   const maxPriceEuro = offersFlat.length
     ? Math.max(
-        ...offersFlat.map(
-          (o) => (o.priceCents + (o.shippingCents ?? 0)) / 100
-        )
+        ...offersFlat.map((o) => (o.priceCents + (o.shippingCents ?? 0)) / 100)
       )
     : undefined;
 
-  const productJsonLd: Record<string, any> = {
+  // ✅ pas de `any` : on typpe en unknown via `satisfies`
+  const productJsonLd = {
     "@context": "https://schema.org",
     "@type": "Product",
     name: title,
@@ -127,40 +122,47 @@ export default async function ProductPage({ params }: PageProps) {
     gtin13: product.skus?.[0]?.gtin ?? undefined,
     category: product.category ?? undefined,
     url: canonicalUrl,
-  };
-
-  if (offersFlat.length > 0) {
-    if (offersFlat.length > 1) {
-      productJsonLd.offers = {
-        "@type": "AggregateOffer",
-        priceCurrency: currency,
-        lowPrice: typeof minPriceEuro === "number" ? minPriceEuro.toFixed(2) : undefined,
-        highPrice: typeof maxPriceEuro === "number" ? maxPriceEuro.toFixed(2) : undefined,
-        offerCount: offersFlat.length,
-        availability: hasStock ? "https://schema.org/InStock" : "https://schema.org/OutOfStock",
-        url: canonicalUrl,
-      };
-    } else {
-      const o = offersFlat[0];
-      productJsonLd.offers = {
-        "@type": "Offer",
-        priceCurrency: o.currency,
-        price: ((o.priceCents + (o.shippingCents ?? 0)) / 100).toFixed(2),
-        availability: o.inStock ? "https://schema.org/InStock" : "https://schema.org/OutOfStock",
-        url: canonicalUrl,
-      };
-    }
-  }
+    ...(offersFlat.length > 0
+      ? {
+          offers:
+            offersFlat.length > 1
+              ? {
+                  "@type": "AggregateOffer",
+                  priceCurrency: currency,
+                  lowPrice:
+                    typeof minPriceEuro === "number" ? minPriceEuro.toFixed(2) : undefined,
+                  highPrice:
+                    typeof maxPriceEuro === "number" ? maxPriceEuro.toFixed(2) : undefined,
+                  offerCount: offersFlat.length,
+                  availability: hasStock
+                    ? "https://schema.org/InStock"
+                    : "https://schema.org/OutOfStock",
+                  url: canonicalUrl,
+                }
+              : {
+                  "@type": "Offer",
+                  priceCurrency: offersFlat[0].currency,
+                  price: (
+                    (offersFlat[0].priceCents + (offersFlat[0].shippingCents ?? 0)) /
+                    100
+                  ).toFixed(2),
+                  availability: offersFlat[0].inStock
+                    ? "https://schema.org/InStock"
+                    : "https://schema.org/OutOfStock",
+                  url: canonicalUrl,
+                },
+        }
+      : {}),
+  } satisfies Record<string, unknown>;
 
   return (
     <main className="container mx-auto max-w-6xl px-4 py-6">
-      {/* Canonical explicite */}
+      {/* Canonical */}
       <link rel="canonical" href={canonicalUrl} />
 
       {/* JSON-LD Product */}
       <script
         type="application/ld+json"
-        // eslint-disable-next-line react/no-danger
         dangerouslySetInnerHTML={{ __html: JSON.stringify(productJsonLd) }}
       />
 
@@ -174,20 +176,15 @@ export default async function ProductPage({ params }: PageProps) {
 
       {/* En-tête produit */}
       <section className="mt-4 grid grid-cols-1 gap-6 lg:grid-cols-12">
-        {/* Galerie / visuel placeholder */}
         <div className="lg:col-span-5">
           <div className="aspect-[4/3] w-full overflow-hidden rounded-2xl border bg-gray-50" />
-          <p className="mt-2 text-xs text-neutral-500">
-            Photo à venir (marque / feed partenaire).
-          </p>
+          <p className="mt-2 text-xs text-neutral-500">Photo à venir (marque / feed partenaire).</p>
         </div>
 
-        {/* Infos principales */}
         <div className="lg:col-span-7">
           <h1 className="text-2xl font-semibold">{title}</h1>
           <div className="mt-1 text-neutral-600">{product.category ?? "—"}</div>
 
-          {/* Prix mini (UI) */}
           <div className="mt-3 rounded-xl border p-4">
             <div className="text-sm text-neutral-500">à partir de</div>
             <div className="text-3xl font-bold">
@@ -196,7 +193,6 @@ export default async function ProductPage({ params }: PageProps) {
             <div className="mt-1 text-sm text-neutral-500">chez nos marchands partenaires</div>
           </div>
 
-          {/* Spécifications */}
           <dl className="mt-4 grid grid-cols-1 gap-2 sm:grid-cols-2">
             {specs.map(([k, v]) => (
               <div key={k} className="rounded-xl border p-3">
