@@ -1,9 +1,18 @@
+// src/app/robots.txt/route.ts
+export const runtime = "edge";
+
 export function GET() {
-  return new Response(
-`User-agent: *
+  const body = `
+User-agent: *
 Allow: /
 
-Sitemap: https://${process.env.VERCEL_PROJECT_PRODUCTION_URL ?? "achat-ski.vercel.app"}/sitemap.xml
-`, { headers: { "Content-Type": "text/plain" } }
-  );
+Sitemap: https://achat-ski.vercel.app/sitemap.xml
+  `.trim();
+
+  return new Response(body, {
+    headers: {
+      "content-type": "text/plain; charset=utf-8",
+      "cache-control": "public, max-age=3600",
+    },
+  });
 }

@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { headers } from "next/headers";
+//import { headers } from "next/headers";
 
 // On exécute la même logique que le script CLI, mais en version “légère”
 // Pour de gros flux, préfère lancer le script via GitHub Actions ou un job externe.

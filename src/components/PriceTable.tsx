@@ -1,4 +1,5 @@
 // src/components/PriceTable.tsx
+import Link from "next/link";
 import { money, totalCents } from "../lib/format";
 
 type OfferRow = {
@@ -13,10 +14,32 @@ type OfferRow = {
   lastSeen?: string | null;
 };
 
+function MerchantLogo({ slug, name }: { slug: string; name: string }) {
+  const srcSvg = `/logos/${slug}.svg`;
+  const srcPng = `/logos/${slug}.png`;
+  // On tente SVG puis PNG via <img srcSet>, si pas de logo → fallback initiale
+  return (
+    <div className="flex items-center gap-2">
+      <img
+        src={srcSvg}
+        srcSet={`${srcSvg} 1x, ${srcPng} 1x`}
+        alt={`${name} logo`}
+        className="h-5 w-auto"
+        onError={(e) => {
+          const el = e.currentTarget;
+          // masque l'image si pas trouvée
+          el.style.display = "none";
+          // on laisse le fallback texte à côté
+        }}
+      />
+      <span className="truncate">{name}</span>
+    </div>
+  );
+}
+
 export default function PriceTable({ offers }: { offers: OfferRow[] }) {
   if (!offers.length) return <p className="mt-4 text-neutral-500">Aucune offre pour le moment.</p>;
 
-  // tri par total (prix + port)
   const sorted = [...offers].sort(
     (a, b) => totalCents(a.priceCents, a.shippingCents) - totalCents(b.priceCents, b.shippingCents)
   );
@@ -29,17 +52,25 @@ export default function PriceTable({ offers }: { offers: OfferRow[] }) {
   return (
     <div className="mt-6 rounded-xl border p-4">
       <div className="grid grid-cols-6 gap-3 font-medium">
-        <div>Marchand</div><div>Prix</div><div>Port</div><div>Total</div><div>Stock</div><div></div>
+        <div>Marchand</div>
+        <div>Prix</div>
+        <div>Port</div>
+        <div>Total</div>
+        <div>Stock</div>
+        <div></div>
       </div>
 
       {sorted.map((o) => {
         const total = totalCents(o.priceCents, o.shippingCents);
         const isBest = o.id === bestId && o.inStock;
+
         return (
           <div key={o.id} className="grid grid-cols-6 gap-3 py-3 border-t items-center">
             <div className="flex items-center gap-2">
-              <span>{o.merchantName}</span>
-              {isBest && <span className="text-xs rounded bg-green-100 px-2 py-0.5 text-green-700">Meilleur prix</span>}
+              <MerchantLogo slug={o.merchantSlug} name={o.merchantName} />
+              {isBest && (
+                <span className="text-xs rounded bg-green-100 px-2 py-0.5 text-green-700">Meilleur prix</span>
+              )}
             </div>
             <div>{money(o.priceCents, o.currency)}</div>
             <div>{o.shippingCents != null ? money(o.shippingCents, o.currency) : "—"}</div>
@@ -47,15 +78,18 @@ export default function PriceTable({ offers }: { offers: OfferRow[] }) {
             <div className={o.inStock ? "text-green-700" : "text-neutral-500"}>
               {o.inStock ? "En stock" : "Hors stock"}
             </div>
-            <div>
-              {/* Lien vers la route d’affiliation (API), <a> est OK ici ; on neutralise la règle Next.js */}
-              {/* eslint-disable-next-line @next/next/no-html-link-for-pages */}
-              <a
+            <div className="text-right">
+              <Link
                 href={`/api/go/${o.merchantSlug}/${o.id}`}
-                className="inline-flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium border hover:shadow transition"
+                target="_blank"
+                rel="nofollow sponsored noopener"
+                className={`inline-flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium border hover:shadow transition ${
+                  o.inStock ? "bg-black text-white border-black hover:opacity-90" : "opacity-50 pointer-events-none"
+                }`}
+                prefetch={false}
               >
                 Voir chez {o.merchantName}
-              </a>
+              </Link>
             </div>
           </div>
         );
