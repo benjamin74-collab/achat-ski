@@ -1,5 +1,4 @@
 // src/app/admin/clicks/page.tsx
-// import { headers } from "next/headers";
 import { notFound } from "next/navigation";
 import Link from "next/link";
 import { prisma } from "@/lib/prisma";
@@ -16,8 +15,7 @@ function asInt(v: string | undefined, dflt: number) {
 }
 
 export default async function AdminClicksPage({ searchParams }: { searchParams: SP }) {
-  // Protection par clé
-  //const key = (searchParams?.key as string) ?? headers().get("x-admin-key") ?? "";
+  // Protection par clé (via query string)
   const key = (searchParams?.key as string) ?? "";
   if (!process.env.ADMIN_DASHBOARD_KEY || key !== process.env.ADMIN_DASHBOARD_KEY) {
     return notFound();
@@ -30,7 +28,7 @@ export default async function AdminClicksPage({ searchParams }: { searchParams: 
   // Récup clics avec jointures utiles
   const [rows, total] = await Promise.all([
     prisma.click.findMany({
-      orderBy: { id: "desc" }, // <= tri robuste même sans createdAt
+      orderBy: { id: "desc" }, // robuste même sans createdAt
       skip,
       take: pageSize,
       include: {
@@ -77,14 +75,24 @@ export default async function AdminClicksPage({ searchParams }: { searchParams: 
             {rows.map((r) => {
               const prod = r.offer.sku.product;
               const march = r.offer.merchant;
-              const ua = typeof r.userAgent === "string" ? r.userAgent : "";
+
+              // Champs optionnels (ton modèle Click peut ne pas les avoir)
+              const createdAtUnknown = (r as Record<string, unknown>)["createdAt"];
+              const createdAtStr =
+                createdAtUnknown instanceof Date
+                  ? createdAtUnknown.toLocaleString("fr-FR")
+                  : "—";
+
+              const uaUnknown = (r as Record<string, unknown>)["userAgent"];
+              const ua = typeof uaUnknown === "string" ? uaUnknown : "";
               const shortUa = ua.length > 60 ? ua.slice(0, 57) + "..." : (ua || "—");
-              const ip = r.ip ?? "—";
+
+              const ipUnknown = (r as Record<string, unknown>)["ip"];
+              const ip = typeof ipUnknown === "string" ? ipUnknown : "—";
+
               return (
                 <tr key={String(r.id)} className="border-t">
-					<td className="px-3 py-2 whitespace-nowrap">
-					  {r.createdAt ? new Date(r.createdAt as unknown as string).toLocaleString("fr-FR") : "—"}
-					</td>
+                  <td className="px-3 py-2 whitespace-nowrap">{createdAtStr}</td>
                   <td className="px-3 py-2">{march.name}</td>
                   <td className="px-3 py-2">
                     <Link href={`/p/${prod.slug}`} className="text-blue-700 hover:underline">
@@ -92,7 +100,9 @@ export default async function AdminClicksPage({ searchParams }: { searchParams: 
                     </Link>
                   </td>
                   <td className="px-3 py-2 text-right">
-                    {r.priceCentsAtClick != null ? money(r.priceCentsAtClick, r.currencyAtClick || "EUR") : "—"}
+                    {r.priceCentsAtClick != null
+                      ? money(r.priceCentsAtClick, r.currencyAtClick || "EUR")
+                      : "—"}
                   </td>
                   <td className="px-3 py-2">{r.currencyAtClick || "EUR"}</td>
                   <td className="px-3 py-2">{ip}</td>
@@ -116,7 +126,9 @@ export default async function AdminClicksPage({ searchParams }: { searchParams: 
               <Link
                 key={n}
                 href={`/admin/clicks?${sp.toString()}`}
-                className={`rounded-md px-3 py-1 text-sm ${n === page ? "bg-black text-white" : "border hover:bg-gray-50"}`}
+                className={`rounded-md px-3 py-1 text-sm ${
+                  n === page ? "bg-black text-white" : "border hover:bg-gray-50"
+                }`}
               >
                 {n}
               </Link>
