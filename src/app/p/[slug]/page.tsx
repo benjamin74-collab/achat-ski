@@ -183,6 +183,16 @@ export default async function ProductPage({ params }: PageProps) {
 
         <div className="lg:col-span-7">
           <h1 className="text-2xl font-semibold">{title}</h1>
+			<div className="mt-1 text-neutral-600">
+			  {product.category ?? "—"} ·{" "}
+			  {product.brand ? (
+				<a href={`/b/${encodeURIComponent(product.brand)}`} className="underline hover:no-underline">
+				  {product.brand}
+				</a>
+			  ) : (
+				"—"
+			  )}
+			</div>
           <div className="mt-1 text-neutral-600">{product.category ?? "—"}</div>
 
           <div className="mt-3 rounded-xl border p-4">
