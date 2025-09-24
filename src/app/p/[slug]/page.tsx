@@ -1,13 +1,16 @@
 // src/app/p/[slug]/page.tsx
 import { notFound } from "next/navigation";
+import type { Metadata } from "next";
 import { prisma } from "@/lib/prisma";
 import PriceTable from "@/components/PriceTable";
 import Breadcrumbs from "@/components/Breadcrumbs";
 import { money } from "@/lib/format";
-import type { Metadata } from "next";
+import StarRating from "@/components/StarRating";
+import ReviewList, { ReviewItem } from "@/components/ReviewList";
+import TestCards, { TestItem } from "@/components/TestCards";
 
 export const runtime = "nodejs";
-export const revalidate = 60; // ISR 60s
+export const revalidate = 60;
 
 type PageProps = { params: { slug: string } };
 
@@ -16,12 +19,9 @@ export async function generateMetadata({ params }: { params: { slug: string } })
     where: { slug: params.slug },
     select: { brand: true, model: true, season: true, slug: true },
   });
-
   if (!p) return { title: "Produit introuvable" };
-
   const name = [p.brand, p.model, p.season].filter(Boolean).join(" ");
   const url = `${process.env.NEXT_PUBLIC_SITE_URL ?? "https://achat-ski.vercel.app"}/p/${p.slug}`;
-
   return {
     title: `${name} — meilleur prix`,
     description: `Compare les prix ${name} chez les meilleurs marchands de ski.`,
@@ -34,16 +34,14 @@ export default async function ProductPage({ params }: PageProps) {
   const product = await prisma.product.findUnique({
     where: { slug: params.slug },
     include: {
-      skus: {
-        include: {
-          offers: { include: { merchant: true } },
-        },
-      },
+      skus: { include: { offers: { include: { merchant: true } } } },
+      reviews: { orderBy: { createdAt: "desc" }, take: 20 },
+      tests: { orderBy: { publishedAt: "desc" }, take: 8 },
     },
   });
-
   if (!product) return notFound();
 
+  // Aplatit les offres pour le tableau
   const offersFlat = product.skus.flatMap((s) =>
     s.offers.map((o) => ({
       id: o.id,
@@ -59,15 +57,14 @@ export default async function ProductPage({ params }: PageProps) {
   );
 
   const title = [product.brand, product.model, product.season].filter(Boolean).join(" ");
+  const inStockOffers = offersFlat.filter((o) => o.inStock);
+  const hasStock = inStockOffers.length > 0;
+  const best = inStockOffers
+    .slice()
+    .sort((a, b) => (a.priceCents + (a.shippingCents ?? 0)) - (b.priceCents + (b.shippingCents ?? 0)))[0];
+  const minPrice = best ? best.priceCents + (best.shippingCents ?? 0) : null;
 
-  // Prix mini pour l’UI (centimes)
-  const minPriceCents = offersFlat
-    .filter((o) => o.inStock)
-    .reduce<number | null>((acc, o) => {
-      const total = o.priceCents + (o.shippingCents ?? 0);
-      return acc == null || total < acc ? total : acc;
-    }, null);
-
+  // Spécs simples
   const specs: Array<[string, string]> = [
     ["Marque", product.brand ?? "—"],
     ["Modèle", product.model ?? "—"],
@@ -75,6 +72,7 @@ export default async function ProductPage({ params }: PageProps) {
     ["Catégorie", product.category ?? "—"],
   ];
 
+  // Produits similaires (même marque+catégorie)
   const related = await prisma.product.findMany({
     where: {
       id: { not: product.id },
@@ -86,34 +84,37 @@ export default async function ProductPage({ params }: PageProps) {
     select: { id: true, slug: true, brand: true, model: true, season: true },
   });
 
+  // Avis & moyenne
+  const reviewItems: ReviewItem[] = product.reviews.map((r) => ({
+    id: r.id,
+    rating: r.rating,
+    title: r.title,
+    body: r.body,
+    authorName: r.authorName ?? null,
+    sourceName: r.sourceName ?? null,
+    sourceUrl: r.sourceUrl ?? null,
+    createdAt: r.createdAt.toISOString(),
+  }));
+  const avgRating =
+    reviewItems.length > 0
+      ? reviewItems.reduce((acc, r) => acc + r.rating, 0) / reviewItems.length
+      : null;
+
+  // Tests
+  const testItems: TestItem[] = product.tests.map((t) => ({
+    id: t.id,
+    title: t.title,
+    excerpt: t.excerpt,
+    score: t.score,
+    sourceName: t.sourceName,
+    sourceUrl: t.sourceUrl,
+    publishedAt: t.publishedAt.toISOString(),
+  }));
+
   const canonicalUrl = `${process.env.NEXT_PUBLIC_SITE_URL ?? "https://achat-ski.vercel.app"}/p/${product.slug}`;
 
-  // Données JSON-LD (euros)
-  const inStockOffers = offersFlat.filter((o) => o.inStock);
-  const hasStock = inStockOffers.length > 0;
-
-  const minPriceOffer = inStockOffers
-    .slice()
-    .sort(
-      (a, b) =>
-        (a.priceCents + (a.shippingCents ?? 0)) -
-        (b.priceCents + (b.shippingCents ?? 0))
-    )[0];
-
-  const currency = minPriceOffer?.currency ?? "EUR";
-  const minPriceEuro =
-    minPriceOffer != null
-      ? (minPriceOffer.priceCents + (minPriceOffer.shippingCents ?? 0)) / 100
-      : undefined;
-
-  const maxPriceEuro = offersFlat.length
-    ? Math.max(
-        ...offersFlat.map((o) => (o.priceCents + (o.shippingCents ?? 0)) / 100)
-      )
-    : undefined;
-
-  // ✅ pas de `any` : on typpe en unknown via `satisfies`
-  const productJsonLd = {
+  // JSON-LD (résumé)
+  const productJsonLd: Record<string, unknown> = {
     "@context": "https://schema.org",
     "@type": "Product",
     name: title,
@@ -122,47 +123,23 @@ export default async function ProductPage({ params }: PageProps) {
     gtin13: product.skus?.[0]?.gtin ?? undefined,
     category: product.category ?? undefined,
     url: canonicalUrl,
-    ...(offersFlat.length > 0
+    ...(avgRating != null && reviewItems.length > 0
       ? {
-          offers:
-            offersFlat.length > 1
-              ? {
-                  "@type": "AggregateOffer",
-                  priceCurrency: currency,
-                  lowPrice:
-                    typeof minPriceEuro === "number" ? minPriceEuro.toFixed(2) : undefined,
-                  highPrice:
-                    typeof maxPriceEuro === "number" ? maxPriceEuro.toFixed(2) : undefined,
-                  offerCount: offersFlat.length,
-                  availability: hasStock
-                    ? "https://schema.org/InStock"
-                    : "https://schema.org/OutOfStock",
-                  url: canonicalUrl,
-                }
-              : {
-                  "@type": "Offer",
-                  priceCurrency: offersFlat[0].currency,
-                  price: (
-                    (offersFlat[0].priceCents + (offersFlat[0].shippingCents ?? 0)) /
-                    100
-                  ).toFixed(2),
-                  availability: offersFlat[0].inStock
-                    ? "https://schema.org/InStock"
-                    : "https://schema.org/OutOfStock",
-                  url: canonicalUrl,
-                },
+          aggregateRating: {
+            "@type": "AggregateRating",
+            ratingValue: avgRating.toFixed(1),
+            reviewCount: reviewItems.length,
+          },
         }
-      : {}),
-  } satisfies Record<string, unknown>;
+      : null),
+  };
 
   return (
     <main className="container mx-auto max-w-6xl px-4 py-6">
-      {/* Canonical */}
       <link rel="canonical" href={canonicalUrl} />
-
-      {/* JSON-LD Product */}
       <script
         type="application/ld+json"
+        // eslint-disable-next-line react/no-danger
         dangerouslySetInnerHTML={{ __html: JSON.stringify(productJsonLd) }}
       />
 
@@ -176,33 +153,37 @@ export default async function ProductPage({ params }: PageProps) {
 
       {/* En-tête produit */}
       <section className="mt-4 grid grid-cols-1 gap-6 lg:grid-cols-12">
+        {/* Visuel placeholder */}
         <div className="lg:col-span-5">
           <div className="aspect-[4/3] w-full overflow-hidden rounded-2xl border bg-gray-50" />
           <p className="mt-2 text-xs text-neutral-500">Photo à venir (marque / feed partenaire).</p>
         </div>
 
+        {/* Infos principales */}
         <div className="lg:col-span-7">
           <h1 className="text-2xl font-semibold">{title}</h1>
-			<div className="mt-1 text-neutral-600">
-			  {product.category ?? "—"} ·{" "}
-			  {product.brand ? (
-				<a href={`/b/${encodeURIComponent(product.brand)}`} className="underline hover:no-underline">
-				  {product.brand}
-				</a>
-			  ) : (
-				"—"
-			  )}
-			</div>
           <div className="mt-1 text-neutral-600">{product.category ?? "—"}</div>
 
+          {/* Prix mini */}
           <div className="mt-3 rounded-xl border p-4">
             <div className="text-sm text-neutral-500">à partir de</div>
-            <div className="text-3xl font-bold">
-              {minPriceCents != null ? money(minPriceCents, "EUR") : "—"}
+            <div className="text-3xl font-bold">{minPrice != null ? money(minPrice, "EUR") : "—"}</div>
+            <div className="mt-1 text-sm text-neutral-500">
+              {hasStock ? "chez nos marchands partenaires" : "actuellement hors stock"}
             </div>
-            <div className="mt-1 text-sm text-neutral-500">chez nos marchands partenaires</div>
           </div>
 
+          {/* Badge note moyenne si dispo */}
+          {avgRating != null && reviewItems.length > 0 && (
+            <div className="mt-3 flex items-center gap-2">
+              <StarRating value={avgRating} showValue />
+              <span className="text-sm text-neutral-600">
+                ({reviewItems.length} avis)
+              </span>
+            </div>
+          )}
+
+          {/* Spécifications */}
           <dl className="mt-4 grid grid-cols-1 gap-2 sm:grid-cols-2">
             {specs.map(([k, v]) => (
               <div key={k} className="rounded-xl border p-3">
@@ -214,10 +195,38 @@ export default async function ProductPage({ params }: PageProps) {
         </div>
       </section>
 
+      {/* Description */}
+      {product.description && (
+        <section className="mt-8">
+          <h2 className="text-xl font-semibold">Description</h2>
+          <div className="mt-3 whitespace-pre-line text-neutral-800">{product.description}</div>
+        </section>
+      )}
+
       {/* Tableau des prix */}
       <section className="mt-8">
         <h2 className="text-xl font-semibold">Comparer les prix</h2>
         <PriceTable offers={offersFlat} />
+      </section>
+
+      {/* Avis */}
+      <section className="mt-10">
+        <h2 className="text-xl font-semibold">Avis clients</h2>
+        {reviewItems.length === 0 ? (
+          <p className="mt-2 text-neutral-600 text-sm">Pas encore d’avis pour ce produit.</p>
+        ) : (
+          <ReviewList items={reviewItems} />
+        )}
+      </section>
+
+      {/* Tests / Essais */}
+      <section className="mt-10">
+        <h2 className="text-xl font-semibold">Tests & essais</h2>
+        {testItems.length === 0 ? (
+          <p className="mt-2 text-neutral-600 text-sm">Pas encore de tests référencés.</p>
+        ) : (
+          <TestCards items={testItems} />
+        )}
       </section>
 
       {/* Produits similaires */}
