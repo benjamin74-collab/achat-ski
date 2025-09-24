@@ -6,17 +6,17 @@ export const runtime = "nodejs";
 export const revalidate = 300;
 
 export default async function BrandsIndex() {
-  // Top marques par nb de produits
+  // Regroupe par marque, sans filtre "not: null" (qui casse selon ton type)
   const rows = await prisma.product.groupBy({
     by: ["brand"],
-    where: { brand: { not: null } },
     _count: { _all: true },
     orderBy: { _count: { _all: "desc" } },
   });
 
+  // Filtrage côté JS: garde uniquement les marques non vides
   const brands = rows
-    .map(r => ({ name: r.brand as string, count: r._count._all }))
-    .filter(b => b.name && b.name.trim() !== "");
+    .map((r) => ({ name: (r.brand as string) ?? "", count: r._count._all }))
+    .filter((b) => b.name.trim() !== "");
 
   return (
     <main className="container mx-auto max-w-6xl px-4 py-6">
