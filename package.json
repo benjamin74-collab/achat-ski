@@ -4,15 +4,20 @@
   "private": true,
   "scripts": {
     "dev": "next dev --turbopack",
-    "build": "next build --turbopack",
+    "build": "prisma migrate deploy && next build --turbopack",
     "start": "next start",
     "lint": "eslint",
     "postinstall": "prisma generate",
     "prisma:push": "prisma db push",
-    "prisma:seed": "tsx prisma/seed.ts"
+    "prisma:seed": "tsx prisma/seed.ts",
+    "fts:setup": "tsx scripts/fts_setup.ts",
+    "ingest:kwanko": "tsx scripts/ingest_kwanko.ts",
+	"seed:reviews": "tsx scripts/seed_reviews.ts"
   },
   "dependencies": {
     "@prisma/client": "^6.16.2",
+    "csv-parse": "^6.1.0",
+    "meilisearch": "^0.53.0",
     "next": "15.5.3",
     "react": "19.1.0",
     "react-dom": "19.1.0"
