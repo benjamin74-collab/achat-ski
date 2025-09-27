@@ -3,23 +3,24 @@ generator client {
 }
 
 datasource db {
-  provider = "postgresql"
-  url      = env("DATABASE_URL")
+  provider          = "postgresql"
+  url               = env("DATABASE_URL")
+  shadowDatabaseUrl = env("SHADOW_DATABASE_URL") // garde une base NEON "shadow" non poolée
 }
 
 model Product {
-  id          Int             @id @default(autoincrement())
+  id          Int      @id @default(autoincrement())
   brand       String
   model       String
-  season      String? // ex: "2025/26"
-  category    String? // all-mountain, rando, freeride...
-  gtin        String?         @unique
-  slug        String          @unique
+  season      String?
+  category    String?
+  gtin        String?  @unique
+  slug        String   @unique
   attributes  Json?
-  createdAt   DateTime        @default(now())
-  description String?
+  createdAt   DateTime @default(now())
+  description String?  // ✅ correspond à la migration
   skus        Sku[]
-  clicks      Click[] // back-relation pour Click.product
+  clicks      Click[]
   reviews     Review[]
   tests       EditorialTest[]
 }
@@ -28,7 +29,7 @@ model Sku {
   id         Int     @id @default(autoincrement())
   product    Product @relation(fields: [productId], references: [id])
   productId  Int
-  variant    String? // 172 cm, 180 cm...
+  variant    String?
   gtin       String? @unique
   attributes Json?
   offers     Offer[]
@@ -38,9 +39,9 @@ model Merchant {
   id        Int     @id @default(autoincrement())
   name      String  @unique
   slug      String  @unique
-  network   String? // kwanko | awin | sovrn | direct
+  network   String?
   programId String?
-  status    String? // active | paused
+  status    String?
   offers    Offer[]
 }
 
@@ -52,12 +53,11 @@ model Offer {
   merchantId    Int
   affiliateUrl  String
   priceCents    Int
-  currency      String // "EUR"
+  currency      String
   inStock       Boolean   @default(true)
   shippingCents Int?
   lastSeen      DateTime? @default(now())
-
-  clicks Click[] // back-relation pour Click.offer
+  clicks        Click[]
 
   @@unique([skuId, merchantId])
 }
@@ -77,15 +77,14 @@ model Click {
 model Review {
   id         Int      @id @default(autoincrement())
   productId  Int
-  rating     Int // 1..5
+  rating     Int
   title      String
   body       String
   authorName String?
-  sourceName String? // “Ekosport”, “Snowleader”, “Utilisateur anonyme”, etc.
+  sourceName String?
   sourceUrl  String?
   createdAt  DateTime @default(now())
-
-  product Product @relation(fields: [productId], references: [id])
+  product    Product  @relation(fields: [productId], references: [id])
 
   @@index([productId])
   @@index([rating])
@@ -96,12 +95,11 @@ model EditorialTest {
   productId   Int
   title       String
   excerpt     String
-  score       Float? // 0..10 ou 0..5 selon tes sources (optionnel)
-  sourceName  String // “Skipass”, “Backcountry Magazine”, etc.
+  score       Float?
+  sourceName  String
   sourceUrl   String
   publishedAt DateTime @default(now())
-
-  product Product @relation(fields: [productId], references: [id])
+  product     Product  @relation(fields: [productId], references: [id])
 
   @@index([productId])
   @@index([publishedAt])

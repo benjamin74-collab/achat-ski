@@ -1,0 +1,7 @@
+merchant_id,merchant_name,product_id,product_name,category,brand,model,season,price,url,image_url
+EKOSPORT,Ekosport,1001,Ski All-Mountain Rossignol Experience 82 Basalt,skis-all-mountain,Rossignol,Experience 82,2024,549.99,https://www.ekosport.fr/ski-rossignol-experience-82.html,https://via.placeholder.com/300x400.png?text=Rossignol+82
+EKOSPORT,Ekosport,1002,Ski Freeride Salomon QST 98,skis-freeride,Salomon,QST 98,2024,649.99,https://www.ekosport.fr/ski-salomon-qst-98.html,https://via.placeholder.com/300x400.png?text=Salomon+QST+98
+SNOWLEADER,Snowleader,2001,Chaussures de ski Lange RX 120,chaussures,Lange,RX 120,2023,449.00,https://www.snowleader.com/lange-rx-120.html,https://via.placeholder.com/300x400.png?text=Lange+RX+120
+SNOWLEADER,Snowleader,2002,Fixations Marker Griffon 13 ID,fixations,Marker,Griffon 13 ID,2023,229.00,https://www.snowleader.com/marker-griffon-13.html,https://via.placeholder.com/300x400.png?text=Marker+Griffon+13
+GLISSHOP,Glisshop,3001,Ski Rando Dynafit Seven Summits,skis-rando,Dynafit,Seven Summits,2022,579.90,https://www.glisshop.com/ski-rando/dynafit-seven-summits.html,https://via.placeholder.com/300x400.png?text=Dynafit+Seven+Summits
+GLISSHOP,Glisshop,3002,Pack Ski All-Mountain Atomic Maverick 88,skis-all-mountain,Atomic,Maverick 88,2024,599.90,https://www.glisshop.com/atomic-maverick-88.html,https://via.placeholder.com/300x400.png?text=Atomic+Maverick+88

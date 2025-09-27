@@ -1,19 +1,21 @@
 import Link from "next/link";
+import SearchBar from "@/components/SearchBar";
 
 export default function Header() {
   return (
-    <header className="border-b bg-white">
-      <div className="container-page flex h-14 items-center justify-between">
-        <Link href="/" className="font-extrabold tracking-tight">
-          Achat-Ski<span className="text-neutral-400">.com</span>
-        </Link>
-        <nav className="flex gap-4 text-sm">
-          <Link href="/c/skis-all-mountain" className="hover:underline">Skis All-Mountain</Link>
-          <Link href="/c/skis-rando" className="hover:underline">Ski de rando</Link>
-          <Link href="/c/fixations" className="hover:underline">Fixations</Link>
-          <Link href="/c/chaussures" className="hover:underline">Chaussures</Link>
+    <header className="border-b">
+      <div className="mx-auto max-w-6xl px-4 py-3 flex items-center gap-4">
+        <a href="/" className="font-bold text-xl">Achat-Ski</a>
+        <div className="flex-1 hidden md:block">
+          <SearchBar />
+        </div>
+        <nav className="flex items-center gap-4 text-sm">
+          <a href="/c/skis-all-mountain/">Skis</a>
+          <a href="/c/fixations/">Fixations</a>
+          <a href="/c/chaussures/">Chaussures</a>
         </nav>
       </div>
     </header>
   );
 }
+

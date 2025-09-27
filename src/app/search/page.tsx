@@ -4,6 +4,7 @@ import { searchProducts } from "@/lib/search";
 import { money } from "@/lib/format";
 
 export const runtime = "nodejs";
+export const dynamic = "force-dynamic"; // évite des pré-renders fragiles
 
 type SP = { [key: string]: string | string[] | undefined };
 
@@ -20,22 +21,37 @@ export default async function SearchPage({ searchParams }: { searchParams: SP })
   const inStockOnly = ((searchParams?.stock as string) ?? "").toLowerCase() === "1";
   const sort = (searchParams?.sort as string) as "relevance" | "price_asc" | "price_desc" | undefined;
 
-  // prix saisis en euros -> convertir en cents
   const minPriceEuros = parseIntOrNull(searchParams?.min as string | undefined);
   const maxPriceEuros = parseIntOrNull(searchParams?.max as string | undefined);
   const minPriceCents = minPriceEuros != null ? minPriceEuros * 100 : null;
   const maxPriceCents = maxPriceEuros != null ? maxPriceEuros * 100 : null;
 
-  const data = await searchProducts({
-    q,
+  let data:
+    | Awaited<ReturnType<typeof searchProducts>>
+    | { items: any[]; page: number; pageSize: number; total: number; totalPages: number; q: string } = {
+    items: [],
     page,
     pageSize: 24,
-    category,
-    inStockOnly,
-    minPriceCents,
-    maxPriceCents,
-    sort: sort ?? "relevance",
-  });
+    total: 0,
+    totalPages: 1,
+    q,
+  };
+
+  try {
+    data = await searchProducts({
+      q,
+      page,
+      pageSize: 24,
+      category,
+      inStockOnly,
+      minPriceCents,
+      maxPriceCents,
+      sort: sort ?? "relevance",
+    });
+  } catch (e) {
+    console.error("SSR /search failed:", e);
+    // On garde la page en vie avec zéro résultat plutôt qu’une 500
+  }
 
   const hasFilters = Boolean(q || category || inStockOnly || minPriceEuros != null || maxPriceEuros != null);
 
@@ -43,14 +59,9 @@ export default async function SearchPage({ searchParams }: { searchParams: SP })
     <main className="container mx-auto max-w-6xl px-4 py-6">
       <h1 className="text-2xl font-semibold">Résultats {q ? <>pour “{q}”</> : null}</h1>
 
-      {/* Filtres */}
-      <form className="mt-4 grid grid-cols-1 gap-3 md:grid-cols-6" action="/search" method="GET">
-        <input
-          name="q"
-          defaultValue={q}
-          placeholder="Rechercher…"
-          className="md:col-span-2 rounded-xl border px-4 py-2"
-        />
+      {/* Formulaire /search */}
+      <form action="/search" method="GET" className="mt-4 grid grid-cols-1 gap-3 md:grid-cols-6">
+        <input name="q" defaultValue={q} placeholder="Rechercher…" className="md:col-span-2 rounded-xl border px-4 py-2" />
         <select name="category" defaultValue={category ?? ""} className="rounded-xl border px-3 py-2">
           <option value="">Toutes catégories</option>
           <option value="skis-all-mountain">Skis All-Mountain</option>
@@ -61,30 +72,11 @@ export default async function SearchPage({ searchParams }: { searchParams: SP })
         </select>
         <div className="flex items-center gap-2 rounded-xl border px-3 py-2">
           <label className="text-sm text-neutral-600">Prix €</label>
-          <input
-            name="min"
-            type="number"
-            min={0}
-            defaultValue={minPriceEuros ?? ""}
-            placeholder="min"
-            className="w-20 rounded border px-2 py-1 text-sm"
-          />
+          <input name="min" type="number" min={0} defaultValue={minPriceEuros ?? ""} placeholder="min" className="w-20 rounded border px-2 py-1 text-sm" />
           <span className="text-neutral-400">—</span>
-          <input
-            name="max"
-            type="number"
-            min={0}
-            defaultValue={maxPriceEuros ?? ""}
-            placeholder="max"
-            className="w-20 rounded border px-2 py-1 text-sm"
-          />
+          <input name="max" type="number" min={0} defaultValue={maxPriceEuros ?? ""} placeholder="max" className="w-20 rounded border px-2 py-1 text-sm" />
         </div>
-        <select
-          name="sort"
-          defaultValue={sort ?? "relevance"}
-          className="rounded-xl border px-3 py-2"
-          title="Trier"
-        >
+        <select name="sort" defaultValue={sort ?? "relevance"} className="rounded-xl border px-3 py-2" title="Trier">
           <option value="relevance">Pertinence</option>
           <option value="price_asc">Prix croissant</option>
           <option value="price_desc">Prix décroissant</option>
@@ -96,7 +88,6 @@ export default async function SearchPage({ searchParams }: { searchParams: SP })
         <button className="rounded-xl border px-4 py-2 md:col-span-1">Filtrer</button>
       </form>
 
-      {/* Résumé filtres */}
       {hasFilters && (
         <div className="mt-3 text-sm text-neutral-600">
           {category ? <>Catégorie: <b>{category}</b> · </> : null}
@@ -108,7 +99,6 @@ export default async function SearchPage({ searchParams }: { searchParams: SP })
         </div>
       )}
 
-      {/* Résultats en grille */}
       {data.items.length === 0 ? (
         <p className="mt-6 text-neutral-600">Aucun produit ne correspond aux filtres.</p>
       ) : (
@@ -129,10 +119,7 @@ export default async function SearchPage({ searchParams }: { searchParams: SP })
                   </div>
                 </div>
                 <div className="mt-2">
-                  <Link
-                    href={`/p/${p.slug}`}
-                    className="inline-block rounded-xl border px-3 py-2 text-sm hover:shadow"
-                  >
+                  <Link href={`/p/${p.slug}`} className="inline-block rounded-xl border px-3 py-2 text-sm hover:shadow">
                     Voir le produit
                   </Link>
                 </div>
@@ -142,7 +129,6 @@ export default async function SearchPage({ searchParams }: { searchParams: SP })
         </ul>
       )}
 
-      {/* Pagination */}
       {data.totalPages > 1 && (
         <nav className="mt-8 flex items-center justify-center gap-2">
           {Array.from({ length: data.totalPages }).map((_, i) => {
@@ -158,11 +144,7 @@ export default async function SearchPage({ searchParams }: { searchParams: SP })
             const href = `/search?${params.toString()}`;
             const isActive = n === page;
             return (
-              <Link
-                key={n}
-                href={href}
-                className={`rounded-md px-3 py-1 text-sm ${isActive ? "bg-black text-white" : "border hover:bg-gray-50"}`}
-              >
+              <Link key={n} href={href} className={`rounded-md px-3 py-1 text-sm ${isActive ? "bg-black text-white" : "border hover:bg-gray-50"}`}>
                 {n}
               </Link>
             );
