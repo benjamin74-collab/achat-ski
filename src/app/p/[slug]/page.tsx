@@ -96,8 +96,7 @@ export default async function ProductPage({ params }: PageProps) {
     .slice()
     .sort(
       (a, b) =>
-        (a.priceCents + (a.shippingCents ?? 0)) -
-        (b.priceCents + (b.shippingCents ?? 0))
+        a.priceCents + (a.shippingCents ?? 0) - (b.priceCents + (b.shippingCents ?? 0))
     )[0];
 
   const currency = minPriceOffer?.currency ?? "EUR";
@@ -107,12 +106,9 @@ export default async function ProductPage({ params }: PageProps) {
       : undefined;
 
   const maxPriceEuro = offersFlat.length
-    ? Math.max(
-        ...offersFlat.map((o) => (o.priceCents + (o.shippingCents ?? 0)) / 100)
-      )
+    ? Math.max(...offersFlat.map((o) => (o.priceCents + (o.shippingCents ?? 0)) / 100))
     : undefined;
 
-  // ✅ pas de `any` : on typpe en unknown via `satisfies`
   const productJsonLd = {
     "@context": "https://schema.org",
     "@type": "Product",
@@ -129,10 +125,8 @@ export default async function ProductPage({ params }: PageProps) {
               ? {
                   "@type": "AggregateOffer",
                   priceCurrency: currency,
-                  lowPrice:
-                    typeof minPriceEuro === "number" ? minPriceEuro.toFixed(2) : undefined,
-                  highPrice:
-                    typeof maxPriceEuro === "number" ? maxPriceEuro.toFixed(2) : undefined,
+                  lowPrice: typeof minPriceEuro === "number" ? minPriceEuro.toFixed(2) : undefined,
+                  highPrice: typeof maxPriceEuro === "number" ? maxPriceEuro.toFixed(2) : undefined,
                   offerCount: offersFlat.length,
                   availability: hasStock
                     ? "https://schema.org/InStock"
@@ -183,17 +177,16 @@ export default async function ProductPage({ params }: PageProps) {
 
         <div className="lg:col-span-7">
           <h1 className="text-2xl font-semibold">{title}</h1>
-			<div className="mt-1 text-neutral-600">
-			  {product.category ?? "—"} ·{" "}
-			  {product.brand ? (
-				<a href={`/b/${encodeURIComponent(product.brand)}`} className="underline hover:no-underline">
-				  {product.brand}
-				</a>
-			  ) : (
-				"—"
-			  )}
-			</div>
-          <div className="mt-1 text-neutral-600">{product.category ?? "—"}</div>
+          <div className="mt-1 text-neutral-600">
+            {product.category ?? "—"} ·{" "}
+            {product.brand ? (
+              <a href={`/b/${encodeURIComponent(product.brand)}`} className="underline hover:no-underline">
+                {product.brand}
+              </a>
+            ) : (
+              "—"
+            )}
+          </div>
 
           <div className="mt-3 rounded-xl border p-4">
             <div className="text-sm text-neutral-500">à partir de</div>
@@ -211,6 +204,20 @@ export default async function ProductPage({ params }: PageProps) {
               </div>
             ))}
           </dl>
+
+          {/* ✅ Description si présente */}
+          {product.description && product.description.trim() && (
+            <section className="mt-6">
+              <h2 className="text-lg font-semibold">Description</h2>
+              <div className="prose prose-sm max-w-none mt-2 text-neutral-800">
+                {product.description
+                  .split(/\n{2,}/)
+                  .map((para, i) => (
+                    <p key={i}>{para.trim()}</p>
+                  ))}
+              </div>
+            </section>
+          )}
         </div>
       </section>
 
