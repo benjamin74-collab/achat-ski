@@ -11,6 +11,9 @@ export const revalidate = 60; // ISR 60s
 
 type PageProps = { params: { slug: string } };
 
+// Petit type d’appoint pour accéder à la description si elle existe côté DB
+type MaybeWithDescription = { description?: string | null };
+
 export async function generateMetadata({ params }: { params: { slug: string } }): Promise<Metadata> {
   const p = await prisma.product.findUnique({
     where: { slug: params.slug },
@@ -33,14 +36,9 @@ export async function generateMetadata({ params }: { params: { slug: string } })
 export default async function ProductPage({ params }: PageProps) {
   const product = await prisma.product.findUnique({
     where: { slug: params.slug },
-    select: {
-      id: true,
-      slug: true,
-      brand: true,
-      model: true,
-      season: true,
-      category: true,
-      description: true, // ✅ on sélectionne explicitement
+    // ⚠️ pas de `select` ici -> on laisse Prisma renvoyer les scalaires connus,
+    // et on inclut seulement les relations dont on a besoin.
+    include: {
       skus: {
         select: {
           id: true,
@@ -58,11 +56,7 @@ export default async function ProductPage({ params }: PageProps) {
               shippingCents: true,
               lastSeen: true,
               merchant: {
-                select: {
-                  id: true,
-                  name: true,
-                  slug: true,
-                },
+                select: { id: true, name: true, slug: true },
               },
             },
           },
@@ -178,6 +172,9 @@ export default async function ProductPage({ params }: PageProps) {
       : {}),
   } satisfies Record<string, unknown>;
 
+  // ✅ Accès optionnel à la description sans `any`
+  const desc = (product as MaybeWithDescription).description ?? null;
+
   return (
     <main className="container mx-auto max-w-6xl px-4 py-6">
       {/* Canonical */}
@@ -235,15 +232,13 @@ export default async function ProductPage({ params }: PageProps) {
           </dl>
 
           {/* ✅ Description si présente */}
-          {product.description && product.description.trim() && (
+          {desc && desc.trim() && (
             <section className="mt-6">
               <h2 className="text-lg font-semibold">Description</h2>
               <div className="prose prose-sm max-w-none mt-2 text-neutral-800">
-                {product.description
-                  .split(/\n{2,}/)
-                  .map((para, i) => (
-                    <p key={i}>{para.trim()}</p>
-                  ))}
+                {desc.split(/\n{2,}/).map((para, i) => (
+                  <p key={i}>{para.trim()}</p>
+                ))}
               </div>
             </section>
           )}
