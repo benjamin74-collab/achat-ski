@@ -30,16 +30,25 @@ export async function searchProducts(opts: {
   const pageSize = Math.min(50, Math.max(1, opts.pageSize ?? 20));
   const offset = (page - 1) * pageSize;
 
-  const category = opts.category ?? null;              // string | null
-  const inStockOnly = Boolean(opts.inStockOnly);       // boolean
-  const minPriceCents = opts.minPriceCents ?? null;    // number | null
-  const maxPriceCents = opts.maxPriceCents ?? null;    // number | null
+  const category = opts.category ?? null;
+  const inStockOnly = Boolean(opts.inStockOnly);
+  const minPriceCents = opts.minPriceCents ?? null;
+  const maxPriceCents = opts.maxPriceCents ?? null;
   const sort = opts.sort ?? "relevance";
 
-  // CTE "base" = produits + prix min in-stock + nombre d'offres in-stock + scores
-  // On garde tous les casts pour éviter les erreurs 42P18 et les BigInt.
+  // On calcule le tsquery UNE FOIS, et seulement si qs != ''.
+  // On le réutilise partout via un CROSS JOIN "params".
   const rows = await prisma.$queryRaw<ProductSearchItem[]>`
-    WITH base AS (
+    WITH params AS (
+      SELECT
+        ${qs}::text AS qs,
+        CASE
+          WHEN ${qs}::text <> ''::text
+          THEN websearch_to_tsquery('french', unaccent(${qs}::text))
+          ELSE NULL::tsquery
+        END AS qts
+    ),
+    base AS (
       SELECT
         p.id,
         p.slug,
@@ -50,49 +59,43 @@ export async function searchProducts(opts: {
         MIN(CASE WHEN o."inStock" THEN o."priceCents" END)::int AS "minPriceCents",
         COUNT(CASE WHEN o."inStock" THEN 1 END)::int           AS "offerCount",
 
-        -- Score FTS
+        -- Score FTS (0 si qs vide)
         CASE
-          WHEN ${qs}::text = ''::text THEN 0::float4
-          ELSE ts_rank(
-                p.fts,
-                websearch_to_tsquery('french', unaccent(${qs}::text))
-              )::float4
+          WHEN (SELECT qs FROM params) = ''::text THEN 0::float4
+          ELSE ts_rank(p.fts, (SELECT qts FROM params))::float4
         END AS rank,
 
         -- Match préfixe (brand/model commence par q)
         GREATEST(
-          (unaccent(coalesce(p.brand,'')) ILIKE unaccent(${qs}::text || '%'))::int,
-          (unaccent(coalesce(p.model,'')) ILIKE unaccent(${qs}::text || '%'))::int
+          (unaccent(coalesce(p.brand,'')) ILIKE unaccent((SELECT qs FROM params) || '%'))::int,
+          (unaccent(coalesce(p.model,'')) ILIKE unaccent((SELECT qs FROM params) || '%'))::int
         ) AS "prefixScore",
 
-        -- Similarité trigram (tolérance fautes)
+        -- Similarité trigram (on ne l'applique que si qs non vide)
         GREATEST(
-          similarity(unaccent(coalesce(p.brand,'')), unaccent(${qs}::text))::float4,
-          similarity(unaccent(coalesce(p.model,'')), unaccent(${qs}::text))::float4
+          CASE WHEN (SELECT qs FROM params) <> ''::text
+               THEN similarity(unaccent(coalesce(p.brand,'')), unaccent((SELECT qs FROM params)))::float4
+               ELSE 0::float4 END,
+          CASE WHEN (SELECT qs FROM params) <> ''::text
+               THEN similarity(unaccent(coalesce(p.model,'')), unaccent((SELECT qs FROM params)))::float4
+               ELSE 0::float4 END
         ) AS "simScore"
 
       FROM "Product" p
+      CROSS JOIN params prm
       LEFT JOIN "Sku"   s ON s."productId" = p.id
       LEFT JOIN "Offer" o ON o."skuId"     = s.id
       WHERE
         (
-          ${qs}::text = ''::text
-          OR p.fts @@ websearch_to_tsquery('french', unaccent(${qs}::text))
-          OR unaccent(coalesce(p.brand,'')) ILIKE unaccent(${qs}::text || '%')
-          OR unaccent(coalesce(p.model,'')) ILIKE unaccent(${qs}::text || '%')
-          OR p.brand % ${qs}::text
-          OR p.model % ${qs}::text
+          prm.qs = ''::text
+          OR (prm.qts IS NOT NULL AND p.fts @@ prm.qts)
+          OR unaccent(coalesce(p.brand,'')) ILIKE unaccent(prm.qs || '%')
+          OR unaccent(coalesce(p.model,'')) ILIKE unaccent(prm.qs || '%')
+          OR (prm.qs <> ''::text AND p.brand % prm.qs)
+          OR (prm.qs <> ''::text AND p.model % prm.qs)
         )
-        AND (
-          COALESCE(${category}::text, ''::text) = ''::text
-          OR p."category" = ${category}::text
-        )
-        AND (
-          CASE WHEN ${inStockOnly}::boolean
-               THEN o."inStock" = TRUE
-               ELSE TRUE
-          END
-        )
+        AND (COALESCE(${category}::text, ''::text) = ''::text OR p."category" = ${category}::text)
+        AND (CASE WHEN ${inStockOnly}::boolean THEN o."inStock" = TRUE ELSE TRUE END)
       GROUP BY p.id
       HAVING
         (COALESCE(${minPriceCents}::int, -1) = -1 OR MIN(CASE WHEN o."inStock" THEN o."priceCents" END)::int >= ${minPriceCents}::int)
@@ -118,34 +121,36 @@ export async function searchProducts(opts: {
     LIMIT ${pageSize} OFFSET ${offset};
   `;
 
-  // total avec les mêmes conditions (recompte via la même CTE)
+  // Même logique pour le total
   const countRows = await prisma.$queryRaw<Array<{ count: number }>>`
-    WITH base AS (
+    WITH params AS (
+      SELECT
+        ${qs}::text AS qs,
+        CASE
+          WHEN ${qs}::text <> ''::text
+          THEN websearch_to_tsquery('french', unaccent(${qs}::text))
+          ELSE NULL::tsquery
+        END AS qts
+    ),
+    base AS (
       SELECT
         p.id,
         MIN(CASE WHEN o."inStock" THEN o."priceCents" END)::int AS "minPriceCents"
       FROM "Product" p
+      CROSS JOIN params prm
       LEFT JOIN "Sku"   s ON s."productId" = p.id
       LEFT JOIN "Offer" o ON o."skuId"     = s.id
       WHERE
         (
-          ${qs}::text = ''::text
-          OR p.fts @@ websearch_to_tsquery('french', unaccent(${qs}::text))
-          OR unaccent(coalesce(p.brand,'')) ILIKE unaccent(${qs}::text || '%')
-          OR unaccent(coalesce(p.model,'')) ILIKE unaccent(${qs}::text || '%')
-          OR p.brand % ${qs}::text
-          OR p.model % ${qs}::text
+          prm.qs = ''::text
+          OR (prm.qts IS NOT NULL AND p.fts @@ prm.qts)
+          OR unaccent(coalesce(p.brand,'')) ILIKE unaccent(prm.qs || '%')
+          OR unaccent(coalesce(p.model,'')) ILIKE unaccent(prm.qs || '%')
+          OR (prm.qs <> ''::text AND p.brand % prm.qs)
+          OR (prm.qs <> ''::text AND p.model % prm.qs)
         )
-        AND (
-          COALESCE(${category}::text, ''::text) = ''::text
-          OR p."category" = ${category}::text
-        )
-        AND (
-          CASE WHEN ${inStockOnly}::boolean
-               THEN o."inStock" = TRUE
-               ELSE TRUE
-          END
-        )
+        AND (COALESCE(${category}::text, ''::text) = ''::text OR p."category" = ${category}::text)
+        AND (CASE WHEN ${inStockOnly}::boolean THEN o."inStock" = TRUE ELSE TRUE END)
       GROUP BY p.id
       HAVING
         (COALESCE(${minPriceCents}::int, -1) = -1 OR MIN(CASE WHEN o."inStock" THEN o."priceCents" END)::int >= ${minPriceCents}::int)
