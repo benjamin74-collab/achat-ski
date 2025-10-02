@@ -1,4 +1,7 @@
 // src/app/p/[slug]/page.tsx
+
+export const dynamic = "force-dynamic"; // TEMP: bypass ISR pour vérifier la DB en prod
+
 import { notFound } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import PriceTable from "@/components/PriceTable";
