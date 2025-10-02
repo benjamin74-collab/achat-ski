@@ -36,14 +36,17 @@ export async function generateMetadata({ params }: { params: { slug: string } })
 export default async function ProductPage({ params }: PageProps) {
   const product = await prisma.product.findUnique({
     where: { slug: params.slug },
-    // ⚠️ pas de `select` ici -> on laisse Prisma renvoyer les scalaires connus,
-    // et on inclut seulement les relations dont on a besoin.
-    include: {
+    select: {
+      id: true,
+      brand: true,
+      model: true,
+      season: true,
+      category: true,
+      description: true,
       skus: {
         select: {
           id: true,
           variant: true,
-		  description: true,
           gtin: true,
           offers: {
             select: {
@@ -56,9 +59,7 @@ export default async function ProductPage({ params }: PageProps) {
               inStock: true,
               shippingCents: true,
               lastSeen: true,
-              merchant: {
-                select: { id: true, name: true, slug: true },
-              },
+              merchant: { select: { id: true, name: true, slug: true } },
             },
           },
         },
