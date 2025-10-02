@@ -11,9 +11,6 @@ export const revalidate = 60; // ISR 60s
 
 type PageProps = { params: { slug: string } };
 
-// Petit type d’appoint pour accéder à la description si elle existe côté DB
-type MaybeWithDescription = { description?: string | null };
-
 export async function generateMetadata({ params }: { params: { slug: string } }): Promise<Metadata> {
   const p = await prisma.product.findUnique({
     where: { slug: params.slug },
@@ -36,13 +33,8 @@ export async function generateMetadata({ params }: { params: { slug: string } })
 export default async function ProductPage({ params }: PageProps) {
   const product = await prisma.product.findUnique({
     where: { slug: params.slug },
-    select: {
-      id: true,
-      brand: true,
-      model: true,
-      season: true,
-      category: true,
-      description: true,
+    // ⬇️ Pas de `select` au niveau Product : on récupère tous les scalaires (dont `description`)
+    include: {
       skus: {
         select: {
           id: true,
@@ -85,7 +77,7 @@ export default async function ProductPage({ params }: PageProps) {
 
   const title = [product.brand, product.model, product.season].filter(Boolean).join(" ");
 
-  // Prix mini pour l’UI (centimes)
+  // Prix mini (centimes)
   const minPriceCents = offersFlat
     .filter((o) => o.inStock)
     .reduce<number | null>((acc, o) => {
@@ -113,22 +105,20 @@ export default async function ProductPage({ params }: PageProps) {
 
   const canonicalUrl = `${process.env.NEXT_PUBLIC_SITE_URL ?? "https://achat-ski.vercel.app"}/p/${product.slug}`;
 
-  // Données JSON-LD (euros)
+  // JSON-LD (euros)
   const inStockOffers = offersFlat.filter((o) => o.inStock);
   const hasStock = inStockOffers.length > 0;
 
-  const minPriceOffer = inStockOffers
-    .slice()
-    .sort(
-      (a, b) =>
-        a.priceCents + (a.shippingCents ?? 0) - (b.priceCents + (b.shippingCents ?? 0))
-    )[0];
+  const minPriceOffer =
+    inStockOffers.length > 0
+      ? [...inStockOffers].sort(
+          (a, b) => a.priceCents + (a.shippingCents ?? 0) - (b.priceCents + (b.shippingCents ?? 0))
+        )[0]
+      : undefined;
 
   const currency = minPriceOffer?.currency ?? "EUR";
   const minPriceEuro =
-    minPriceOffer != null
-      ? (minPriceOffer.priceCents + (minPriceOffer.shippingCents ?? 0)) / 100
-      : undefined;
+    minPriceOffer != null ? (minPriceOffer.priceCents + (minPriceOffer.shippingCents ?? 0)) / 100 : undefined;
 
   const maxPriceEuro = offersFlat.length
     ? Math.max(...offersFlat.map((o) => (o.priceCents + (o.shippingCents ?? 0)) / 100))
@@ -153,29 +143,22 @@ export default async function ProductPage({ params }: PageProps) {
                   lowPrice: typeof minPriceEuro === "number" ? minPriceEuro.toFixed(2) : undefined,
                   highPrice: typeof maxPriceEuro === "number" ? maxPriceEuro.toFixed(2) : undefined,
                   offerCount: offersFlat.length,
-                  availability: hasStock
-                    ? "https://schema.org/InStock"
-                    : "https://schema.org/OutOfStock",
+                  availability: hasStock ? "https://schema.org/InStock" : "https://schema.org/OutOfStock",
                   url: canonicalUrl,
                 }
               : {
                   "@type": "Offer",
                   priceCurrency: offersFlat[0].currency,
-                  price: (
-                    (offersFlat[0].priceCents + (offersFlat[0].shippingCents ?? 0)) /
-                    100
-                  ).toFixed(2),
-                  availability: offersFlat[0].inStock
-                    ? "https://schema.org/InStock"
-                    : "https://schema.org/OutOfStock",
+                  price: ((offersFlat[0].priceCents + (offersFlat[0].shippingCents ?? 0)) / 100).toFixed(2),
+                  availability: offersFlat[0].inStock ? "https://schema.org/InStock" : "https://schema.org/OutOfStock",
                   url: canonicalUrl,
                 },
         }
       : {}),
   } satisfies Record<string, unknown>;
 
-  // ✅ Accès optionnel à la description sans `any`
-  const desc = (product as MaybeWithDescription).description ?? null;
+  // Description (présente si la colonne existe en DB)
+  const desc = (product as { description?: string | null }).description ?? null;
 
   return (
     <main className="container mx-auto max-w-6xl px-4 py-6">
@@ -183,10 +166,7 @@ export default async function ProductPage({ params }: PageProps) {
       <link rel="canonical" href={canonicalUrl} />
 
       {/* JSON-LD Product */}
-      <script
-        type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(productJsonLd) }}
-      />
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(productJsonLd) }} />
 
       <Breadcrumbs
         items={[
@@ -218,9 +198,7 @@ export default async function ProductPage({ params }: PageProps) {
 
           <div className="mt-3 rounded-xl border p-4">
             <div className="text-sm text-neutral-500">à partir de</div>
-            <div className="text-3xl font-bold">
-              {minPriceCents != null ? money(minPriceCents, "EUR") : "—"}
-            </div>
+            <div className="text-3xl font-bold">{minPriceCents != null ? money(minPriceCents, "EUR") : "—"}</div>
             <div className="mt-1 text-sm text-neutral-500">chez nos marchands partenaires</div>
           </div>
 
@@ -233,7 +211,7 @@ export default async function ProductPage({ params }: PageProps) {
             ))}
           </dl>
 
-          {/* ✅ Description si présente */}
+          {/* Description si présente */}
           {desc && desc.trim() && (
             <section className="mt-6">
               <h2 className="text-lg font-semibold">Description</h2>
