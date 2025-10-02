@@ -43,8 +43,6 @@ export default async function ProductPage({ params }: PageProps) {
         select: {
           id: true,
           variant: true,
-		  season: true,
-		  category: true,
 		  description: true,
           gtin: true,
           offers: {
