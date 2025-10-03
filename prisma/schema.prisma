@@ -8,18 +8,20 @@ datasource db {
 }
 
 model Product {
-  id         Int      @id @default(autoincrement())
-  brand      String
-  model      String
-  season     String? // ex: "2025/26"
-  category   String? // all-mountain, rando, freeride...
-  gtin       String?  @unique
-  slug       String   @unique
-  attributes Json?
-  createdAt  DateTime @default(now())
+  id          Int             @id @default(autoincrement())
+  brand       String
+  model       String
+  season      String? // ex: "2025/26"
+  category    String? // all-mountain, rando, freeride...
+  gtin        String?         @unique
+  slug        String          @unique
+  attributes  Json?
+  createdAt   DateTime        @default(now())
   description String?
-  skus       Sku[]
-  clicks     Click[] // back-relation pour Click.product
+  skus        Sku[]
+  clicks      Click[] // back-relation pour Click.product
+  reviews     Review[]
+  tests       EditorialTest[]
 }
 
 model Sku {
@@ -70,4 +72,37 @@ model Click {
   subId             String?
   ts                DateTime @default(now())
   referrer          String?
+}
+
+model Review {
+  id         Int      @id @default(autoincrement())
+  productId  Int
+  rating     Int // 1..5
+  title      String
+  body       String
+  authorName String?
+  sourceName String? // “Ekosport”, “Snowleader”, etc.
+  sourceUrl  String?
+  createdAt  DateTime @default(now())
+
+  product Product @relation(fields: [productId], references: [id])
+
+  @@index([productId])
+  @@index([rating])
+}
+
+model EditorialTest {
+  id          Int      @id @default(autoincrement())
+  productId   Int
+  title       String
+  excerpt     String
+  score       Float? // 0..10 ou 0..5 (optionnel)
+  sourceName  String // “Skipass”, “Backcountry Magazine”, etc.
+  sourceUrl   String
+  publishedAt DateTime @default(now())
+
+  product Product @relation(fields: [productId], references: [id])
+
+  @@index([productId])
+  @@index([publishedAt])
 }

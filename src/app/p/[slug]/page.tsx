@@ -1,7 +1,4 @@
 // src/app/p/[slug]/page.tsx
-
-export const dynamic = "force-dynamic"; // TEMP: bypass ISR pour vérifier la DB en prod
-
 import { notFound } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import PriceTable from "@/components/PriceTable";
@@ -36,7 +33,8 @@ export async function generateMetadata({ params }: { params: { slug: string } })
 export default async function ProductPage({ params }: PageProps) {
   const product = await prisma.product.findUnique({
     where: { slug: params.slug },
-    // ⬇️ Pas de `select` au niveau Product : on récupère tous les scalaires (dont `description`)
+    // On récupère tous les scalaires du produit (dont description),
+    // et on inclut les relations nécessaires.
     include: {
       skus: {
         select: {
@@ -59,11 +57,39 @@ export default async function ProductPage({ params }: PageProps) {
           },
         },
       },
+      reviews: {
+        select: {
+          id: true,
+          rating: true,
+          title: true,
+          body: true,
+          authorName: true,
+          sourceName: true,
+          sourceUrl: true,
+          createdAt: true,
+        },
+        orderBy: { createdAt: "desc" },
+        take: 10,
+      },
+      tests: {
+        select: {
+          id: true,
+          title: true,
+          excerpt: true,
+          score: true,
+          sourceName: true,
+          sourceUrl: true,
+          publishedAt: true,
+        },
+        orderBy: { publishedAt: "desc" },
+        take: 10,
+      },
     },
   });
 
   if (!product) return notFound();
 
+  // ---- Prix / Offres
   const offersFlat = product.skus.flatMap((s) =>
     s.offers.map((o) => ({
       id: o.id,
@@ -75,12 +101,12 @@ export default async function ProductPage({ params }: PageProps) {
       currency: o.currency,
       inStock: o.inStock,
       lastSeen: o.lastSeen?.toISOString() ?? null,
+      affiliateUrl: o.affiliateUrl,
     }))
   );
 
   const title = [product.brand, product.model, product.season].filter(Boolean).join(" ");
 
-  // Prix mini (centimes)
   const minPriceCents = offersFlat
     .filter((o) => o.inStock)
     .reduce<number | null>((acc, o) => {
@@ -98,8 +124,8 @@ export default async function ProductPage({ params }: PageProps) {
   const related = await prisma.product.findMany({
     where: {
       id: { not: product.id },
-      brand: product.brand ?? undefined,
-      category: product.category ?? undefined,
+    ...(product.brand ? { brand: product.brand } : {}),
+    ...(product.category ? { category: product.category } : {}),
     },
     take: 6,
     orderBy: { createdAt: "desc" },
@@ -108,7 +134,17 @@ export default async function ProductPage({ params }: PageProps) {
 
   const canonicalUrl = `${process.env.NEXT_PUBLIC_SITE_URL ?? "https://achat-ski.vercel.app"}/p/${product.slug}`;
 
-  // JSON-LD (euros)
+  // ---- Avis (reviews)
+  const reviewCount = product.reviews.length;
+  const averageRating =
+    reviewCount > 0
+      ? product.reviews.reduce((sum, r) => sum + r.rating, 0) / reviewCount
+      : null;
+
+  // ---- Tests (editorial tests)
+  const tests = product.tests;
+
+  // ---- JSON-LD
   const inStockOffers = offersFlat.filter((o) => o.inStock);
   const hasStock = inStockOffers.length > 0;
 
@@ -126,6 +162,23 @@ export default async function ProductPage({ params }: PageProps) {
   const maxPriceEuro = offersFlat.length
     ? Math.max(...offersFlat.map((o) => (o.priceCents + (o.shippingCents ?? 0)) / 100))
     : undefined;
+
+  const reviewJsonLd =
+    reviewCount > 0
+      ? product.reviews.slice(0, 3).map((r) => ({
+          "@type": "Review",
+          author: r.authorName || r.sourceName || "Utilisateur",
+          datePublished: r.createdAt.toISOString(),
+          name: r.title || `${title} — avis`,
+          reviewBody: r.body,
+          reviewRating: {
+            "@type": "Rating",
+            ratingValue: r.rating,
+            bestRating: 5,
+            worstRating: 1,
+          },
+        }))
+      : undefined;
 
   const productJsonLd = {
     "@context": "https://schema.org",
@@ -158,9 +211,19 @@ export default async function ProductPage({ params }: PageProps) {
                 },
         }
       : {}),
+    ...(averageRating != null
+      ? {
+          aggregateRating: {
+            "@type": "AggregateRating",
+            ratingValue: Number(averageRating.toFixed(2)),
+            reviewCount,
+          },
+        }
+      : {}),
+    ...(reviewJsonLd ? { review: reviewJsonLd } : {}),
   } satisfies Record<string, unknown>;
 
-  // Description (présente si la colonne existe en DB)
+  // Description (si présente)
   const desc = (product as { description?: string | null }).description ?? null;
 
   return (
@@ -188,6 +251,7 @@ export default async function ProductPage({ params }: PageProps) {
 
         <div className="lg:col-span-7">
           <h1 className="text-2xl font-semibold">{title}</h1>
+
           <div className="mt-1 text-neutral-600">
             {product.category ?? "—"} ·{" "}
             {product.brand ? (
@@ -198,6 +262,16 @@ export default async function ProductPage({ params }: PageProps) {
               "—"
             )}
           </div>
+
+          {/* Résumé notes si dispo */}
+          {averageRating != null && reviewCount > 0 && (
+            <div className="mt-2 flex items-center gap-2 text-sm text-neutral-700">
+              <StarRating value={averageRating} />
+              <span>
+                {averageRating.toFixed(1)} / 5 · {reviewCount} avis
+              </span>
+            </div>
+          )}
 
           <div className="mt-3 rounded-xl border p-4">
             <div className="text-sm text-neutral-500">à partir de</div>
@@ -223,6 +297,80 @@ export default async function ProductPage({ params }: PageProps) {
                   <p key={i}>{para.trim()}</p>
                 ))}
               </div>
+            </section>
+          )}
+
+          {/* Avis si présents */}
+          {reviewCount > 0 && (
+            <section className="mt-8">
+              <h2 className="text-lg font-semibold">Avis</h2>
+              <ul className="mt-3 space-y-3">
+                {product.reviews.map((r) => (
+                  <li key={r.id} className="rounded-xl border p-3">
+                    <div className="flex items-center justify-between">
+                      <div className="font-medium">
+                        {r.title || "Avis"}
+                        <span className="ml-2 inline-flex items-center gap-1 text-sm text-neutral-600">
+                          <StarRating value={r.rating} />
+                          <span>{r.rating}/5</span>
+                        </span>
+                      </div>
+                      <div className="text-xs text-neutral-500">
+                        {r.sourceName ? r.sourceName : r.authorName || "Utilisateur"} ·{" "}
+                        {r.createdAt.toISOString().slice(0, 10)}
+                      </div>
+                    </div>
+                    {r.body ? <p className="mt-2 text-sm text-neutral-700">{r.body}</p> : null}
+                    {r.sourceUrl ? (
+                      <a
+                        href={r.sourceUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="mt-2 inline-block text-xs underline text-neutral-600"
+                      >
+                        Voir la source
+                      </a>
+                    ) : null}
+                  </li>
+                ))}
+              </ul>
+            </section>
+          )}
+
+          {/* Tests/Essais si présents */}
+          {tests.length > 0 && (
+            <section className="mt-8">
+              <h2 className="text-lg font-semibold">Tests & Essais</h2>
+              <ul className="mt-3 space-y-3">
+                {tests.map((t) => (
+                  <li key={t.id} className="rounded-xl border p-3">
+                    <div className="flex items-center justify-between">
+                      <div className="font-medium">{t.title}</div>
+                      <div className="text-xs text-neutral-500">
+                        {t.sourceName} · {t.publishedAt.toISOString().slice(0, 10)}
+                      </div>
+                    </div>
+                    {t.excerpt ? <p className="mt-2 text-sm text-neutral-700">{t.excerpt}</p> : null}
+                    <div className="mt-2 flex items-center justify-between">
+                      {typeof t.score === "number" ? (
+                        <span className="inline-flex items-center text-xs text-neutral-700">
+                          Note: <b className="ml-1">{t.score}</b>
+                        </span>
+                      ) : <span />}
+                      {t.sourceUrl ? (
+                        <a
+                          href={t.sourceUrl}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-xs underline text-neutral-600"
+                        >
+                          Lire le test
+                        </a>
+                      ) : null}
+                    </div>
+                  </li>
+                ))}
+              </ul>
             </section>
           )}
         </div>
@@ -257,5 +405,19 @@ export default async function ProductPage({ params }: PageProps) {
         Les prix sont susceptibles d’évoluer. Certains liens sont affiliés.
       </p>
     </main>
+  );
+}
+
+/** Petit composant local pour afficher des étoiles (0..5, pas de dépendance externe) */
+function StarRating({ value }: { value: number }) {
+  const full = Math.floor(Math.max(0, Math.min(5, value)));
+  const half = value - full >= 0.5 ? 1 : 0;
+  const empty = 5 - full - half;
+  return (
+    <span aria-label={`${value} sur 5`} className="inline-flex items-center">
+      {"★".repeat(full)}
+      {half ? "☆" : ""}
+      {"☆".repeat(empty)}
+    </span>
   );
 }
