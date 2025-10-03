@@ -11,16 +11,21 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ ok: false, error: "missing slug" }, { status: 400 });
   }
 
-  const p = await prisma.product.findUnique({
-    where: { slug },
-    select: { id: true, slug: true, description: true },
-  });
+  // Pas de `select` ici → on évite les divergences de types Prisma entre envs
+  const p = await prisma.product.findUnique({ where: { slug } });
+
+  // Lecture "safe" de la description si elle existe dans le modèle/DB
+  const desc =
+    p && typeof p === "object" && p !== null && "description" in p
+      ? ((p as any).description as string | null | undefined) ?? null
+      : null;
 
   return NextResponse.json({
     ok: true,
     slug,
     found: !!p,
-    len: p?.description?.length ?? 0,
-    preview: p?.description?.slice(0, 120) ?? null,
+    hasDescription: !!(desc && desc.trim()),
+    len: desc?.length ?? 0,
+    preview: desc ? desc.slice(0, 120) : null,
   });
 }

@@ -17,6 +17,7 @@ model Product {
   slug       String   @unique
   attributes Json?
   createdAt  DateTime @default(now())
+  description String?
   skus       Sku[]
   clicks     Click[] // back-relation pour Click.product
 }
