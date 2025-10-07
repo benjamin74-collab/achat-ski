@@ -11,14 +11,11 @@ export default function NotFound() {
         </p>
 
         <div className="mt-6 flex flex-col items-center gap-3">
-          <Link href="/" className="btn">
-            ← Retour à l’accueil
-          </Link>
-          <Link href="/search" className="text-sm underline">
-            Aller à la recherche
-          </Link>
+          <Link href="/" className="btn">← Retour à l’accueil</Link>
+          <Link href="/search" className="text-sm underline">Aller à la recherche</Link>
         </div>
       </div>
     </main>
   );
 }
+
