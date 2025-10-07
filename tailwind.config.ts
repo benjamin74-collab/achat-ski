@@ -1,4 +1,3 @@
-// tailwind.config.ts
 import type { Config } from "tailwindcss";
 import typography from "@tailwindcss/typography";
 
@@ -10,34 +9,48 @@ const config: Config = {
   ],
   theme: {
     extend: {
+      fontFamily: {
+        display: ["Inter", "ui-sans-serif", "system-ui", "sans-serif"],
+        sans: ["Inter", "ui-sans-serif", "system-ui", "sans-serif"],
+      },
       colors: {
-        ink: "#0B1020",
-        muted: "#EEF0F6",
+        // Nuit bleutée + fluo
+        ink: "#0A0E1F",
+        bg: "#0D1229",
         brand: {
-          DEFAULT: "#6E68FF",
-          50: "#F0EFFF",
-          100: "#E1E0FF",
-          200: "#C2C0FF",
-          300: "#A3A0FF",
-          400: "#847FFF",
-          500: "#6E68FF",
-          600: "#514BDB",
-          700: "#3934B1",
-          800: "#262282",
-          900: "#161553",
+          50: "#EEF1FF",
+          100: "#DCE2FF",
+          200: "#B8C3FF",
+          300: "#94A5FF",
+          400: "#7086FF",
+          500: "#4F7DFF",   // bleu électrique (plus flashy que consobaby)
+          600: "#3E65E0",
+          700: "#2F4EC0",
+          800: "#22399C",
+          900: "#1A2C7A",
         },
-        accent: "#00D2A8",
-        "accent-2": "#FF7A59",
-        card: "#FFFFFF",
-        ring: "#DCE1EE",
+        accent: {
+          500: "#00E5C2",   // vert/menthe néon
+          600: "#00C3A6",
+        },
+        rose: {
+          500: "#FF5EA8",   // touche rose fluo
+        },
+        surface: "#111736",
+        card: "#121938",
+        ring: "#23306B",
       },
       boxShadow: {
-        card: "0 8px 24px rgba(11,16,32,0.06)",
-        ring: "0 0 0 2px var(--ring)",
+        card: "0 12px 28px rgba(0,0,0,0.25)",
+        glow: "0 0 0 3px rgba(79,125,255,0.35)",
       },
       borderRadius: {
         xl: "14px",
         "2xl": "18px",
+      },
+      backgroundImage: {
+        "hero-gradient":
+          "radial-gradient(1200px 600px at 10% -20%, rgba(79,125,255,0.25), transparent), radial-gradient(1000px 600px at 100% -10%, rgba(0,229,194,0.2), transparent)",
       },
     },
   },

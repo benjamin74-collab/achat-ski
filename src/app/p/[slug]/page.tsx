@@ -290,9 +290,9 @@ export default async function ProductPage({ params }: PageProps) {
 
           {/* Description si présente */}
           {desc && desc.trim() && (
-            <section className="mt-6">
+            <section className="mt-6 rounded-2xl border border-ring bg-card/60 p-5 shadow-card">
               <h2 className="text-lg font-semibold">Description</h2>
-              <div className="prose prose-sm max-w-none mt-2 text-neutral-800">
+              <div className="prose prose-invert prose-a:text-brand-400 max-w-none mt-2">
                 {desc.split(/\n{2,}/).map((para, i) => (
                   <p key={i}>{para.trim()}</p>
                 ))}
@@ -377,7 +377,7 @@ export default async function ProductPage({ params }: PageProps) {
       </section>
 
       {/* Tableau des prix */}
-      <section className="mt-8">
+      <section className="mt-8 rounded-2xl border border-ring bg-card/60 p-5 shadow-card">
         <h2 className="text-xl font-semibold">Comparer les prix</h2>
         <PriceTable offers={offersFlat} />
       </section>

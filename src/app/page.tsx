@@ -1,57 +1,47 @@
 import Link from "next/link";
-import { prisma } from "../lib/prisma";
 
-export default async function Home() {
-  const site = process.env.NEXT_PUBLIC_SITE_NAME ?? "Achat-Ski";
-  const latest = await prisma.product.findMany({ take: 6, orderBy: { id: "desc" } });
+export default function HomePage() {
+  const cats = [
+    { href: "/c/skis-all-mountain", label: "Skis All-Mountain" },
+    { href: "/c/skis-freeride", label: "Skis Freeride" },
+    { href: "/c/skis-rando", label: "Skis Rando" },
+    { href: "/c/fixations", label: "Fixations" },
+    { href: "/c/chaussures", label: "Chaussures" },
+  ];
 
   return (
-    <div className="container-page py-10">
-      <section className="card p-8 md:p-12">
-        <h1 className="text-3xl md:text-5xl font-extrabold tracking-tight">
-          {site} — comparateur de prix ski
+    <main className="py-10">
+      <section className="rounded-2xl border border-ring bg-card/60 p-8 shadow-card">
+        <h1 className="text-3xl md:text-4xl font-semibold">
+          Le <span className="text-brand-400">comparateur</span> des passionnés de ski
         </h1>
-        <p className="mt-3 text-neutral-600 max-w-2xl">
-          Comparez instantanément les prix du matériel de ski (skis, fixations, chaussures,
-          accessoires) chez Ekosport, Snowleader, Glisshop et d’autres marchands.
+        <p className="mt-3 text-slate-300 max-w-2xl">
+          Comparez les prix en temps réel et retrouvez tests & avis pour choisir en confiance.
         </p>
-
-        <form action="/search" method="GET" className="mt-6 flex gap-2">
-          <input
-            name="q"
-            placeholder="Rechercher un modèle (ex. Atomic Bent 100)"
-            className="w-full rounded-xl border px-4 py-3 outline-none focus:ring"
-          />
-          <button type="submit" className="btn">Rechercher</button>
+        <form action="/search" className="mt-6 max-w-xl">
+          <div className="relative">
+            <input
+              name="q"
+              placeholder="Ex: Salomon QST 98, Atomic Maverick 88…"
+              className="w-full rounded-xl bg-surface/70 border border-ring px-4 py-3 pr-24 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-brand-500"
+            />
+            <button className="absolute right-1 top-1 rounded-lg px-4 py-2.5 bg-brand-500 hover:bg-brand-600 text-white">
+              Rechercher
+            </button>
+          </div>
         </form>
-      </section>
-
-      <section className="mt-8">
-        <h2 className="text-xl font-semibold">Catégories populaires</h2>
-        <div className="mt-4 grid grid-cols-2 md:grid-cols-4 gap-3">
-          {[
-            { href: "/c/skis-all-mountain", label: "Skis All-Mountain" },
-            { href: "/c/skis-rando", label: "Ski de rando" },
-            { href: "/c/fixations", label: "Fixations" },
-            { href: "/c/chaussures", label: "Chaussures" },
-          ].map((c) => (
-            <Link key={c.href} href={c.href} className="card p-4 hover:bg-neutral-50">{c.label}</Link>
+        <div className="mt-6 flex flex-wrap gap-2">
+          {cats.map((c) => (
+            <Link
+              key={c.href}
+              href={c.href}
+              className="text-xs md:text-sm rounded-lg border border-ring px-3 py-2 bg-surface/60 hover:bg-surface"
+            >
+              {c.label}
+            </Link>
           ))}
         </div>
       </section>
-
-      <section className="mt-10">
-        <h2 className="text-xl font-semibold">Nouveautés</h2>
-        <ul className="mt-3 list-disc pl-6">
-          {latest.map(p => (
-            <li key={p.id}>
-              <Link className="underline" href={`/p/${p.slug}`}>
-                {p.brand} {p.model} {p.season}
-              </Link>
-            </li>
-          ))}
-        </ul>
-      </section>
-    </div>
+    </main>
   );
 }
