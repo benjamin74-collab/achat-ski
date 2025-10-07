@@ -20,7 +20,7 @@ function parseSearchParams(input?: { [key: string]: string | string[] | undefine
   };
   const getAll = (k: string): string[] => {
     const v = input?.[k];
-    return Array.isArray(v) ? v.filter(Boolean) as string[] : v ? [v] : [];
+    return Array.isArray(v) ? (v.filter(Boolean) as string[]) : v ? [v] : [];
   };
   return {
     page: Number(get("page") ?? "1"),
@@ -30,7 +30,10 @@ function parseSearchParams(input?: { [key: string]: string | string[] | undefine
   };
 }
 
-function buildHref(baseQuery: { page: number; sort: SortKey; brands: string[]; season: string | null }, nextPage: number) {
+function buildHref(
+  baseQuery: { page: number; sort: SortKey; brands: string[]; season: string | null },
+  nextPage: number
+) {
   const params = new URLSearchParams();
   params.set("sort", baseQuery.sort);
   if (baseQuery.season) params.set("season", baseQuery.season);
@@ -68,8 +71,8 @@ export default async function CategoryPage({
       orderBy: { season: "desc" },
     }),
   ]);
-  const allBrands = brandRows.map(b => b.brand).filter(Boolean);
-  const allSeasons = seasonRows.map(s => s.season!).filter(Boolean);
+  const allBrands = brandRows.map((b) => b.brand).filter(Boolean);
+  const allSeasons = seasonRows.map((s) => s.season!).filter(Boolean);
 
   // Filtre DB typé
   const where: Prisma.ProductWhereInput = { category };
@@ -91,11 +94,11 @@ export default async function CategoryPage({
   ]);
 
   // Calcul du min total (prix + port) par produit
-  const products = productsRaw.map(p => {
-    const allOffers = p.skus.flatMap(s => s.offers);
+  const products = productsRaw.map((p) => {
+    const allOffers = p.skus.flatMap((s) => s.offers);
     const minTotal = allOffers.length
       ? allOffers
-          .map(o => totalCents(o.priceCents, o.shippingCents ?? 0))
+          .map((o) => totalCents(o.priceCents, o.shippingCents ?? 0))
           .reduce((a, b) => Math.min(a, b), Number.POSITIVE_INFINITY)
       : null;
     return { ...p, minTotal };
@@ -108,9 +111,7 @@ export default async function CategoryPage({
           (a, b) => (a.minTotal ?? Number.POSITIVE_INFINITY) - (b.minTotal ?? Number.POSITIVE_INFINITY)
         )
       : sort === "price-desc"
-      ? [...products].sort(
-          (a, b) => (b.minTotal ?? -1) - (a.minTotal ?? -1)
-        )
+      ? [...products].sort((a, b) => (b.minTotal ?? -1) - (a.minTotal ?? -1))
       : products;
 
   const pages = Math.max(1, Math.ceil(total / pageSize));
@@ -126,11 +127,13 @@ export default async function CategoryPage({
 
         {/* Contenu (colonne droite) */}
         <div className="md:col-span-9 flex flex-col gap-4">
-			<Breadcrumbs items={[
-			  { href: "/", label: "Accueil" },
-			  { label: "Catégories", href: "/#categories" },
-			  { label: title }
-			]} />
+          <Breadcrumbs
+            items={[
+              { href: "/", label: "Accueil" },
+              { label: "Catégories", href: "/#categories" },
+              { label: title },
+            ]}
+          />
           <div className="card p-4 flex items-center justify-between">
             <div>
               <h1 className="text-xl font-bold">{title}</h1>
@@ -142,17 +145,20 @@ export default async function CategoryPage({
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
-            {sorted.map((p) => (
-              <ProductCard
-                key={p.id}
-                slug={p.slug}
-                brand={p.brand}
-                model={p.model}
-                season={p.season}
-                minTotalCents={p.minTotal}
-                currency="EUR"
-              />
-            ))}
+            {sorted.map((p) => {
+              const cardTitle = [p.brand, p.model, p.season].filter(Boolean).join(" ");
+              return (
+                <ProductCard
+                  key={p.id}
+                  href={`/p/${p.slug}`}
+                  title={cardTitle}
+                  subtitle={p.category ?? undefined}
+                  // imageUrl={...} // si tu ajoutes une image dans ta requête, passe-la ici
+                  minPriceCents={p.minTotal ?? null}
+                  // offerCount={...} // si tu calcules un nombre d'offres, passe-le ici
+                />
+              );
+            })}
           </div>
 
           {/* Pagination */}

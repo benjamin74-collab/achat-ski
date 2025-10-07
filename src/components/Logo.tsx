@@ -1,6 +1,4 @@
 // src/components/Logo.tsx
-import Link from "next/link";
-
 export default function Logo({ className = "" }: { className?: string }) {
   return (
     <div className={`flex items-center gap-2 ${className}`}>
