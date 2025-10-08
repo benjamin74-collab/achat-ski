@@ -1,7 +1,7 @@
 // src/components/Header.tsx
 "use client";
 import Link from "next/link";
-import { usePathname, useSearchParams } from "next/navigation";
+import { useEffect, useState } from "react";
 import Logo from "./Logo";
 
 const nav = [
@@ -13,14 +13,21 @@ const nav = [
 ];
 
 export default function Header() {
-  const pathname = usePathname();
-  const sp = useSearchParams();
-  const q = sp.get("q") ?? "";
+  // On évite useSearchParams / usePathname pour ne pas dépendre des hooks Next
+  const [pathname, setPathname] = useState<string>("");
+  const [q, setQ] = useState<string>("");
+
+  useEffect(() => {
+    // S'exécute uniquement côté client
+    setPathname(window.location.pathname);
+    const sp = new URLSearchParams(window.location.search);
+    setQ(sp.get("q") ?? "");
+  }, []);
 
   return (
     <header className="sticky top-0 z-50 backdrop-blur supports-[backdrop-filter]:bg-bg/70 bg-bg/90 border-b border-ring">
       <div className="mx-auto max-w-6xl px-4 py-3 flex items-center gap-4">
-        <Link href="/" className="shrink-0 hover:opacity-90">
+        <Link href="/" className="shrink-0 hover:opacity-90" aria-label="Accueil">
           <Logo />
         </Link>
 
@@ -29,9 +36,10 @@ export default function Header() {
           <div className="relative">
             <input
               name="q"
-              defaultValue={q}
+              value={q}
+              onChange={(e) => setQ(e.target.value)}
               placeholder="Rechercher un ski, un modèle, une marque…"
-              className="w-full rounded-xl bg-surface/70 border border-ring px-4 py-2 pr-10 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-brand-500"
+              className="w-full rounded-xl bg-surface/70 border border-ring px-4 py-2 pr-16 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-brand-500"
             />
             <button
               aria-label="Rechercher"
@@ -45,12 +53,14 @@ export default function Header() {
         {/* Nav */}
         <nav className="hidden md:flex items-center gap-3">
           {nav.map((n) => {
-            const active = pathname?.startsWith(n.href);
+            const active = pathname.startsWith(n.href);
             return (
               <Link
                 key={n.href}
                 href={n.href}
-                className={`text-sm px-3 py-2 rounded-lg border border-transparent hover:border-ring hover:bg-surface/60 ${active ? "bg-surface text-white" : "text-slate-200"}`}
+                className={`text-sm px-3 py-2 rounded-lg border border-transparent hover:border-ring hover:bg-surface/60 ${
+                  active ? "bg-surface text-white" : "text-slate-200"
+                }`}
               >
                 {n.label}
               </Link>
