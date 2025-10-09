@@ -1,5 +1,4 @@
 import type { Config } from "tailwindcss";
-import typography from "@tailwindcss/typography";
 
 const config: Config = {
   content: [
@@ -9,51 +8,54 @@ const config: Config = {
   ],
   theme: {
     extend: {
-      fontFamily: {
-        display: ["Inter", "ui-sans-serif", "system-ui", "sans-serif"],
-        sans: ["Inter", "ui-sans-serif", "system-ui", "sans-serif"],
-      },
       colors: {
-        // Nuit bleutée + fluo
-        ink: "#0A0E1F",
-        bg: "#0D1229",
+        // Palette inspirée ConsoBaby (flashy) + Ekosport (orange) + Snowleader (vert)
         brand: {
-          50: "#EEF1FF",
-          100: "#DCE2FF",
-          200: "#B8C3FF",
-          300: "#94A5FF",
-          400: "#7086FF",
-          500: "#4F7DFF",   // bleu électrique (plus flashy que consobaby)
-          600: "#3E65E0",
-          700: "#2F4EC0",
-          800: "#22399C",
-          900: "#1A2C7A",
+          50:  "#fff7ed",
+          100: "#ffedd5",
+          200: "#fed7aa",
+          300: "#fdba74",
+          400: "#fb923c",
+          500: "#ff6a00",   // 🟠 Orange punchy (Ekosport-like)
+          600: "#e85d00",
+          700: "#c44d00",
+          800: "#9a3d00",
+          900: "#7a3100",
         },
         accent: {
-          500: "#00E5C2",   // vert/menthe néon
-          600: "#00C3A6",
+          500: "#00c2ff",   // 🔵 Cyan flashy (ConsoBaby vibe)
+          600: "#00a7db",
         },
-        rose: {
-          500: "#FF5EA8",   // touche rose fluo
+        leaf: {
+          500: "#2ecc71",   // 🟢 Vert Snowleader-like
+          600: "#29b665",
         },
-        surface: "#111736",
-        card: "#121938",
-        ring: "#23306B",
+
+        // Sémantique UI
+        bg:       "#ffffff",
+        surface:  "#f8fafc", // gris très léger pour cartes
+        ring:     "#e2e8f0",
+        text:     "#0f172a",
+        subtle:   "#64748b",
       },
+
       boxShadow: {
-        card: "0 12px 28px rgba(0,0,0,0.25)",
-        glow: "0 0 0 3px rgba(79,125,255,0.35)",
+        card: "0 6px 24px -10px rgba(16, 24, 40, 0.18)",
+        brand: "0 8px 30px -6px rgba(255,106,0,0.45)",
       },
+
       borderRadius: {
         xl: "14px",
         "2xl": "18px",
       },
+
       backgroundImage: {
-        "hero-gradient":
-          "radial-gradient(1200px 600px at 10% -20%, rgba(79,125,255,0.25), transparent), radial-gradient(1000px 600px at 100% -10%, rgba(0,229,194,0.2), transparent)",
+        // Halo coloré doux pour le header/hero
+        "brand-blob":
+          "radial-gradient(1200px 600px at 20% -10%, rgba(255,106,0,.16), transparent 60%), radial-gradient(1000px 500px at 80% -20%, rgba(0,194,255,.18), transparent 60%)",
       },
     },
   },
-  plugins: [typography],
+  plugins: [require("@tailwindcss/typography")],
 };
 export default config;

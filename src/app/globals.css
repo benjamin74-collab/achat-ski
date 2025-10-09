@@ -1,71 +1,65 @@
-@import "tailwindcss";
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
 
-/* Couleurs neutres & petites utilités (optionnel) */
-:root {
-  --ring: 220 13% 91%;
-}
+/* Base claire + typographies lisibles */
+@layer base {
+  html, body {
+    @apply bg-bg text-text antialiased;
+  }
 
-.container-page {
-  @apply mx-auto max-w-6xl px-6;
-}
+  a {
+    @apply text-brand-600 hover:text-brand-500 underline-offset-2 hover:underline;
+  }
 
-.card {
-  @apply rounded-2xl border border-neutral-200 bg-white;
-}
-
-.btn {
-  @apply inline-flex items-center justify-center rounded-xl border px-4 py-2 text-sm font-medium hover:bg-neutral-50;
-}
-
-.badge {
-  @apply inline-flex items-center rounded-lg px-2 py-0.5 text-xs font-medium;
-}
-.badge-green {
-  /* répète les utilitaires au lieu de @apply badge */
-  @apply inline-flex items-center rounded-lg px-2 py-0.5 text-xs font-medium bg-green-100 text-green-700;
-}
-
-.table-grid {
-  @apply grid grid-cols-6 gap-3;
-}
-:root{
-  --bg: #0D1229;
-  --ink: #0A0E1F;
-}
-
-html,body { 
-  background: var(--bg);
-  color: white;
-  font-feature-settings: "liga" 1, "calt" 1;
-}
-@media (min-width: 768px){
-  /* Fond dégradé très doux pour le site */
-  body::before{
-    content:"";
-    position: fixed; inset: 0;
-    background:
-      radial-gradient(800px 400px at 10% -10%, rgba(110,104,255,0.26), transparent 60%),
-      radial-gradient(600px 300px at 90% 0%, rgba(0,210,168,0.18), transparent 55%),
-      radial-gradient(900px 500px at 50% -20%, rgba(255,122,89,0.15), transparent 60%),
-      #0B1020;
-    z-index: -1;
+  /* Titres colorés */
+  h1, h2, h3 {
+    @apply text-slate-900;
   }
 }
 
-/* cartes, boutons, liens */
-.card { background: #fff; border: 1px solid #EEF0F6; box-shadow: 0 8px 24px rgba(11,16,32,0.06); }
-.btn {
-  display:inline-flex; align-items:center; gap:.5rem;
-  padding:.625rem 1rem; border-radius:12px; font-weight:600;
-  background:#6E68FF; color:white; border:1px solid transparent;
-  transition: transform .04s ease, box-shadow .2s ease, background .2s ease;
-}
-.btn:hover { box-shadow: 0 8px 24px rgba(110,104,255,.35); transform: translateY(-1px); }
-.btn.outline{ background:white; color:#0B1020; border-color:var(--ring); }
-.badge { font-size:.75rem; padding:.25rem .5rem; border-radius:999px; background:#EEF0F6; }
+/* Composants utilitaires (boutons, cartes, badges) */
+@layer components {
+  .container-page { @apply mx-auto max-w-6xl px-4; }
 
-/* prose */
-.prose {
-  color: #E6E9F5;
+  .card {
+    @apply rounded-2xl bg-surface shadow-card border border-ring;
+  }
+
+  .btn {
+    @apply inline-flex items-center justify-center gap-2 rounded-xl px-4 py-2 text-sm font-medium transition;
+    @apply bg-brand-500 text-white hover:bg-brand-600 shadow-brand;
+  }
+
+  .btn-outline {
+    @apply inline-flex items-center justify-center gap-2 rounded-xl px-4 py-2 text-sm font-medium transition;
+    @apply border border-ring bg-white text-slate-700 hover:bg-surface;
+  }
+
+  .badge {
+    @apply inline-flex items-center rounded-full border border-ring bg-white px-2.5 py-1 text-xs text-slate-700;
+  }
+
+  .brand-gradient {
+    background: linear-gradient(90deg, #ff6a00 0%, #ff9a3c 35%, #00c2ff 100%);
+  }
 }
-.prose a { color: #4F7DFF; }
+
+/* Prose (description produit, etc.) */
+.prose {
+  --tw-prose-body: #0f172a;
+  --tw-prose-headings: #0f172a;
+  --tw-prose-links: #ff6a00;
+  --tw-prose-bold: #0f172a;
+  --tw-prose-counters: #0f172a;
+  --tw-prose-bullets: #cbd5e1;
+  --tw-prose-hr: #e2e8f0;
+  --tw-prose-quotes: #0f172a;
+  --tw-prose-quote-borders: #e2e8f0;
+  --tw-prose-captions: #64748b;
+  --tw-prose-code: #7c3aed;
+  --tw-prose-pre-code: #e2e8f0;
+  --tw-prose-pre-bg: #0b1020;
+  --tw-prose-th-borders: #e2e8f0;
+  --tw-prose-td-borders: #e2e8f0;
+}
