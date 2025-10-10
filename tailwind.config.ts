@@ -9,27 +9,31 @@ const config: Config = {
   theme: {
     extend: {
       colors: {
+        // ✅ Couleurs utilisées par tes classes utilitaires
+        bg: "#0d1229",           // fond global foncé
+        surface: "#12193a",      // cartes/surfaces
+        ring: "#2b3a6b",         // bordures & focus rings
+        ink: "#ffffff",          // texte sur fond foncé
+
+        // ✅ Palette “brand” (plus flashy ; tu peux ajuster)
         brand: {
-          50:  "#fff7ed",
-          100: "#ffedd5",
-          200: "#fed7aa",
-          300: "#fdba74",
-          400: "#fb923c",
-          500: "#ff6a00",   // 🟠 Orange punchy
-          600: "#e85d00",
-          700: "#c44d00",
-          800: "#9a3d00",
-          900: "#7a3100",
-        },
-        accent: {
-          500: "#00c2ff",   // 🔵 Cyan flashy
-          600: "#00a7db",
-        },
-        leaf: {
-          500: "#2ecc71",   // 🟢 Vert
-          600: "#29b665",
+          50:  "#eef7ff",
+          100: "#d9edff",
+          200: "#b3dcff",
+          300: "#85c4ff",
+          400: "#4fa6ff",
+          500: "#1c8fff",
+          600: "#0074e6",
+          700: "#005cbc",
+          800: "#004b98",
+          900: "#003a73",
         },
 
+        // ✅ Accents secondaires possibles (vert/orange pour badges/prix)
+        lime:  { 500: "#5ee05e" },
+        amber: { 500: "#ffb020" },
+        rose:  { 500: "#ff3b6b" },
+		
         // Sémantique UI
         bg:       "#ffffff",
         surface:  "#f8fafc", // gris très léger pour cartes
@@ -44,8 +48,8 @@ const config: Config = {
       },
 
       borderRadius: {
-        xl: "14px",
-        "2xl": "18px",
+        xl: "0.875rem",
+        "2xl": "1rem",
       },
 
       backgroundImage: {
