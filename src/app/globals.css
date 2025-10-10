@@ -2,29 +2,16 @@
 @tailwind components;
 @tailwind utilities;
 
-/* Base claire + typographies lisibles */
 @layer base {
-  html, body {
-    @apply bg-bg text-text antialiased;
-  }
-
-  a {
-    @apply text-brand-600 hover:text-brand-500 underline-offset-2 hover:underline;
-  }
-
-  /* Titres colorés */
-  h1, h2, h3 {
-    @apply text-slate-900;
-  }
+  html, body { @apply bg-bg text-text antialiased; }
+  a { @apply text-brand-600 hover:text-brand-500 underline-offset-2 hover:underline; }
+  h1, h2, h3 { @apply text-slate-900; }
 }
 
-/* Composants utilitaires (boutons, cartes, badges) */
 @layer components {
   .container-page { @apply mx-auto max-w-6xl px-4; }
 
-  .card {
-    @apply rounded-2xl bg-surface shadow-card border border-ring;
-  }
+  .card { @apply rounded-2xl bg-surface shadow-card border border-ring; }
 
   .btn {
     @apply inline-flex items-center justify-center gap-2 rounded-xl px-4 py-2 text-sm font-medium transition;
@@ -36,13 +23,9 @@
     @apply border border-ring bg-white text-slate-700 hover:bg-surface;
   }
 
-  .badge {
-    @apply inline-flex items-center rounded-full border border-ring bg-white px-2.5 py-1 text-xs text-slate-700;
-  }
+  .badge { @apply inline-flex items-center rounded-full border border-ring bg-white px-2.5 py-1 text-xs text-slate-700; }
 
-  .brand-gradient {
-    background: linear-gradient(90deg, #ff6a00 0%, #ff9a3c 35%, #00c2ff 100%);
-  }
+  .brand-gradient { background: linear-gradient(90deg, #ff6a00 0%, #ff9a3c 35%, #00c2ff 100%); }
 }
 
 /* Prose (description produit, etc.) */
