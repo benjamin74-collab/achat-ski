@@ -1,20 +1,50 @@
 @import "tailwindcss";
 
-/* Base */
+/* ------------------------------------------------------------------
+   TAILWIND v4 THEME TOKENS (remplace l'ancien tailwind.config.*)
+-------------------------------------------------------------------*/
+@theme {
+  /* Couleurs de base */
+  --color-bg: #0d1229;       /* fond global sombre */
+  --color-surface: #ffffff;  /* cartes/surfaces */
+  --color-ring: #e5e7eb;     /* bordures / ring */
+  --color-ink: #0b1020;      /* texte sur surface claire */
+  --color-text: #ffffff;     /* texte sur fond sombre */
+
+  /* Palette brand (flashy) */
+  --color-brand-50:  #eef7ff;
+  --color-brand-100: #d9edff;
+  --color-brand-200: #b3dcff;
+  --color-brand-300: #85c4ff;
+  --color-brand-400: #4fa6ff;
+  --color-brand-500: #1c8fff;
+  --color-brand-600: #0074e6;
+  --color-brand-700: #005cbc;
+  --color-brand-800: #004b98;
+  --color-brand-900: #003a73;
+
+  /* Rayons & ombres */
+  --radius-xl: 0.875rem;
+  --radius-2xl: 1rem;
+  --shadow-card: 0 10px 24px rgba(16,24,40,.08);
+  --shadow-brand: 0 6px 20px rgba(28,143,255,.35);
+}
+
+/* ------------------------------------------------------------------
+   BASE
+-------------------------------------------------------------------*/
 @layer base {
-  /* Corps du site : fond sombre + texte clair */
   html, body { @apply bg-bg text-text antialiased; }
 
-  /* Liens */
   a { @apply text-brand-600 hover:text-brand-500 underline-offset-2 hover:underline; }
 
-  /* Titres : lisibles dans les deux contextes
-     - sur fond sombre : on les force clairs
-     - dans les cartes (fond blanc) ils restent lisibles car assez contrastés */
+  /* Titres lisibles sur fond sombre par défaut */
   h1, h2, h3 { @apply text-white; }
 }
 
-/* Components */
+/* ------------------------------------------------------------------
+   COMPOSANTS
+-------------------------------------------------------------------*/
 @layer components {
   .container-page { @apply mx-auto max-w-6xl px-4; }
 
@@ -35,7 +65,9 @@
   .brand-gradient { background: linear-gradient(90deg, #ff6a00 0%, #ff9a3c 35%, #00c2ff 100%); }
 }
 
-/* Prose (description produit, etc.) — tu gères les variables toi-même */
+/* ------------------------------------------------------------------
+   PROSE (descriptions produit)
+-------------------------------------------------------------------*/
 .prose {
   --tw-prose-body: #0f172a;
   --tw-prose-headings: #0f172a;
