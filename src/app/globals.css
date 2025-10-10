@@ -1,33 +1,69 @@
 @import "tailwindcss";
 
-/* -------------------------------
-   Tailwind v4 — Thème (tokens)
--------------------------------- */
+/* ---------------------------------------------------
+   Tailwind v4 — Design tokens (inspirés consobaby/ekosport/snowleader)
+   - Primary : bleu électrique
+   - Secondary : orange punchy
+   - Accent : vert “glacier”
+   - Fond nuit sport + surfaces claires pour contraste
+---------------------------------------------------- */
 @theme {
-  /* Couleurs de fond & texte (site) */
-  --color-bg: #0d1229;
-  --color-surface: #ffffff;
-  --color-ring: #e5e7eb;
-  --color-ink: #0b1020;
-  --color-text: #ffffff;
+  /* Surface & texte */
+  --color-bg:       #0d1229; /* fond global */
+  --color-surface:  #ffffff; /* cartes/blocs */
+  --color-muted:    #f5f7fb; /* surfaces secondaires */
+  --color-ring:     #e5e7eb; /* bordures */
+  --color-ink:      #111827; /* textes sur surface claire */
+  --color-text:     #f8fafc; /* textes sur fond sombre */
 
-  /* Palette brand (flashy) */
+  /* Primary (bleu électrique) */
   --color-brand-50:  #eef7ff;
   --color-brand-100: #d9edff;
   --color-brand-200: #b3dcff;
   --color-brand-300: #85c4ff;
   --color-brand-400: #4fa6ff;
-  --color-brand-500: #1c8fff;
+  --color-brand-500: #1c8fff; /* principal */
   --color-brand-600: #0074e6;
   --color-brand-700: #005cbc;
   --color-brand-800: #004b98;
   --color-brand-900: #003a73;
 
-  /* Rayons & ombres */
-  --radius-xl: 0.875rem;
-  --radius-2xl: 1rem;
-  --shadow-card: 0 10px 24px rgba(16,24,40,.08);
-  --shadow-brand: 0 6px 20px rgba(28,143,255,.35);
+  /* Secondary (orange punchy) */
+  --color-sec-50:  #fff2e6;
+  --color-sec-100: #ffe4cc;
+  --color-sec-200: #ffc699;
+  --color-sec-300: #ffa266;
+  --color-sec-400: #ff7f33;
+  --color-sec-500: #ff6a00; /* accent orange */
+  --color-sec-600: #e05d00;
+  --color-sec-700: #b94c00;
+  --color-sec-800: #8f3c00;
+  --color-sec-900: #6e2f00;
+
+  /* Accent (vert glacier) */
+  --color-accent-50:  #ebfff6;
+  --color-accent-100: #c8ffe7;
+  --color-accent-200: #94ffd2;
+  --color-accent-300: #56ffbb;
+  --color-accent-400: #1afaa2;
+  --color-accent-500: #00db87; /* vert bouton/labels */
+  --color-accent-600: #00b873;
+  --color-accent-700: #00955f;
+  --color-accent-800: #00754c;
+  --color-accent-900: #055b3c;
+
+  /* States */
+  --color-success: #00b873;
+  --color-warning: #ff9a3c;
+  --color-danger:  #ef4444;
+
+  /* Radii & shadows */
+  --radius-lg:  0.75rem;
+  --radius-xl:  1rem;
+  --radius-2xl: 1.25rem;
+
+  --shadow-card:  0 14px 30px rgba(9, 12, 29, .16);
+  --shadow-brand: 0 10px 28px rgba(28,143,255,.35);
 }
 
 /* -------------------------------
@@ -35,31 +71,59 @@
 -------------------------------- */
 @layer base {
   html, body { @apply bg-bg text-text antialiased; }
-  a { @apply text-brand-600 hover:text-brand-500 underline-offset-2 hover:underline; }
-  h1, h2, h3 { @apply text-white; }
+  a { @apply text-brand-300 hover:text-brand-200 underline-offset-2 hover:underline; }
+  h1, h2, h3, h4 { @apply text-white; }
 }
 
 /* -------------------------------
-   Composants
+   Composants génériques
 -------------------------------- */
 @layer components {
   .container-page { @apply mx-auto max-w-6xl px-4; }
 
   .card { @apply rounded-2xl bg-surface shadow-card border border-ring; }
 
+  .chip {
+    @apply inline-flex items-center gap-1 rounded-full border border-ring bg-muted px-3 py-1 text-xs text-ink;
+  }
+
   .btn {
-    @apply inline-flex items-center justify-center gap-2 rounded-xl px-4 py-2 text-sm font-medium transition;
+    @apply inline-flex items-center justify-center gap-2 rounded-xl px-4 py-2 text-sm font-semibold transition;
     @apply bg-brand-500 text-white hover:bg-brand-600 shadow-brand;
   }
-
+  .btn-secondary {
+    @apply inline-flex items-center justify-center gap-2 rounded-xl px-4 py-2 text-sm font-semibold transition;
+    @apply bg-sec-500 text-white hover:bg-sec-600;
+  }
+  .btn-accent {
+    @apply inline-flex items-center justify-center gap-2 rounded-xl px-4 py-2 text-sm font-semibold transition;
+    @apply bg-accent-500 text-white hover:bg-accent-600;
+  }
   .btn-outline {
     @apply inline-flex items-center justify-center gap-2 rounded-xl px-4 py-2 text-sm font-medium transition;
-    @apply border border-ring bg-white text-ink hover:bg-slate-50;
+    @apply border border-ring bg-white text-ink hover:bg-muted;
   }
 
-  .badge { @apply inline-flex items-center rounded-full border border-ring bg-white px-2.5 py-1 text-xs text-ink; }
+  .pill {
+    @apply inline-flex items-center rounded-full px-3 py-1 text-xs font-medium;
+  }
+  .pill-brand   { @apply bg-brand-500/15 text-brand-700; }
+  .pill-sec     { @apply bg-sec-500/15 text-sec-700; }
+  .pill-accent  { @apply bg-accent-500/15 text-accent-700; }
 
-  .brand-gradient { background: linear-gradient(90deg, #ff6a00 0%, #ff9a3c 35%, #00c2ff 100%); }
+  .brand-gradient {
+    background: linear-gradient(100deg, var(--color-brand-500) 0%, var(--color-sec-500) 55%, var(--color-accent-500) 100%);
+  }
+}
+
+/* -------------------------------
+   Sections communes
+-------------------------------- */
+.section-hero {
+  background:
+    radial-gradient(1200px 500px at 10% -20%, rgba(28,143,255,.25), transparent 60%),
+    radial-gradient(1200px 500px at 90% -30%, rgba(255,106,0,.2), transparent 60%),
+    linear-gradient(180deg, rgba(13,18,41,0.9) 0%, rgba(13,18,41,0.95) 100%);
 }
 
 /* -------------------------------
@@ -68,7 +132,7 @@
 .prose {
   --tw-prose-body: #0f172a;
   --tw-prose-headings: #0f172a;
-  --tw-prose-links: #ff6a00;
+  --tw-prose-links: var(--color-sec-500);
   --tw-prose-bold: #0f172a;
   --tw-prose-counters: #0f172a;
   --tw-prose-bullets: #cbd5e1;
@@ -83,5 +147,5 @@
   --tw-prose-td-borders: #e2e8f0;
 }
 
-/* Titres foncés à l’intérieur des cartes blanches (optionnel) */
-.card h1, .card h2, .card h3 { @apply text-ink; }
+/* Titres foncés dans les cartes claires */
+.card h1, .card h2, .card h3, .card h4 { @apply text-ink; }

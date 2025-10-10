@@ -1,38 +1,66 @@
 import Link from "next/link";
 import { money } from "@/lib/format";
 
-export default function ProductCard(props: {
-  href: string;
-  title: string;
-  subtitle?: string;
+type Props = {
+  slug: string;
+  brand: string;
+  model: string;
+  season: string | null;
+  minTotalCents: number | null;
+  currency: string;
   imageUrl?: string;
-  minPriceCents?: number | null;
   offerCount?: number;
-}) {
-  const { href, title, subtitle, imageUrl, minPriceCents, offerCount } = props;
+};
+
+export default function ProductCard({
+  slug,
+  brand,
+  model,
+  season,
+  minTotalCents,
+  currency,
+  imageUrl,
+  offerCount,
+}: Props) {
+  const title = [brand, model, season ?? ""].filter(Boolean).join(" ");
+
   return (
-    <Link
-      href={href}
-      className="group rounded-2xl border border-ring bg-card/70 hover:bg-card transition shadow-card overflow-hidden"
-    >
-      <div className="aspect-[4/3] w-full bg-surface/60">
-        {/* image placeholder */}
-        {imageUrl ? (
-          // tu pourras basculer sur next/image plus tard
-          // eslint-disable-next-line @next/next/no-img-element
-          <img src={imageUrl} alt={title} className="h-full w-full object-cover" />
-        ) : null}
-      </div>
-      <div className="p-4">
-        <div className="text-sm text-slate-400">{subtitle}</div>
-        <div className="mt-1 font-medium text-white line-clamp-2">{title}</div>
-        <div className="mt-3 flex items-center justify-between">
-          <div className="text-xs text-slate-400">{offerCount ?? 0} offre{(offerCount ?? 0) > 1 ? "s" : ""}</div>
-          <div className="text-brand-300 font-semibold">
-            {minPriceCents != null ? money(minPriceCents, "EUR") : "—"}
+    <article className="card overflow-hidden group">
+      <Link href={`/p/${slug}`} className="block">
+        <div className="aspect-[4/3] w-full bg-muted relative">
+          {imageUrl ? (
+            // Remplace plus tard par next/image
+            <img src={imageUrl} alt={title} className="h-full w-full object-cover" />
+          ) : (
+            <div className="absolute inset-0 grid place-items-center text-slate-400 text-xs">
+              Photo à venir
+            </div>
+          )}
+          <div className="absolute left-3 top-3 pill pill-sec">Nouveau</div>
+        </div>
+
+        <div className="p-4">
+          <h3 className="text-base font-semibold text-ink line-clamp-2">{title}</h3>
+          <div className="mt-1 text-xs text-slate-500">
+            {offerCount != null ? `${offerCount} offre${offerCount > 1 ? "s" : ""}` : "—"}
+          </div>
+
+          <div className="mt-3 flex items-center justify-between">
+            <div className="text-xs text-slate-500">à partir de</div>
+            <div className="text-lg font-extrabold text-sec-600">
+              {minTotalCents != null ? money(minTotalCents, currency as any) : "—"}
+            </div>
+          </div>
+
+          <div className="mt-3 flex items-center gap-2">
+            <span className="chip">Livraison & retours selon marchand</span>
+          </div>
+
+          <div className="mt-4">
+            <span className="btn w-full group-hover:shadow-brand">Voir le produit</span>
           </div>
         </div>
-      </div>
-    </Link>
+      </Link>
+    </article>
   );
 }

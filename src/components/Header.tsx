@@ -1,7 +1,6 @@
-// src/components/Header.tsx
 "use client";
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { usePathname } from "next/navigation";
 import Logo from "./Logo";
 
 const nav = [
@@ -13,60 +12,54 @@ const nav = [
 ];
 
 export default function Header() {
-  // On évite useSearchParams / usePathname pour ne pas dépendre des hooks Next
-  const [pathname, setPathname] = useState<string>("");
-  const [q, setQ] = useState<string>("");
-
-  useEffect(() => {
-    // S'exécute uniquement côté client
-    setPathname(window.location.pathname);
-    const sp = new URLSearchParams(window.location.search);
-    setQ(sp.get("q") ?? "");
-  }, []);
+  const pathname = usePathname();
 
   return (
-    <header className="sticky top-0 z-50 backdrop-blur supports-[backdrop-filter]:bg-bg/70 bg-bg/90 border-b border-ring">
-      <div className="mx-auto max-w-6xl px-4 py-3 flex items-center gap-4">
-        <Link href="/" className="shrink-0 hover:opacity-90" aria-label="Accueil">
+    <header className="sticky top-0 z-50 border-b border-white/10 backdrop-blur">
+      {/* Barre colorée */}
+      <div className="h-1 w-full brand-gradient" />
+
+      <div className="bg-bg/80 supports-[backdrop-filter]:backdrop-blur">
+        <div className="mx-auto max-w-6xl px-4 py-3 flex items-center gap-4">
           <Logo />
-        </Link>
 
-        {/* Search */}
-        <form action="/search" className="flex-1">
-          <div className="relative">
-            <input
-              name="q"
-              value={q}
-              onChange={(e) => setQ(e.target.value)}
-              placeholder="Rechercher un ski, un modèle, une marque…"
-              className="w-full rounded-xl bg-surface/70 border border-ring px-4 py-2 pr-16 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-brand-500"
-            />
-            <button
-              aria-label="Rechercher"
-              className="absolute right-1 top-1 rounded-lg px-3 py-1.5 bg-brand-500 hover:bg-brand-600 text-white text-sm"
-            >
-              Go
-            </button>
-          </div>
-        </form>
-
-        {/* Nav */}
-        <nav className="hidden md:flex items-center gap-3">
-          {nav.map((n) => {
-            const active = pathname.startsWith(n.href);
-            return (
-              <Link
-                key={n.href}
-                href={n.href}
-                className={`text-sm px-3 py-2 rounded-lg border border-transparent hover:border-ring hover:bg-surface/60 ${
-                  active ? "bg-surface text-white" : "text-slate-200"
-                }`}
+          {/* Search */}
+          <form action="/search" className="flex-1">
+            <div className="relative">
+              <input
+                name="q"
+                placeholder="Rechercher un ski, modèle ou marque…"
+                className="w-full rounded-xl bg-white/95 text-ink border border-ring px-4 py-2 pr-20 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-brand-500"
+              />
+              <button
+                aria-label="Rechercher"
+                className="absolute right-1 top-1 rounded-lg px-3 py-1.5 bg-sec-500 hover:bg-sec-600 text-white text-sm"
               >
-                {n.label}
-              </Link>
-            );
-          })}
-        </nav>
+                Rechercher
+              </button>
+            </div>
+          </form>
+
+          {/* Nav */}
+          <nav className="hidden lg:flex items-center gap-1">
+            {nav.map((n) => {
+              const active = pathname?.startsWith(n.href);
+              return (
+                <Link
+                  key={n.href}
+                  href={n.href}
+                  className={`px-3 py-2 text-sm rounded-lg transition ${
+                    active
+                      ? "bg-brand-500/20 text-white border border-white/10"
+                      : "text-brand-200 hover:text-white hover:bg-brand-500/15"
+                  }`}
+                >
+                  {n.label}
+                </Link>
+              );
+            })}
+          </nav>
+        </div>
       </div>
     </header>
   );
