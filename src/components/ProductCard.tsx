@@ -1,13 +1,15 @@
 import Link from "next/link";
 import { money } from "@/lib/format";
 
+type Currency = "EUR" | "USD" | "GBP" | "CHF";
+
 type Props = {
   slug: string;
   brand: string;
   model: string;
   season: string | null;
   minTotalCents: number | null;
-  currency: string;
+  currency?: Currency; // ← typé correctement, valeur par défaut plus bas
   imageUrl?: string;
   offerCount?: number;
 };
@@ -18,7 +20,7 @@ export default function ProductCard({
   model,
   season,
   minTotalCents,
-  currency,
+  currency = "EUR",
   imageUrl,
   offerCount,
 }: Props) {
@@ -29,7 +31,7 @@ export default function ProductCard({
       <Link href={`/p/${slug}`} className="block">
         <div className="aspect-[4/3] w-full bg-muted relative">
           {imageUrl ? (
-            // Remplace plus tard par next/image
+            // TODO: remplacer par next/image plus tard pour optimiser
             <img src={imageUrl} alt={title} className="h-full w-full object-cover" />
           ) : (
             <div className="absolute inset-0 grid place-items-center text-slate-400 text-xs">
@@ -48,7 +50,7 @@ export default function ProductCard({
           <div className="mt-3 flex items-center justify-between">
             <div className="text-xs text-slate-500">à partir de</div>
             <div className="text-lg font-extrabold text-sec-600">
-              {minTotalCents != null ? money(minTotalCents, currency as any) : "—"}
+              {minTotalCents != null ? money(minTotalCents, currency) : "—"}
             </div>
           </div>
 
