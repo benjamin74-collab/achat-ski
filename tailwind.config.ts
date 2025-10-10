@@ -9,25 +9,24 @@ const config: Config = {
   theme: {
     extend: {
       colors: {
-        // Palette inspirée ConsoBaby (flashy) + Ekosport (orange) + Snowleader (vert)
         brand: {
           50:  "#fff7ed",
           100: "#ffedd5",
           200: "#fed7aa",
           300: "#fdba74",
           400: "#fb923c",
-          500: "#ff6a00",   // 🟠 Orange punchy (Ekosport-like)
+          500: "#ff6a00",   // 🟠 Orange punchy
           600: "#e85d00",
           700: "#c44d00",
           800: "#9a3d00",
           900: "#7a3100",
         },
         accent: {
-          500: "#00c2ff",   // 🔵 Cyan flashy (ConsoBaby vibe)
+          500: "#00c2ff",   // 🔵 Cyan flashy
           600: "#00a7db",
         },
         leaf: {
-          500: "#2ecc71",   // 🟢 Vert Snowleader-like
+          500: "#2ecc71",   // 🟢 Vert
           600: "#29b665",
         },
 
