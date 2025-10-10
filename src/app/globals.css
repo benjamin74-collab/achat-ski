@@ -1,15 +1,15 @@
 @import "tailwindcss";
 
-/* ------------------------------------------------------------------
-   TAILWIND v4 THEME TOKENS (remplace l'ancien tailwind.config.*)
--------------------------------------------------------------------*/
+/* -------------------------------
+   Tailwind v4 — Thème (tokens)
+-------------------------------- */
 @theme {
-  /* Couleurs de base */
-  --color-bg: #0d1229;       /* fond global sombre */
-  --color-surface: #ffffff;  /* cartes/surfaces */
-  --color-ring: #e5e7eb;     /* bordures / ring */
-  --color-ink: #0b1020;      /* texte sur surface claire */
-  --color-text: #ffffff;     /* texte sur fond sombre */
+  /* Couleurs de fond & texte (site) */
+  --color-bg: #0d1229;
+  --color-surface: #ffffff;
+  --color-ring: #e5e7eb;
+  --color-ink: #0b1020;
+  --color-text: #ffffff;
 
   /* Palette brand (flashy) */
   --color-brand-50:  #eef7ff;
@@ -30,21 +30,18 @@
   --shadow-brand: 0 6px 20px rgba(28,143,255,.35);
 }
 
-/* ------------------------------------------------------------------
-   BASE
--------------------------------------------------------------------*/
+/* -------------------------------
+   Base
+-------------------------------- */
 @layer base {
   html, body { @apply bg-bg text-text antialiased; }
-
   a { @apply text-brand-600 hover:text-brand-500 underline-offset-2 hover:underline; }
-
-  /* Titres lisibles sur fond sombre par défaut */
   h1, h2, h3 { @apply text-white; }
 }
 
-/* ------------------------------------------------------------------
-   COMPOSANTS
--------------------------------------------------------------------*/
+/* -------------------------------
+   Composants
+-------------------------------- */
 @layer components {
   .container-page { @apply mx-auto max-w-6xl px-4; }
 
@@ -65,9 +62,9 @@
   .brand-gradient { background: linear-gradient(90deg, #ff6a00 0%, #ff9a3c 35%, #00c2ff 100%); }
 }
 
-/* ------------------------------------------------------------------
-   PROSE (descriptions produit)
--------------------------------------------------------------------*/
+/* -------------------------------
+   Prose (descriptions produit)
+-------------------------------- */
 .prose {
   --tw-prose-body: #0f172a;
   --tw-prose-headings: #0f172a;
@@ -85,3 +82,6 @@
   --tw-prose-th-borders: #e2e8f0;
   --tw-prose-td-borders: #e2e8f0;
 }
+
+/* Titres foncés à l’intérieur des cartes blanches (optionnel) */
+.card h1, .card h2, .card h3 { @apply text-ink; }
