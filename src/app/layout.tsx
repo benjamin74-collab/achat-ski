@@ -1,23 +1,20 @@
-import "./globals.css";
 import type { Metadata } from "next";
+import "./globals.css";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
 
 export const metadata: Metadata = {
-  title: "Meilleur-ski — Comparez, choisissez, skiez !",
-  description: "Comparez les prix et trouvez le meilleur ski au meilleur prix.",
+  title: "Meilleur-ski — Comparez les prix du matos de ski",
+  description: "Comparez les prix des skis, fixations et chaussures chez nos marchands partenaires.",
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="fr">
-      <body className="min-h-screen bg-bg text-text">
-        {/* Halo coloré façon ConsoBaby */}
-        <div className="bg-brand-blob">
-          <Header />
-          <main className="container-page py-6">{children}</main>
-        </div>
-        <Footer />
+      {/* 🔒 Fond clair explicite + couleur de texte */}
+      <body className="min-h-screen bg-white text-ink antialiased">
+        <Header />
+        <main className="container-page py-6">{children}</main>
       </body>
     </html>
   );

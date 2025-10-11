@@ -15,7 +15,7 @@ export default function Header() {
   const pathname = usePathname();
 
   return (
-    <header className="sticky top-0 z-50 border-b border-white/10 backdrop-blur">
+    <header className="sticky top-0 z-50 bg-white/95 backdrop-blur border-b border-ring">
       {/* Barre colorée */}
       <div className="h-1 w-full brand-gradient" />
 
