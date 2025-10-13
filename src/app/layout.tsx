@@ -15,6 +15,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       <body className="min-h-screen bg-white text-ink antialiased">
         <Header />
         <main className="container-page py-6">{children}</main>
+		<Footer />
       </body>
     </html>
   );
