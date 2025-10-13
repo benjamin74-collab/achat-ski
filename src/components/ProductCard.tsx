@@ -1,4 +1,5 @@
 import Link from "next/link";
+import Image from "next/image";
 import { money } from "@/lib/format";
 
 /** Devises supportées pour l’affichage */
@@ -38,7 +39,6 @@ function getLinkAndTitle(props: Props): { href: string; title: string } {
   if ("href" in props) {
     return { href: props.href, title: props.title };
   }
-  // Variante par produit
   const title = [props.brand, props.model, props.season ?? ""].filter(Boolean).join(" ");
   return { href: `/p/${props.slug}`, title };
 }
@@ -57,18 +57,28 @@ export default function ProductCard(props: Props) {
 
   return (
     <article className="card overflow-hidden group">
-      <Link href={href} className="block">
-        <div className="aspect-[4/3] w-full bg-muted relative">
+      <Link href={href} className="block" aria-label={title}>
+        <div className="relative aspect-[4/3] w-full bg-muted">
           {imageUrl ? (
-            // NOTE: on garde <img> pour l’instant; tu pourras migrer vers next/image ensuite
-            <img src={imageUrl} alt={title} className="h-full w-full object-cover" />
+            <Image
+              src={imageUrl}
+              alt={title}
+              fill
+              sizes="(max-width: 768px) 100vw, 33vw"
+              className="object-cover"
+              priority={false}
+            />
           ) : (
             <div className="absolute inset-0 grid place-items-center text-slate-400 text-xs">
               Photo à venir
             </div>
           )}
 
-          {badge ? <div className="absolute left-3 top-3 pill pill-sec">{badge}</div> : null}
+          {badge ? (
+            <div className="absolute left-3 top-3 pill pill-sec">
+              {badge}
+            </div>
+          ) : null}
         </div>
 
         <div className="p-4">

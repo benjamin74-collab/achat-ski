@@ -31,11 +31,18 @@ async function main() {
   ];
 
   for (const [brand, model, season, category, slug] of products) {
+    const description =
+      `${brand} ${model} ${season ?? ""} — Ski all-mountain polyvalent ` +
+      `pensé pour enchaîner pistes et bords de piste. Stabilité et accroche à vitesse élevée, ` +
+      `avec un comportement joueur en neige transformée. Idéal pour un skieur intermédiaire à expert.`;
+
     const p = await prisma.product.upsert({
-      where: { slug }, update: {},
-      create: { brand, model, season, category, slug },
+      where: { slug },
+      update: {},
+      create: { brand, model, season, category, slug, description },
     });
 
+    // Deux SKUs de démo
     const sku172 = await prisma.sku.upsert({
       where: { gtin: `${slug}-172` }, update: {},
       create: { productId: p.id, variant: "172 cm", gtin: `${slug}-172` },
@@ -45,6 +52,7 @@ async function main() {
       create: { productId: p.id, variant: "180 cm", gtin: `${slug}-180` },
     });
 
+    // Offres démo : ekosport / snowleader / glisshop
     const base = 399 + Math.floor(Math.random() * 250); // 399–649 €
     for (const sku of [sku172, sku180]) {
       await prisma.offer.upsert({
@@ -78,6 +86,84 @@ async function main() {
         }
       });
     }
+
+    // ----------------------------------------------------------------
+    // Avis utilisateurs (Review) — 2 à 3 avis random par produit
+    // ----------------------------------------------------------------
+    const reviewPool = [
+      {
+        rating: 5,
+        title: "Super accroche sur neige dure",
+        body: "Rassurant à haute vitesse, tient très bien le cap. Polyvalent toute la journée.",
+        authorName: "Alex",
+        sourceName: "Utilisateur",
+      },
+      {
+        rating: 4,
+        title: "Joueur mais reste stable",
+        body: "Un bon compromis piste/bord de piste, pas fatiguant, très fun.",
+        authorName: "Sam",
+        sourceName: "Utilisateur",
+      },
+      {
+        rating: 3,
+        title: "Bien mais demande un peu de vitesse",
+        body: "À basse vitesse, ça manque un poil de nervosité. Sinon top quand on appuie.",
+        authorName: "Léo",
+        sourceName: "Utilisateur",
+      },
+    ];
+
+    const pick = (n: number) =>
+      reviewPool.sort(() => Math.random() - 0.5).slice(0, n);
+
+    await prisma.review.createMany({
+      data: pick(2 + (Math.random() > 0.5 ? 1 : 0)).map((r) => ({
+        productId: p.id,
+        rating: r.rating,
+        title: r.title,
+        body: r.body,
+        authorName: r.authorName,
+        sourceName: r.sourceName,
+        // sourceUrl optionnelle, pas nécessaire ici
+      })),
+      skipDuplicates: true,
+    });
+
+    // ----------------------------------------------------------------
+    // Tests rédactionnels (EditorialTest) — 1 à 2 fiches par produit
+    // ----------------------------------------------------------------
+    const tests = [
+      {
+        title: `${brand} ${model} : le test Skipass`,
+        excerpt:
+          "Un ski stable et joueur, avec une belle marge de progression. Polyvalent en toutes conditions.",
+        score: 8.5,
+        sourceName: "Skipass",
+        sourceUrl: "https://www.skipass.com/",
+      },
+      {
+        title: `${brand} ${model} : Backcountry Magazine`,
+        excerpt:
+          "Bonne accroche sur neige dure et excellent comportement en trafollée. Un all-mountain abouti.",
+        score: 4.2, // sur 5, c’est un exemple
+        sourceName: "Backcountry Magazine",
+        sourceUrl: "https://backcountrymagazine.com/",
+      },
+    ].slice(0, Math.random() > 0.5 ? 2 : 1);
+
+    await prisma.editorialTest.createMany({
+      data: tests.map((t) => ({
+        productId: p.id,
+        title: t.title,
+        excerpt: t.excerpt,
+        score: t.score,
+        sourceName: t.sourceName,
+        sourceUrl: t.sourceUrl,
+        // publishedAt par défaut NOW()
+      })),
+      skipDuplicates: true,
+    });
   }
 }
 

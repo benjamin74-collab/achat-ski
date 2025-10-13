@@ -124,8 +124,8 @@ export default async function ProductPage({ params }: PageProps) {
   const related = await prisma.product.findMany({
     where: {
       id: { not: product.id },
-    ...(product.brand ? { brand: product.brand } : {}),
-    ...(product.category ? { category: product.category } : {}),
+      ...(product.brand ? { brand: product.brand } : {}),
+      ...(product.category ? { category: product.category } : {}),
     },
     take: 6,
     orderBy: { createdAt: "desc" },
@@ -245,7 +245,7 @@ export default async function ProductPage({ params }: PageProps) {
       {/* En-tête produit */}
       <section className="mt-4 grid grid-cols-1 gap-6 lg:grid-cols-12">
         <div className="lg:col-span-5">
-          <div className="aspect-[4/3] w-full overflow-hidden rounded-2xl border bg-gray-50" />
+          <div className="aspect-[4/3] w-full overflow-hidden rounded-2xl border bg-muted" />
           <p className="mt-2 text-xs text-neutral-500">Photo à venir (marque / feed partenaire).</p>
         </div>
 
@@ -290,9 +290,9 @@ export default async function ProductPage({ params }: PageProps) {
 
           {/* Description si présente */}
           {desc && desc.trim() && (
-            <section className="mt-6 rounded-2xl border border-ring bg-card/60 p-5 shadow-card">
+            <section className="mt-6 rounded-2xl border border-ring bg-surface/60 p-5 shadow-card">
               <h2 className="text-lg font-semibold">Description</h2>
-              <div className="prose prose-invert prose-a:text-brand-400 max-w-none mt-2">
+              <div className="max-w-none mt-2 space-y-3 text-sm leading-relaxed text-ink">
                 {desc.split(/\n{2,}/).map((para, i) => (
                   <p key={i}>{para.trim()}</p>
                 ))}
@@ -356,7 +356,9 @@ export default async function ProductPage({ params }: PageProps) {
                         <span className="inline-flex items-center text-xs text-neutral-700">
                           Note: <b className="ml-1">{t.score}</b>
                         </span>
-                      ) : <span />}
+                      ) : (
+                        <span />
+                      )}
                       {t.sourceUrl ? (
                         <a
                           href={t.sourceUrl}
@@ -377,7 +379,7 @@ export default async function ProductPage({ params }: PageProps) {
       </section>
 
       {/* Tableau des prix */}
-      <section className="mt-8 rounded-2xl border border-ring bg-card/60 p-5 shadow-card">
+      <section className="mt-8 rounded-2xl border border-ring bg-surface/60 p-5 shadow-card">
         <h2 className="text-xl font-semibold">Comparer les prix</h2>
         <PriceTable offers={offersFlat} />
       </section>
@@ -390,7 +392,7 @@ export default async function ProductPage({ params }: PageProps) {
             {related.map((r) => (
               <li key={r.id} className="rounded-2xl border p-4 hover:shadow-sm transition">
                 <a href={`/p/${r.slug}`} className="block">
-                  <div className="aspect-[4/3] w-full rounded-xl bg-gray-50 border" />
+                  <div className="aspect-[4/3] w-full rounded-xl bg-muted border" />
                   <div className="mt-2 text-sm font-medium">
                     {[r.brand, r.model, r.season].filter(Boolean).join(" ")}
                   </div>
@@ -410,11 +412,12 @@ export default async function ProductPage({ params }: PageProps) {
 
 /** Petit composant local pour afficher des étoiles (0..5, pas de dépendance externe) */
 function StarRating({ value }: { value: number }) {
-  const full = Math.floor(Math.max(0, Math.min(5, value)));
-  const half = value - full >= 0.5 ? 1 : 0;
+  const clamped = Math.max(0, Math.min(5, value));
+  const full = Math.floor(clamped);
+  const half = clamped - full >= 0.5 ? 1 : 0;
   const empty = 5 - full - half;
   return (
-    <span aria-label={`${value} sur 5`} className="inline-flex items-center">
+    <span aria-label={`${value} sur 5`} className="inline-flex items-center text-sec-600">
       {"★".repeat(full)}
       {half ? "☆" : ""}
       {"☆".repeat(empty)}
