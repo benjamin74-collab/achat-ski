@@ -13,22 +13,24 @@ export default function HomePage() {
   return (
     <main className="pb-20">
       {/* ---------------- HERO ---------------- */}
-      <section className="section-hero relative overflow-hidden py-20 text-center text-white">
+      <section className="relative overflow-hidden py-20 text-center bg-gradient-to-b from-white to-muted/60">
         <div className="container-page relative z-10">
-          <h1 className="text-4xl md:text-5xl font-bold leading-tight">
-            Le <span className="text-sec-400">comparateur</span> des passionnés de ski
+          <h1 className="text-4xl md:text-5xl font-bold leading-tight text-ink">
+            Le{" "}
+            <span className="text-brand-600">comparateur</span>{" "}
+            des passionnés de ski
           </h1>
-          <p className="mt-4 text-lg text-slate-200 max-w-2xl mx-auto">
+          <p className="mt-4 text-lg text-slate-600 max-w-2xl mx-auto">
             Comparez les prix, consultez les tests et les avis pour trouver le matériel parfait.
           </p>
 
           {/* Barre de recherche */}
           <form action="/search" className="mt-8 max-w-xl mx-auto">
-            <div className="relative shadow-xl">
+            <div className="relative shadow-md">
               <input
                 name="q"
                 placeholder="Ex : Salomon QST 98, Atomic Maverick 88…"
-                className="w-full rounded-xl bg-white/95 border border-ring px-5 py-3 pr-14 text-ink placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-brand-500"
+                className="w-full rounded-xl bg-white border border-ring px-5 py-3 pr-14 text-ink placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-brand-500"
               />
               <button
                 type="submit"
@@ -46,17 +48,13 @@ export default function HomePage() {
               <Link
                 key={c.href}
                 href={c.href}
-                className="text-xs md:text-sm rounded-full border border-white/20 bg-white/10 backdrop-blur-md px-3 py-2 hover:bg-white/20 transition"
+                className="text-xs md:text-sm rounded-full border border-ring bg-white hover:bg-muted text-ink px-3 py-2 transition shadow-sm hover:shadow-md"
               >
                 {c.label}
               </Link>
             ))}
           </div>
         </div>
-
-        {/* Dégradé décoratif */}
-        <div className="absolute inset-0 bg-gradient-to-b from-brand-600 via-sec-600/70 to-ink/90 opacity-80" />
-        <div className="absolute inset-0 bg-[url('/textures/snow-pattern.png')] bg-cover opacity-5" />
       </section>
 
       {/* ---------------- VALEURS ---------------- */}
