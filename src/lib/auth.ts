@@ -1,18 +1,14 @@
 // src/lib/auth.ts
 import type { NextAuthOptions } from "next-auth";
-import { PrismaAdapter } from "@auth/prisma-adapter";
 import CredentialsProvider from "next-auth/providers/credentials";
 import GitHub from "next-auth/providers/github";
 import { prisma } from "@/lib/prisma";
 import { Role } from "@prisma/client";
 
 export const authOptions: NextAuthOptions = {
-  // On garde l'adapter pour gérer User/Account en DB si besoin,
-  // mais on passe la stratégie de session en JWT (obligatoire pour Credentials en v5).
-  adapter: PrismaAdapter(prisma),
-  session: {
-    strategy: "jwt",
-  },
+  // Pas d'adapter => sessions JWT (obligatoire pour Credentials en v5)
+  session: { strategy: "jwt" },
+
   providers: [
     CredentialsProvider({
       name: "Credentials",
@@ -23,32 +19,23 @@ export const authOptions: NextAuthOptions = {
       async authorize(credentials) {
         const email = (credentials?.email || "").toLowerCase().trim();
         const pass = credentials?.password || "";
-
         const adminEmail = (process.env.ADMIN_EMAIL || "").toLowerCase().trim();
         const adminPass = process.env.ADMIN_PASSWORD || "";
 
-        // Accès admin simple (MVP) via .env
         if (email && pass && email === adminEmail && pass === adminPass) {
+          // On conserve un utilisateur en DB pour avoir role, etc.
           const user = await prisma.user.upsert({
             where: { email },
             update: { role: Role.ADMIN, name: "Admin" },
             create: { email, role: Role.ADMIN, name: "Admin" },
           });
-
-          return {
-            id: user.id,
-            email: user.email!,
-            name: user.name ?? "Admin",
-            // on met le rôle ici pour le récupérer dans le callback jwt
-            role: user.role,
-          } as any;
+          return { id: user.id, email: user.email!, name: user.name ?? "Admin", role: user.role } as any;
         }
-
-        // (Plus tard) ouvrir la connexion USER publique
         return null;
       },
     }),
 
+    // OAuth optionnel (fonctionne aussi sans adapter, l’utilisateur n’est pas persisté par NextAuth)
     ...(process.env.GITHUB_ID && process.env.GITHUB_SECRET
       ? [
           GitHub({
@@ -61,7 +48,6 @@ export const authOptions: NextAuthOptions = {
                 name: profile.name ?? profile.login,
                 email: profile.email,
                 image: profile.avatar_url,
-                // Par défaut, on laisse USER
                 role: Role.USER,
               } as any;
             },
@@ -71,7 +57,6 @@ export const authOptions: NextAuthOptions = {
   ],
 
   callbacks: {
-    // On met id/role dans le JWT au moment du sign-in
     async jwt({ token, user }) {
       if (user) {
         token.id = (user as any).id;
@@ -79,11 +64,10 @@ export const authOptions: NextAuthOptions = {
       }
       return token;
     },
-    // … et on expose id/role dans la session côté client
     async session({ session, token }) {
       if (session.user && token) {
-        session.user.id = token.id as string;
-        session.user.role = (token.role as string) ?? "USER";
+        (session.user as any).id = token.id as string;
+        (session.user as any).role = (token.role as string) ?? "USER";
       }
       return session;
     },
