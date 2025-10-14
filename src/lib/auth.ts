@@ -9,7 +9,6 @@ import { Role } from "@prisma/client";
 export const authOptions: NextAuthOptions = {
   adapter: PrismaAdapter(prisma),
   session: {
-    // On stocke les sessions en DB (via adapter)
     strategy: "database",
   },
   providers: [
@@ -54,7 +53,6 @@ export const authOptions: NextAuthOptions = {
             clientSecret: process.env.GITHUB_SECRET!,
             allowDangerousEmailAccountLinking: true,
             profile(profile) {
-              // On laisse par défaut USER, l’admin passe par credentials env.
               return {
                 id: String(profile.id),
                 name: profile.name ?? profile.login,
@@ -68,15 +66,15 @@ export const authOptions: NextAuthOptions = {
   ],
   callbacks: {
     async session({ session, user }) {
-      // On expose l'id & role dans la session
+      // On expose l'id & role dans la session sans utiliser `any`
       if (session.user) {
-        (session.user as any).id = user.id;
-        (session.user as any).role = user.role;
+        const u = session.user as { id?: string; role?: Role };
+        u.id = user.id;
+        u.role = user.role as Role;
       }
       return session;
     },
   },
-  // URLs par défaut. Tu pourras ajouter des pages custom (signIn, error, etc.) plus tard.
   debug: process.env.NODE_ENV === "development",
   secret: process.env.NEXTAUTH_SECRET,
 };
