@@ -2,6 +2,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import Logo from "./Logo";
+import { useSession, signIn, signOut } from "next-auth/react";
 
 const nav = [
   { href: "/c/skis-all-mountain", label: "Skis All-Mountain" },
@@ -13,6 +14,18 @@ const nav = [
 
 export default function Header() {
   const pathname = usePathname();
+  const { data: session, status } = useSession();
+
+  // petites initiales pour avatar fallback
+  const initials = (() => {
+    const n = session?.user?.name || session?.user?.email || "";
+    return n
+      .split(/[^\p{L}\p{N}]+/u)
+      .filter(Boolean)
+      .slice(0, 2)
+      .map(s => s[0]?.toUpperCase())
+      .join("");
+  })();
 
   return (
     <header className="sticky top-0 z-50 bg-white/95 backdrop-blur border-b border-ring">
@@ -21,7 +34,9 @@ export default function Header() {
 
       <div className="bg-bg/80 supports-[backdrop-filter]:backdrop-blur">
         <div className="mx-auto max-w-6xl px-4 py-3 flex items-center gap-4">
-          <Logo />
+          <Link href="/" className="shrink-0" aria-label="Accueil">
+            <Logo />
+          </Link>
 
           {/* Search */}
           <form action="/search" className="flex-1">
@@ -29,7 +44,7 @@ export default function Header() {
               <input
                 name="q"
                 placeholder="Rechercher un ski, modèle ou marque…"
-                className="w-full rounded-xl bg-white/95 text-ink border border-ring px-4 py-2 pr-20 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-brand-500"
+                className="w-full rounded-xl bg-white/95 text-ink border border-ring px-4 py-2 pr-28 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-brand-500"
               />
               <button
                 aria-label="Rechercher"
@@ -59,6 +74,40 @@ export default function Header() {
               );
             })}
           </nav>
+
+          {/* Auth zone */}
+          <div className="ml-auto flex items-center gap-2">
+            {status === "loading" ? (
+              <div className="h-9 w-24 rounded-lg bg-muted animate-pulse" />
+            ) : session ? (
+              <>
+                <Link
+                  href="/me"
+                  className="hidden sm:inline-flex items-center gap-2 rounded-lg border border-ring bg-white px-3 py-2 text-sm text-ink hover:bg-muted"
+                >
+                  <span className="inline-flex h-6 w-6 items-center justify-center rounded-full bg-brand-500 text-white text-xs font-semibold">
+                    {initials || "ME"}
+                  </span>
+                  <span className="max-w-[10ch] truncate">
+                    {session.user?.name || session.user?.email || "Mon profil"}
+                  </span>
+                </Link>
+                <button
+                  onClick={() => signOut({ callbackUrl: "/" })}
+                  className="btn-outline"
+                >
+                  Déconnexion
+                </button>
+              </>
+            ) : (
+              <button
+                onClick={() => signIn()} // sans provider -> page /api/auth/signin NextAuth
+                className="btn"
+              >
+                Se connecter
+              </button>
+            )}
+          </div>
         </div>
       </div>
     </header>
