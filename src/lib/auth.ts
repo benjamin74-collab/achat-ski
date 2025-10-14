@@ -1,6 +1,6 @@
 // src/lib/auth.ts
 import type { NextAuthOptions } from "next-auth";
-import { PrismaAdapter } from "@auth/prisma-adapter";
+import { PrismaAdapter } from "@next-auth/prisma-adapter"; // ✅ v4 adapter
 import CredentialsProvider from "next-auth/providers/credentials";
 import GitHub from "next-auth/providers/github";
 import { prisma } from "@/lib/prisma";
@@ -9,10 +9,10 @@ import { Role } from "@prisma/client";
 export const authOptions: NextAuthOptions = {
   adapter: PrismaAdapter(prisma),
   session: {
+    // Sessions en DB via l'adapter
     strategy: "database",
   },
   providers: [
-    // --- Admin par credentials (EMAIL + PASSWORD en .env) ---
     CredentialsProvider({
       name: "Credentials",
       credentials: {
@@ -26,7 +26,6 @@ export const authOptions: NextAuthOptions = {
         const adminEmail = (process.env.ADMIN_EMAIL || "").toLowerCase().trim();
         const adminPass = process.env.ADMIN_PASSWORD || "";
 
-        // Accès admin simple (MVP) : variables d'environnement
         if (email && pass && email === adminEmail && pass === adminPass) {
           const user = await prisma.user.upsert({
             where: { email },
@@ -40,12 +39,10 @@ export const authOptions: NextAuthOptions = {
           };
         }
 
-        // (Optionnel) autoriser des comptes "USER" via une autre stratégie / formulaire public plus tard.
         return null;
       },
     }),
 
-    // --- GitHub (optionnel) : activé si variables présentes ---
     ...(process.env.GITHUB_ID && process.env.GITHUB_SECRET
       ? [
           GitHub({
@@ -66,11 +63,10 @@ export const authOptions: NextAuthOptions = {
   ],
   callbacks: {
     async session({ session, user }) {
-      // On expose l'id & role dans la session sans utiliser `any`
       if (session.user) {
-        const u = session.user as { id?: string; role?: Role };
-        u.id = user.id;
-        u.role = user.role as Role;
+        // on expose id + role côté client
+        (session.user as { id?: string }).id = user.id;
+        (session.user as { role?: Role }).role = (user as { role?: Role }).role ?? Role.USER;
       }
       return session;
     },
