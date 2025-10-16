@@ -78,7 +78,7 @@ model Product {
   brand       String
   model       String
   season      String? // ex: "2025/26"
-  category    String? // all-mountain, rando, freeride...
+  category    String? // all-mountain, rando, freeride... (on gardera un lien fort plus tard)
   gtin        String?         @unique
   slug        String          @unique
   attributes  Json?
@@ -191,18 +191,35 @@ model EditorialTest {
 }
 
 /* -----------------------------
-   CMS Catégorie (texte + SEO)
+   Catégories HIÉRARCHIQUES + SEO
 ------------------------------ */
-model CategoryPage {
-  slug            String   @id
+model Category {
+  id              Int      @id @default(autoincrement())
+  slug            String   @unique
   name            String
+
+  // Hiérarchie
+  parentId        Int?
+  parent          Category?   @relation("CategoryHierarchy", fields: [parentId], references: [id], onDelete: SetNull)
+  children        Category[]  @relation("CategoryHierarchy")
+
+  // Contenu & SEO
   intro           String?
   content         String?
   metaTitle       String?
   metaDescription String?
+
+  // Navigation & tri
+  isNav           Boolean  @default(true)   // inclure dans le menu
+  sortOrder       Int      @default(0)      // ordre au sein du même parent
   published       Boolean  @default(true)
+
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
+
+  @@index([parentId, sortOrder])
+  @@index([slug])
+  @@index([published])
 }
 
 /* -----------------------------
