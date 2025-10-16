@@ -3,6 +3,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import Logo from "./Logo";
 import { useSession, signIn, signOut } from "next-auth/react";
+import type { Role } from "@prisma/client";
 
 const nav = [
   { href: "/c/skis-all-mountain", label: "Skis All-Mountain" },
@@ -16,6 +17,11 @@ export default function Header() {
   const pathname = usePathname();
   const { data: session, status } = useSession();
 
+  const role: Role = ((session?.user as { role?: Role })?.role) ?? "USER";
+  const isAdmin = role === "ADMIN";
+  const profileHref = isAdmin ? "/admin" : "/compte";
+  const profileLabel = isAdmin ? "Admin" : "Mon profil";
+
   // petites initiales pour avatar fallback
   const initials = (() => {
     const n = session?.user?.name || session?.user?.email || "";
@@ -23,7 +29,7 @@ export default function Header() {
       .split(/[^\p{L}\p{N}]+/u)
       .filter(Boolean)
       .slice(0, 2)
-      .map(s => s[0]?.toUpperCase())
+      .map((s) => s[0]?.toUpperCase())
       .join("");
   })();
 
@@ -82,14 +88,14 @@ export default function Header() {
             ) : session ? (
               <>
                 <Link
-                  href="/me"
+                  href={profileHref}
                   className="hidden sm:inline-flex items-center gap-2 rounded-lg border border-ring bg-white px-3 py-2 text-sm text-ink hover:bg-muted"
                 >
                   <span className="inline-flex h-6 w-6 items-center justify-center rounded-full bg-brand-500 text-white text-xs font-semibold">
                     {initials || "ME"}
                   </span>
-                  <span className="max-w-[10ch] truncate">
-                    {session.user?.name || session.user?.email || "Mon profil"}
+                  <span className="max-w-[12ch] truncate">
+                    {profileLabel}
                   </span>
                 </Link>
                 <button
@@ -100,10 +106,7 @@ export default function Header() {
                 </button>
               </>
             ) : (
-              <button
-                onClick={() => signIn()} // sans provider -> page /api/auth/signin NextAuth
-                className="btn"
-              >
+              <button onClick={() => signIn()} className="btn">
                 Se connecter
               </button>
             )}

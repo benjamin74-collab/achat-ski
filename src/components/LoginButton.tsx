@@ -32,7 +32,7 @@ export default function LoginButton() {
 
   const user = session.user as SessionUserWithRole;
   const initials = user.name?.[0]?.toUpperCase() ?? user.email?.[0]?.toUpperCase() ?? "U";
-  const role = session.user.role ?? "USER";
+  const role: Role = (user.role as Role) ?? "USER";
 
   return (
     <div className="relative">
