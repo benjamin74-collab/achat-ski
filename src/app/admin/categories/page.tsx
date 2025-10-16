@@ -1,82 +1,80 @@
-// src/app/admin/categories/page.tsx
+import { prisma } from "@/lib/prisma";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { notFound } from "next/navigation";
-import { prisma } from "@/lib/prisma";
-import NewCategoryForm from "./partials/NewCategoryForm";
-import { deleteCategory } from "@/app/actions/categories";
-
-export const dynamic = "force-dynamic";
+import Link from "next/link";
 
 export default async function AdminCategoriesPage() {
   const session = await getServerSession(authOptions);
-  const role = (session?.user as { role?: string } | undefined)?.role ?? "USER";
+  const role = session?.user?.role;
+
+  // 🔒 Protection : admin uniquement
   if (!session || role !== "ADMIN") return notFound();
 
-  const cats = await prisma.categoryPage.findMany({
-    orderBy: { slug: "asc" },
+  // ✅ On utilise bien le nouveau modèle Category
+  const cats = await prisma.category.findMany({
+    orderBy: { sortOrder: "asc" },
     select: {
-      slug: true,
+      id: true,
       name: true,
+      slug: true,
+      parentId: true,
+      isNav: true,
       published: true,
-      metaTitle: true,
-      metaDescription: true,
-      updatedAt: true,
+      sortOrder: true,
     },
   });
 
   return (
-    <main className="py-6">
-      <h1 className="text-2xl font-semibold">Catégories</h1>
+    <div className="p-6 space-y-4">
+      <h1 className="text-2xl font-semibold">Gestion des catégories</h1>
 
-      <section className="mt-6 card p-4">
-        <h2 className="font-semibold">Créer / Mettre à jour</h2>
-        <div className="mt-4">
-          <NewCategoryForm />
-        </div>
-      </section>
+      <div className="flex justify-between items-center">
+        <p className="text-sm text-muted-foreground">
+          {cats.length} catégorie{cats.length > 1 ? "s" : ""}
+        </p>
+        <Link
+          href="/admin/categories/new"
+          className="px-4 py-2 text-sm rounded-lg bg-brand-500 text-white hover:bg-brand-600"
+        >
+          ➕ Nouvelle catégorie
+        </Link>
+      </div>
 
-      <section className="mt-8">
-        <h2 className="font-semibold mb-3">Liste</h2>
-        <ul className="space-y-3">
+      <table className="w-full text-sm border-collapse border border-ring">
+        <thead className="bg-muted">
+          <tr>
+            <th className="border border-ring px-3 py-2 text-left">Nom</th>
+            <th className="border border-ring px-3 py-2 text-left">Slug</th>
+            <th className="border border-ring px-3 py-2 text-left">Parent</th>
+            <th className="border border-ring px-3 py-2 text-center">Menu</th>
+            <th className="border border-ring px-3 py-2 text-center">Publié</th>
+            <th className="border border-ring px-3 py-2 text-right">Ordre</th>
+          </tr>
+        </thead>
+        <tbody>
           {cats.map((c) => (
-            <li key={c.slug} className="rounded-xl border p-3">
-              <div className="flex items-center justify-between gap-3">
-                <div>
-                  <div className="font-medium">
-                    {c.name} <span className="text-slate-500">/c/{c.slug}</span>
-                  </div>
-                  <div className="text-xs text-slate-600">
-                    {c.published ? "publiée" : "non publiée"} · MAJ{" "}
-                    {c.updatedAt.toISOString().slice(0, 10)}
-                    {c.metaTitle ? (
-                      <>
-                        {" "}
-                        · meta title: <i>{c.metaTitle}</i>
-                      </>
-                    ) : null}
-                  </div>
-                </div>
-
-                {/* ❗️Pas de action={...} ici. On utilise un form simple + formAction sur le bouton */}
-                <form>
-                  <input type="hidden" name="slug" value={c.slug} />
-                  <button
-                    formAction={async (fd: FormData) => {
-                      const slug = String(fd.get("slug") ?? "");
-                      if (!slug) return;
-                      await deleteCategory(slug);
-                    }}
-                    className="text-xs px-3 py-1.5 rounded-lg border border-ring hover:bg-red-50 text-red-600"
-                  >
-                    Supprimer
-                  </button>
-                </form>
-              </div>
-            </li>
+            <tr key={c.id}>
+              <td className="border border-ring px-3 py-2">{c.name}</td>
+              <td className="border border-ring px-3 py-2 text-slate-500">
+                {c.slug}
+              </td>
+              <td className="border border-ring px-3 py-2 text-slate-500">
+                {c.parentId ?? "—"}
+              </td>
+              <td className="border border-ring px-3 py-2 text-center">
+                {c.isNav ? "✅" : "❌"}
+              </td>
+              <td className="border border-ring px-3 py-2 text-center">
+                {c.published ? "✅" : "❌"}
+              </td>
+              <td className="border border-ring px-3 py-2 text-right">
+                {c.sortOrder}
+              </td>
+            </tr>
           ))}
-        </ul>
-      </section>
-    </main>
+        </tbody>
+      </table>
+    </div>
   );
 }
