@@ -2,7 +2,7 @@
 import type { NextAuthOptions, User } from "next-auth";
 import CredentialsProvider from "next-auth/providers/credentials";
 import GitHub from "next-auth/providers/github";
-import { PrismaAdapter } from "@auth/prisma-adapter";
+import { PrismaAdapter } from "@next-auth/prisma-adapter";
 import { Role } from "@prisma/client";
 
 /** Utilisateur minimal qu’on retourne depuis authorize() */
