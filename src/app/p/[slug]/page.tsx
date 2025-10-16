@@ -5,9 +5,11 @@ import PriceTable from "@/components/PriceTable";
 import Breadcrumbs from "@/components/Breadcrumbs";
 import { money } from "@/lib/format";
 import type { Metadata } from "next";
+import { getServerSession } from "next-auth";
+import { authOptions } from "@/lib/auth";
 
 export const runtime = "nodejs";
-export const revalidate = 60; // ISR 60s
+export const revalidate = 60;
 
 type PageProps = { params: { slug: string } };
 
@@ -31,63 +33,74 @@ export async function generateMetadata({ params }: { params: { slug: string } })
 }
 
 export default async function ProductPage({ params }: PageProps) {
-  const product = await prisma.product.findUnique({
-    where: { slug: params.slug },
-    // On récupère tous les scalaires du produit (dont description),
-    // et on inclut les relations nécessaires.
-    include: {
-      skus: {
-        select: {
-          id: true,
-          variant: true,
-          gtin: true,
-          offers: {
-            select: {
-              id: true,
-              skuId: true,
-              merchantId: true,
-              affiliateUrl: true,
-              priceCents: true,
-              currency: true,
-              inStock: true,
-              shippingCents: true,
-              lastSeen: true,
-              merchant: { select: { id: true, name: true, slug: true } },
+  const [session, product] = await Promise.all([
+    getServerSession(authOptions),
+    prisma.product.findUnique({
+      where: { slug: params.slug },
+      include: {
+        skus: {
+          select: {
+            id: true,
+            variant: true,
+            gtin: true,
+            offers: {
+              select: {
+                id: true,
+                skuId: true,
+                merchantId: true,
+                affiliateUrl: true,
+                priceCents: true,
+                currency: true,
+                inStock: true,
+                shippingCents: true,
+                lastSeen: true,
+                merchant: { select: { id: true, name: true, slug: true } },
+              },
             },
           },
         },
-      },
-      reviews: {
-        select: {
-          id: true,
-          rating: true,
-          title: true,
-          body: true,
-          authorName: true,
-          sourceName: true,
-          sourceUrl: true,
-          createdAt: true,
+        reviews: {
+          select: {
+            id: true,
+            rating: true,
+            title: true,
+            body: true,
+            authorName: true,
+            sourceName: true,
+            sourceUrl: true,
+            createdAt: true,
+          },
+          orderBy: { createdAt: "desc" },
+          take: 10,
         },
-        orderBy: { createdAt: "desc" },
-        take: 10,
-      },
-      tests: {
-        select: {
-          id: true,
-          title: true,
-          excerpt: true,
-          score: true,
-          sourceName: true,
-          sourceUrl: true,
-          publishedAt: true,
+        tests: {
+          select: {
+            id: true,
+            title: true,
+            excerpt: true,
+            score: true,
+            sourceName: true,
+            sourceUrl: true,
+            publishedAt: true,
+          },
+          orderBy: { publishedAt: "desc" },
+          take: 10,
         },
-        orderBy: { publishedAt: "desc" },
-        take: 10,
       },
-    },
-  });
+    }),
+  ]);
 
   if (!product) return notFound();
+
+  // ---- CTA Review/Test (selon session)
+  const productId = product.id;
+  const productUrl = `/p/${product.slug}`;
+  const reviewNewUrl = session
+    ? `/me/reviews/new?productId=${productId}`
+    : `/api/auth/signin?callbackUrl=${encodeURIComponent(productUrl)}`;
+  const testNewUrl = session
+    ? `/me/tests/new?productId=${productId}`
+    : `/api/auth/signin?callbackUrl=${encodeURIComponent(productUrl)}`;
 
   // ---- Prix / Offres
   const offersFlat = product.skus.flatMap((s) =>
@@ -134,17 +147,15 @@ export default async function ProductPage({ params }: PageProps) {
 
   const canonicalUrl = `${process.env.NEXT_PUBLIC_SITE_URL ?? "https://achat-ski.vercel.app"}/p/${product.slug}`;
 
-  // ---- Avis (reviews)
+  // ---- Avis
   const reviewCount = product.reviews.length;
   const averageRating =
-    reviewCount > 0
-      ? product.reviews.reduce((sum, r) => sum + r.rating, 0) / reviewCount
-      : null;
+    reviewCount > 0 ? product.reviews.reduce((sum, r) => sum + r.rating, 0) / reviewCount : null;
 
-  // ---- Tests (editorial tests)
+  // ---- Tests
   const tests = product.tests;
 
-  // ---- JSON-LD
+  // ---- JSON-LD (inchangé)
   const inStockOffers = offersFlat.filter((o) => o.inStock);
   const hasStock = inStockOffers.length > 0;
 
@@ -223,15 +234,11 @@ export default async function ProductPage({ params }: PageProps) {
     ...(reviewJsonLd ? { review: reviewJsonLd } : {}),
   } satisfies Record<string, unknown>;
 
-  // Description (si présente)
   const desc = (product as { description?: string | null }).description ?? null;
 
   return (
     <main className="container mx-auto max-w-6xl px-4 py-6">
-      {/* Canonical */}
       <link rel="canonical" href={canonicalUrl} />
-
-      {/* JSON-LD Product */}
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(productJsonLd) }} />
 
       <Breadcrumbs
@@ -242,11 +249,27 @@ export default async function ProductPage({ params }: PageProps) {
         ]}
       />
 
-      {/* En-tête produit */}
+      {/* En-tête + CTA avis/test */}
       <section className="mt-4 grid grid-cols-1 gap-6 lg:grid-cols-12">
         <div className="lg:col-span-5">
           <div className="aspect-[4/3] w-full overflow-hidden rounded-2xl border bg-muted" />
           <p className="mt-2 text-xs text-neutral-500">Photo à venir (marque / feed partenaire).</p>
+
+          {/* CTA latéraux */}
+          <div className="mt-4 space-y-2">
+            <a
+              href={reviewNewUrl}
+              className="block rounded-lg border border-ring bg-white px-3 py-2 text-sm hover:bg-muted"
+            >
+              ✍️ Je souhaite donner un avis sur ce produit
+            </a>
+            <a
+              href={testNewUrl}
+              className="block rounded-lg border border-ring bg-white px-3 py-2 text-sm hover:bg-muted"
+            >
+              🧪 Je veux ajouter un test à ce produit
+            </a>
+          </div>
         </div>
 
         <div className="lg:col-span-7">
@@ -263,7 +286,6 @@ export default async function ProductPage({ params }: PageProps) {
             )}
           </div>
 
-          {/* Résumé notes si dispo */}
           {averageRating != null && reviewCount > 0 && (
             <div className="mt-2 flex items-center gap-2 text-sm text-neutral-700">
               <StarRating value={averageRating} />
@@ -288,7 +310,6 @@ export default async function ProductPage({ params }: PageProps) {
             ))}
           </dl>
 
-          {/* Description si présente */}
           {desc && desc.trim() && (
             <section className="mt-6 rounded-2xl border border-ring bg-surface/60 p-5 shadow-card">
               <h2 className="text-lg font-semibold">Description</h2>
@@ -300,7 +321,7 @@ export default async function ProductPage({ params }: PageProps) {
             </section>
           )}
 
-          {/* Avis si présents */}
+          {/* Avis */}
           {reviewCount > 0 && (
             <section className="mt-8">
               <h2 className="text-lg font-semibold">Avis</h2>
@@ -337,7 +358,7 @@ export default async function ProductPage({ params }: PageProps) {
             </section>
           )}
 
-          {/* Tests/Essais si présents */}
+          {/* Tests */}
           {tests.length > 0 && (
             <section className="mt-8">
               <h2 className="text-lg font-semibold">Tests & Essais</h2>
@@ -410,7 +431,6 @@ export default async function ProductPage({ params }: PageProps) {
   );
 }
 
-/** Petit composant local pour afficher des étoiles (0..5, pas de dépendance externe) */
 function StarRating({ value }: { value: number }) {
   const clamped = Math.max(0, Math.min(5, value));
   const full = Math.floor(clamped);

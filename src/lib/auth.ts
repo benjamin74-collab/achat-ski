@@ -6,12 +6,9 @@ import GitHub from "next-auth/providers/github";
 import { prisma } from "@/lib/prisma";
 import { Role } from "@prisma/client";
 
-/**
- * NextAuth config
- * - Sessions en JWT (requis par Credentials)
- * - Admin via variables d'env (ADMIN_EMAIL / ADMIN_PASSWORD)
- * - GitHub optionnel si variables présentes
- */
+type RoleLiteral = "ADMIN" | "USER";
+type UserWithRole = User & { role?: RoleLiteral };
+
 export const authOptions: NextAuthOptions = {
   session: { strategy: "jwt" },
 
@@ -37,7 +34,7 @@ export const authOptions: NextAuthOptions = {
             create: { email, role: Role.ADMIN, name: "Admin" },
           });
 
-          const user: User = {
+          const user: UserWithRole = {
             id: String(dbUser.id),
             email: dbUser.email ?? undefined,
             name: dbUser.name ?? "Admin",
@@ -46,7 +43,7 @@ export const authOptions: NextAuthOptions = {
           return user;
         }
 
-      // (Plus tard) gérer l’auth public ici
+        // (Plus tard) gestion des comptes publics
         return null;
       },
     }),
@@ -58,13 +55,13 @@ export const authOptions: NextAuthOptions = {
             clientSecret: process.env.GITHUB_SECRET!,
             allowDangerousEmailAccountLinking: true,
             profile(profile): User {
-              return {
+              const u: UserWithRole = {
                 id: String(profile.id),
                 name: profile.name ?? profile.login,
                 email: profile.email ?? undefined,
-                // image ignorée par le type `User` (c’est ok, elle va sur session.user.image)
                 role: "USER",
               };
+              return u;
             },
           }),
         ]
@@ -72,19 +69,27 @@ export const authOptions: NextAuthOptions = {
   ],
 
   callbacks: {
+    // ➜ Redirection post-login : ADMIN → /admin, sinon /me
+    async signIn({ user }): Promise<string | boolean> {
+      const role = (user as UserWithRole).role ?? "USER";
+      return role === "ADMIN" ? "/admin" : "/me";
+    },
+
     async jwt({ token, user }): Promise<JWT> {
       if (user) {
-        token.id = user.id;
-        token.role = user.role ?? "USER";
+        const role = (user as UserWithRole).role ?? "USER";
+        (token as JWT & { id?: string; role?: RoleLiteral }).id = user.id;
+        (token as JWT & { id?: string; role?: RoleLiteral }).role = role;
       }
       return token;
     },
 
     async session({ session, token }): Promise<Session> {
       if (session.user) {
-        // ces champs sont déclarés dans src/types/next-auth.d.ts
-        session.user.id = token.id ?? "";
-        session.user.role = (token.role as "ADMIN" | "USER") ?? "USER";
+        (session.user as typeof session.user & { id: string; role: RoleLiteral }).id =
+          (token as JWT & { id?: string }).id ?? "";
+        (session.user as typeof session.user & { id: string; role: RoleLiteral }).role =
+          ((token as JWT & { role?: RoleLiteral }).role ?? "USER") as RoleLiteral;
       }
       return session;
     },
