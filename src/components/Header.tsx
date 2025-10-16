@@ -1,25 +1,26 @@
+// src/components/Header.tsx
 "use client";
+
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import Logo from "./Logo";
 import { useSession, signIn, signOut } from "next-auth/react";
 import type { Role } from "@prisma/client";
+import { useEffect, useState } from "react";
 
-const nav = [
-  { href: "/c/skis-all-mountain", label: "Skis All-Mountain" },
-  { href: "/c/skis-freeride", label: "Skis Freeride" },
-  { href: "/c/skis-rando", label: "Skis Rando" },
-  { href: "/c/fixations", label: "Fixations" },
-  { href: "/c/chaussures", label: "Chaussures" },
-];
+type NavItem = {
+  id: number;
+  name: string;
+  slug: string;
+  children: NavItem[];
+};
 
 export default function Header() {
   const pathname = usePathname();
   const { data: session, status } = useSession();
-
   const role: Role = ((session?.user as { role?: Role })?.role) ?? "USER";
   const isAdmin = role === "ADMIN";
-  const profileHref = isAdmin ? "/admin" : "/compte";
+  const profileHref = isAdmin ? "/admin" : "/me";
   const profileLabel = isAdmin ? "Admin" : "Mon profil";
 
   // petites initiales pour avatar fallback
@@ -32,6 +33,28 @@ export default function Header() {
       .map((s) => s[0]?.toUpperCase())
       .join("");
   })();
+
+  // --- Menu catégories dynamique ---
+  const [navItems, setNavItems] = useState<NavItem[]>([]);
+  useEffect(() => {
+    let aborted = false;
+    (async () => {
+      try {
+        const res = await fetch("/api/nav", { cache: "no-store" });
+        if (!res.ok) return;
+        const data = (await res.json()) as NavItem[];
+        if (!aborted) setNavItems(data);
+      } catch {
+        // silencieux
+      }
+    })();
+    return () => {
+      aborted = true;
+    };
+  }, []);
+
+  // Rend uniquement le premier niveau en header (les sous-niveaux restent disponibles pour un mega menu plus tard)
+  const topLevel = navItems;
 
   return (
     <header className="sticky top-0 z-50 bg-white/95 backdrop-blur border-b border-ring">
@@ -61,21 +84,22 @@ export default function Header() {
             </div>
           </form>
 
-          {/* Nav */}
+          {/* Nav (menu BDD) */}
           <nav className="hidden lg:flex items-center gap-1">
-            {nav.map((n) => {
-              const active = pathname?.startsWith(n.href);
+            {topLevel.map((n) => {
+              const href = `/c/${n.slug}`;
+              const active = pathname?.startsWith(href);
               return (
                 <Link
-                  key={n.href}
-                  href={n.href}
+                  key={n.id}
+                  href={href}
                   className={`px-3 py-2 text-sm rounded-lg transition ${
                     active
                       ? "bg-brand-500/20 text-white border border-white/10"
                       : "text-brand-200 hover:text-white hover:bg-brand-500/15"
                   }`}
                 >
-                  {n.label}
+                  {n.name}
                 </Link>
               );
             })}
@@ -94,14 +118,9 @@ export default function Header() {
                   <span className="inline-flex h-6 w-6 items-center justify-center rounded-full bg-brand-500 text-white text-xs font-semibold">
                     {initials || "ME"}
                   </span>
-                  <span className="max-w-[12ch] truncate">
-                    {profileLabel}
-                  </span>
+                  <span className="max-w-[12ch] truncate">{profileLabel}</span>
                 </Link>
-                <button
-                  onClick={() => signOut({ callbackUrl: "/" })}
-                  className="btn-outline"
-                >
+                <button onClick={() => signOut({ callbackUrl: "/" })} className="btn-outline">
                   Déconnexion
                 </button>
               </>
