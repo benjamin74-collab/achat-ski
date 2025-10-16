@@ -10,24 +10,30 @@ export default function NewReviewForm() {
 
   async function onSubmit(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
-    setOk(null); setErr(null); setLoading(true);
+    setOk(null);
+    setErr(null);
+    setLoading(true);
+
     const form = e.currentTarget;
     const fd = new FormData(form);
+
     try {
       await createReview({
-        productSlugOrId: String(fd.get("product")),
-        rating: Number(fd.get("rating")),
-        title: String(fd.get("title")),
-        body: String(fd.get("body") || ""),
-        authorName: String(fd.get("authorName") || ""),
-        sourceName: String(fd.get("sourceName") || ""),
-        sourceUrl: String(fd.get("sourceUrl") || ""),
-        status: (fd.get("status") as any) || "PENDING",
+        productSlugOrId: String(fd.get("product") ?? ""),
+        rating: Number(fd.get("rating") ?? 0),
+        title: String(fd.get("title") ?? ""),
+        body: fd.get("body") ? String(fd.get("body")) : undefined,
+        authorName: fd.get("authorName") ? String(fd.get("authorName")) : undefined,
+        sourceName: fd.get("sourceName") ? String(fd.get("sourceName")) : undefined,
+        sourceUrl: fd.get("sourceUrl") ? String(fd.get("sourceUrl")) : undefined,
+        status: (fd.get("status") as "PENDING" | "APPROVED" | "REJECTED" | null) ?? "PENDING",
       });
+
       form.reset();
       setOk("Avis créé !");
-    } catch (e: any) {
-      setErr(e?.message || "Erreur");
+    } catch (error: unknown) {
+      if (error instanceof Error) setErr(error.message);
+      else setErr("Erreur inconnue");
     } finally {
       setLoading(false);
     }
@@ -37,17 +43,30 @@ export default function NewReviewForm() {
     <form onSubmit={onSubmit} className="grid gap-3">
       <div className="grid gap-1">
         <label className="text-sm">Produit (slug ou id)</label>
-        <input name="product" required className="rounded-xl border border-ring px-3 py-2" placeholder="ex: salomon-qst-98-2025-26" />
+        <input
+          name="product"
+          required
+          className="rounded-xl border border-ring px-3 py-2"
+          placeholder="ex: salomon-qst-98-2025-26"
+        />
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
         <div className="grid gap-1">
           <label className="text-sm">Note (1..5)</label>
-          <input type="number" name="rating" min={1} max={5} defaultValue={5} required className="rounded-xl border border-ring px-3 py-2" />
+          <input
+            type="number"
+            name="rating"
+            min={1}
+            max={5}
+            defaultValue={5}
+            required
+            className="rounded-xl border border-ring px-3 py-2"
+          />
         </div>
         <div className="grid gap-1">
           <label className="text-sm">Statut</label>
-          <select name="status" className="rounded-xl border border-ring px-3 py-2">
+          <select name="status" className="rounded-xl border border-ring px-3 py-2" defaultValue="PENDING">
             <option value="PENDING">PENDING</option>
             <option value="APPROVED">APPROVED</option>
             <option value="REJECTED">REJECTED</option>

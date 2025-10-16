@@ -4,10 +4,11 @@ import { prisma } from "@/lib/prisma";
 import { revalidatePath } from "next/cache";
 import { ModerationStatus } from "@prisma/client";
 
+/** Actions modération */
 export async function approveReview(id: number) {
   await prisma.review.update({
     where: { id },
-    data: { status: ModerationStatus.APPROVED },
+    data: { status: "APPROVED" satisfies ModerationStatus },
   });
   revalidatePath("/admin/reviews");
 }
@@ -15,7 +16,7 @@ export async function approveReview(id: number) {
 export async function rejectReview(id: number) {
   await prisma.review.update({
     where: { id },
-    data: { status: ModerationStatus.REJECTED },
+    data: { status: "REJECTED" satisfies ModerationStatus },
   });
   revalidatePath("/admin/reviews");
 }
@@ -25,7 +26,9 @@ export async function deleteReview(id: number) {
   revalidatePath("/admin/reviews");
 }
 
+/** Création */
 type CreateReviewInput = {
+  /** slug produit (prioritaire) ou id numérique */
   productSlugOrId: string;
   rating: number;
   title: string;
@@ -33,11 +36,12 @@ type CreateReviewInput = {
   authorName?: string;
   sourceName?: string;
   sourceUrl?: string;
-  status?: "PENDING" | "APPROVED" | "REJECTED";
+  /** chaîne "PENDING" | "APPROVED" | "REJECTED" */
+  status?: keyof typeof ModerationStatus;
 };
 
 export async function createReview(input: CreateReviewInput) {
-  // Trouve le produit par slug (prioritaire) ou par id numeric
+  // Résolution produit : slug (par défaut) sinon id num
   let productId: number | null = null;
 
   if (/^\d+$/.test(input.productSlugOrId)) {
@@ -54,16 +58,23 @@ export async function createReview(input: CreateReviewInput) {
     throw new Error("Produit introuvable (slug ou id incorrect).");
   }
 
+  // Clamp rating 1..5
+  const rating = Math.max(1, Math.min(5, Number(input.rating) || 0));
+
+  // Mapper la chaîne vers le type ModerationStatus (par défaut PENDING)
+  const statusStr = (input.status ?? "PENDING") as keyof typeof ModerationStatus;
+  const status: ModerationStatus = statusStr;
+
   await prisma.review.create({
     data: {
       productId,
-      rating: Math.max(1, Math.min(5, input.rating)),
+      rating,
       title: input.title,
       body: input.body ?? "",
-      authorName: input.authorName,
-      sourceName: input.sourceName,
-      sourceUrl: input.sourceUrl,
-      status: (input.status as any) ?? "PENDING",
+      authorName: input.authorName || undefined,
+      sourceName: input.sourceName || undefined,
+      sourceUrl: input.sourceUrl || undefined,
+      status,
     },
   });
 
