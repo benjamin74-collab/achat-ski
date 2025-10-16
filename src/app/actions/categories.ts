@@ -15,7 +15,7 @@ type UpsertCategoryInput = {
 };
 
 export async function upsertCategory(input: UpsertCategoryInput) {
-  await prisma.categoryPage.upsert({
+  await prisma.category.upsert({
     where: { slug: input.slug },
     create: {
       slug: input.slug,
@@ -41,7 +41,7 @@ export async function upsertCategory(input: UpsertCategoryInput) {
 }
 
 export async function deleteCategory(slug: string) {
-  await prisma.categoryPage.delete({ where: { slug } });
+  await prisma.category.delete({ where: { slug } });
   revalidatePath("/admin/categories");
   revalidatePath(`/c/${slug}`);
 }
