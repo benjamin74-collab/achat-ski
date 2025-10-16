@@ -16,7 +16,12 @@ export default async function AdminCategoriesPage() {
   const cats = await prisma.categoryPage.findMany({
     orderBy: { slug: "asc" },
     select: {
-      slug: true, name: true, published: true, metaTitle: true, metaDescription: true, updatedAt: true,
+      slug: true,
+      name: true,
+      published: true,
+      metaTitle: true,
+      metaDescription: true,
+      updatedAt: true,
     },
   });
 
@@ -38,17 +43,28 @@ export default async function AdminCategoriesPage() {
             <li key={c.slug} className="rounded-xl border p-3">
               <div className="flex items-center justify-between gap-3">
                 <div>
-                  <div className="font-medium">{c.name} <span className="text-slate-500">/c/{c.slug}</span></div>
+                  <div className="font-medium">
+                    {c.name} <span className="text-slate-500">/c/{c.slug}</span>
+                  </div>
                   <div className="text-xs text-slate-600">
-                    {c.published ? "publiée" : "non publiée"} · MAJ {c.updatedAt.toISOString().slice(0,10)}
-                    {c.metaTitle ? <> · meta title: <i>{c.metaTitle}</i></> : null}
+                    {c.published ? "publiée" : "non publiée"} · MAJ{" "}
+                    {c.updatedAt.toISOString().slice(0, 10)}
+                    {c.metaTitle ? (
+                      <>
+                        {" "}
+                        · meta title: <i>{c.metaTitle}</i>
+                      </>
+                    ) : null}
                   </div>
                 </div>
-                <form action={deleteCategory}>
+
+                {/* ❗️Pas de action={...} ici. On utilise un form simple + formAction sur le bouton */}
+                <form>
                   <input type="hidden" name="slug" value={c.slug} />
                   <button
-                    formAction={async (fd) => {
+                    formAction={async (fd: FormData) => {
                       const slug = String(fd.get("slug") ?? "");
+                      if (!slug) return;
                       await deleteCategory(slug);
                     }}
                     className="text-xs px-3 py-1.5 rounded-lg border border-ring hover:bg-red-50 text-red-600"
