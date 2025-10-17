@@ -1,4 +1,3 @@
-// src/app/me/reviews/new/page.tsx
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { redirect, notFound } from "next/navigation";
@@ -9,24 +8,30 @@ export default async function NewReviewPage({
 }: {
   searchParams: { productId?: string; slug?: string };
 }) {
-  const session = await getServerSession(authOptions);
-  if (!session) redirect("/api/auth/signin?callbackUrl=/me/reviews/new");
+  const outerSession = await getServerSession(authOptions);
+  if (!outerSession) redirect("/api/auth/signin?callbackUrl=/me/reviews/new");
 
   const productKey = searchParams.slug ?? searchParams.productId ?? null;
   if (!productKey) return notFound();
-  const productSlugOrId = String(productKey); // ✅ forcé en string
+  const productSlugOrId = String(productKey);
 
   async function action(formData: FormData) {
     "use server";
+    // ✅ Re-vérifier la session dans l’action (narrowing garanti pour TS + sécurité)
+    const session = await getServerSession(authOptions);
+    if (!session) redirect("/api/auth/signin?callbackUrl=/me/reviews/new");
+
     const rating = Number(formData.get("rating") ?? 0);
     const title = String(formData.get("title") ?? "");
     const body = String(formData.get("body") ?? "");
+    const authorName = session.user.name ?? undefined;
+
     await createReview({
       productSlugOrId,
       rating,
       title,
       body,
-      authorName: session.user.name ?? undefined,
+      authorName,
       status: "PENDING",
     });
     redirect("/me");
@@ -39,14 +44,7 @@ export default async function NewReviewPage({
         <input type="hidden" name="productSlugOrId" value={productSlugOrId} />
         <div>
           <label className="block text-sm font-medium">Note (1 à 5)</label>
-          <input
-            type="number"
-            name="rating"
-            min={1}
-            max={5}
-            required
-            className="mt-1 w-full rounded-lg border px-3 py-2"
-          />
+          <input type="number" name="rating" min={1} max={5} required className="mt-1 w-full rounded-lg border px-3 py-2" />
         </div>
         <div>
           <label className="block text-sm font-medium">Titre</label>
