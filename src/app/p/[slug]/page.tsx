@@ -258,14 +258,14 @@ export default async function ProductPage({ params }: PageProps) {
           {/* CTA latéraux */}
           <div className="mt-4 space-y-2">
             <a
-              href={reviewNewUrl}
-              className="block rounded-lg border border-ring bg-white px-3 py-2 text-sm hover:bg-muted"
+              href={`/me/reviews/new?slug=${encodeURIComponent(product.slug)}`}
+			  className="btn"
             >
               ✍️ Je souhaite donner un avis sur ce produit
             </a>
             <a
-              href={testNewUrl}
-              className="block rounded-lg border border-ring bg-white px-3 py-2 text-sm hover:bg-muted"
+              href={`/me/tests/new?slug=${encodeURIComponent(product.slug)}`}
+			  className="btn-outline"
             >
               🧪 Je veux ajouter un test à ce produit
             </a>

@@ -12,8 +12,9 @@ export default async function NewTestPage({
   const session = await getServerSession(authOptions);
   if (!session) redirect("/api/auth/signin?callbackUrl=/me/tests/new");
 
-  const productSlugOrId = searchParams.slug || searchParams.productId;
-  if (!productSlugOrId) return notFound();
+  const productKey = searchParams.slug ?? searchParams.productId ?? null;
+  if (!productKey) return notFound();
+  const productSlugOrId = String(productKey); // ✅ forcé en string
 
   async function action(formData: FormData) {
     "use server";
