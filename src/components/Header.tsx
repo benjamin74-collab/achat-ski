@@ -125,7 +125,7 @@ export default function Header() {
                 </button>
               </>
             ) : (
-              <button onClick={() => signIn(undefined, { callbackUrl: "/admin" })} className="btn">
+              <button onClick={() => signIn(undefined, { callbackUrl: "/after-login" })} className="btn">
                 Se connecter
               </button>
             )}

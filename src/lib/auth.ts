@@ -26,7 +26,6 @@ export const authOptions: NextAuthOptions = {
         const adminEmail = (process.env.ADMIN_EMAIL || "").toLowerCase().trim();
         const adminPass = process.env.ADMIN_PASSWORD || "";
 
-        // Admin “MVP” via variables d’env
         if (email && pass && email === adminEmail && pass === adminPass) {
           const dbUser = await prisma.user.upsert({
             where: { email },
@@ -43,7 +42,7 @@ export const authOptions: NextAuthOptions = {
           return user;
         }
 
-        // (Plus tard) gestion des comptes publics
+        // (Plus tard) comptes publics
         return null;
       },
     }),
@@ -69,10 +68,9 @@ export const authOptions: NextAuthOptions = {
   ],
 
   callbacks: {
-    // ➜ Redirection post-login : ADMIN → /admin, sinon /me
-    async signIn({ user }): Promise<string | boolean> {
-      const role = (user as UserWithRole).role ?? "USER";
-      return role === "ADMIN" ? "/admin" : "/me";
+    // ⚠️ Ne PAS rediriger ici : laisser callbackUrl gérer la destination
+    async signIn(): Promise<boolean> {
+      return true; // autorise la connexion
     },
 
     async jwt({ token, user }): Promise<JWT> {
