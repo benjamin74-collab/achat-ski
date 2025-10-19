@@ -1,6 +1,6 @@
+// src/app/admin/reviews/page.tsx
 import { prisma } from "@/lib/prisma";
 import { approveReview, rejectReview, deleteReview } from "@/app/actions/reviews";
-import NewReviewForm from "./partials/NewReviewForm";
 
 export const revalidate = 0;
 
@@ -27,16 +27,22 @@ export default async function ReviewsAdminPage() {
   ]);
 
   const Row = ({ r }: { r: typeof pending[number] }) => (
-    <li className="rounded-xl border p-3 grid gap-2">
+    <li className="rounded-xl border p-3 grid gap-2 bg-white">
       <div className="text-sm font-medium">
         {r.title} — <span className="text-slate-600">{r.rating}/5</span>
       </div>
       <div className="text-xs text-slate-500">
         Produit : {r.product ? `${r.product.brand} ${r.product.model} ${r.product.season ?? ""}`.trim() : "—"} ·{" "}
-        <a className="underline" href={`/p/${r.product?.slug}`} target="_blank">voir</a>
+        {r.product?.slug ? (
+          <a className="underline" href={`/p/${r.product.slug}`} target="_blank" rel="noreferrer">
+            voir
+          </a>
+        ) : (
+          "—"
+        )}
       </div>
       {r.body ? <div className="text-sm text-slate-700">{r.body}</div> : null}
-      <div className="flex gap-2">
+      <div className="flex flex-wrap gap-2">
         <form action={approveReview.bind(null, r.id)}>
           <button className="btn" type="submit">Approuver</button>
         </form>
@@ -52,11 +58,12 @@ export default async function ReviewsAdminPage() {
 
   return (
     <div className="grid gap-8">
-      <section>
-        <h2 className="text-lg font-semibold">Ajouter un avis</h2>
-        <div className="mt-3 rounded-2xl border p-4 bg-white">
-          <NewReviewForm />
-        </div>
+      {/* Note d’UX : on indique où créer un avis (depuis la fiche produit) */}
+      <section className="rounded-xl border border-dashed p-4 bg-surface/50">
+        <p className="text-sm text-slate-600">
+          La création d’avis se fait désormais depuis chaque fiche produit (liens « Je souhaite donner un avis »). 
+          Cette page sert uniquement à la modération et à la gestion.
+        </p>
       </section>
 
       <section>
