@@ -66,63 +66,57 @@ export const authOptions: NextAuthOptions = {
       : []),
   ],
 
-  callbacks: {
-    // Ne redirige PAS ici avec signIn(); laisse redirect() gérer.
-    async signIn(): Promise<boolean> {
-      return true;
-    },
+	callbacks: {
+	  async signIn() {
+		return true;
+	  },
 
-    async jwt({ token, user }): Promise<JWT> {
-      if (user) {
-        const role = (user as UserWithRole).role ?? "USER";
-        (token as JwtWithRole).id = user.id;
-        (token as JwtWithRole).role = role;
-      }
-      return token;
-    },
+	  async jwt({ token, user }): Promise<JWT> {
+		if (user) {
+		  const role = (user as UserWithRole).role ?? "USER";
+		  (token as JwtWithRole).id = user.id;
+		  (token as JwtWithRole).role = role;
+		}
+		return token;
+	  },
 
-    async session({ session, token }): Promise<Session> {
-      if (session.user) {
-        (session.user as typeof session.user & { id: string; role: RoleLiteral }).id =
-          (token as JwtWithRole).id ?? "";
-        (session.user as typeof session.user & { id: string; role: RoleLiteral }).role =
-          ((token as JwtWithRole).role ?? "USER") as RoleLiteral;
-      }
-      return session;
-    },
+	  async session({ session, token }): Promise<Session> {
+		if (session.user) {
+		  (session.user as typeof session.user & { id: string; role: RoleLiteral }).id =
+			(token as JwtWithRole).id ?? "";
+		  (session.user as typeof session.user & { id: string; role: RoleLiteral }).role =
+			((token as JwtWithRole).role ?? "USER") as RoleLiteral;
+		}
+		return session;
+	  },
 
-    // ✅ Toute redirection passe ici. On choisit /admin pour ADMIN, /me sinon.
-    async redirect({ url, baseUrl, token }): Promise<string> {
-      const jwt = token as JwtWithRole | null;
+	  // v4: pas de `token` ici
+	  async redirect({ url, baseUrl }): Promise<string> {
+		// Quand NextAuth nous renvoie vers la racine ou la page de login,
+		// on passe par /after-login qui décidera via la session (serveur)
+		const toAfterLogin =
+		  url === baseUrl ||
+		  url === `${baseUrl}/` ||
+		  url.endsWith("/api/auth/signin") ||
+		  url.endsWith("/after-login");
 
-      // Si on nous envoie vers la racine ou une page générique (ex: ancien /after-login),
-      // on choisit la destination selon le rôle.
-      const shouldRouteByRole =
-        url === baseUrl ||
-        url === `${baseUrl}/` ||
-        url.endsWith("/after-login") ||
-        url.endsWith("/api/auth/signin");
+		if (toAfterLogin) return `${baseUrl}/after-login`;
 
-      if (shouldRouteByRole) {
-        const dest = jwt?.role === "ADMIN" ? "/admin" : "/me";
-        return `${baseUrl}${dest}`;
-      }
+		// URL relative -> même origine
+		if (url.startsWith("/")) return `${baseUrl}${url}`;
 
-      // URLs relatives -> même origine
-      if (url.startsWith("/")) return `${baseUrl}${url}`;
+		// Même origine -> ok
+		try {
+		  const u = new URL(url);
+		  if (u.origin === baseUrl) return url;
+		} catch {
+		  /* ignore */
+		}
 
-      // Même origine -> ok
-      try {
-        const u = new URL(url);
-        if (u.origin === baseUrl) return url;
-      } catch {
-        /* noop */
-      }
-
-      // fallback
-      return baseUrl;
-    },
-  },
+		// Sécurité/fallback
+		return baseUrl;
+	  },
+	},
 
   secret: process.env.NEXTAUTH_SECRET,
   debug: process.env.NODE_ENV === "development",
