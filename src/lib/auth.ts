@@ -74,8 +74,8 @@ export const authOptions: NextAuthOptions = {
 	  async jwt({ token, user }): Promise<JWT> {
 		if (user) {
 		  const role = (user as UserWithRole).role ?? "USER";
-		  (token as JwtWithRole).id = user.id;
-		  (token as JwtWithRole).role = role;
+		  (token as JWT & { id?: string; role?: RoleLiteral }).id = user.id;
+		  (token as JWT & { id?: string; role?: RoleLiteral }).role = role;
 		}
 		return token;
 	  },
@@ -83,37 +83,37 @@ export const authOptions: NextAuthOptions = {
 	  async session({ session, token }): Promise<Session> {
 		if (session.user) {
 		  (session.user as typeof session.user & { id: string; role: RoleLiteral }).id =
-			(token as JwtWithRole).id ?? "";
+			(token as JWT & { id?: string }).id ?? "";
 		  (session.user as typeof session.user & { id: string; role: RoleLiteral }).role =
-			((token as JwtWithRole).role ?? "USER") as RoleLiteral;
+			((token as JWT & { role?: RoleLiteral }).role ?? "USER") as RoleLiteral;
 		}
 		return session;
 	  },
 
-	  // v4: pas de `token` ici
+	  // ➜ Après /api/auth/signin, on va toujours vers /admin.
 	  async redirect({ url, baseUrl }): Promise<string> {
-		// Quand NextAuth nous renvoie vers la racine ou la page de login,
-		// on passe par /after-login qui décidera via la session (serveur)
-		const toAfterLogin =
-		  url === baseUrl ||
-		  url === `${baseUrl}/` ||
-		  url.endsWith("/api/auth/signin") ||
-		  url.endsWith("/after-login");
-
-		if (toAfterLogin) return `${baseUrl}/after-login`;
+		// cas retour depuis la page de login NextAuth ou racine
+		const u = new URL(url, baseUrl);
+		if (
+		  u.pathname === "/" ||
+		  u.pathname === "/api/auth/signin" ||
+		  u.pathname.startsWith("/api/auth/signin")
+		) {
+		  return `${baseUrl}/admin`;
+		}
 
 		// URL relative -> même origine
 		if (url.startsWith("/")) return `${baseUrl}${url}`;
 
-		// Même origine -> ok
+		// URL absolue même origine
 		try {
-		  const u = new URL(url);
-		  if (u.origin === baseUrl) return url;
+		  const abs = new URL(url);
+		  if (abs.origin === baseUrl) return abs.toString();
 		} catch {
 		  /* ignore */
 		}
 
-		// Sécurité/fallback
+		// fallback sécurisé
 		return baseUrl;
 	  },
 	},
