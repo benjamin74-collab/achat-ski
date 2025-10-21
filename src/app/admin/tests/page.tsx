@@ -1,110 +1,163 @@
 // src/app/admin/tests/page.tsx
-import { getServerSession } from "next-auth";
-import { authOptions } from "@/lib/auth";
-import { notFound } from "next/navigation";
 import { prisma } from "@/lib/prisma";
-import { approveTest, rejectTest } from "@/app/actions/tests";
+import { approveTest, rejectTest, deleteTest } from "@/app/actions/tests";
 
-export const dynamic = "force-dynamic";
+export const revalidate = 0;
 
-type SessionUser = { role?: "ADMIN" | "USER" } | undefined;
+export default async function TestsAdminPage() {
+  const [pending, approved, rejected] = await Promise.all([
+    prisma.editorialTest.findMany({
+      where: { status: "PENDING" },
+      orderBy: { publishedAt: "desc" },
+      include: {
+        product: { select: { slug: true, brand: true, model: true, season: true } },
+      },
+      take: 50,
+    }),
+    prisma.editorialTest.findMany({
+      where: { status: "APPROVED" },
+      orderBy: { publishedAt: "desc" },
+      include: {
+        product: { select: { slug: true, brand: true, model: true, season: true } },
+      },
+      take: 50,
+    }),
+    prisma.editorialTest.findMany({
+      where: { status: "REJECTED" },
+      orderBy: { publishedAt: "desc" },
+      include: {
+        product: { select: { slug: true, brand: true, model: true, season: true } },
+      },
+      take: 50,
+    }),
+  ]);
 
-export default async function AdminTestsPage() {
-  const session = await getServerSession(authOptions);
-  const role = (session?.user as SessionUser)?.role ?? "USER";
-  if (!session || role !== "ADMIN") return notFound();
+  type RowTest = typeof pending[number];
 
-  const tests = await prisma.editorialTest.findMany({
-    orderBy: { publishedAt: "desc" },
-    select: {
-      id: true,
-      title: true,
-      excerpt: true,
-      score: true,
-      sourceName: true,
-      sourceUrl: true,
-      status: true,
-      publishedAt: true,
-      product: { select: { brand: true, model: true, season: true, slug: true } },
-    },
-  });
+  const Row = ({ t }: { t: RowTest }) => {
+    const productLabel = t.product
+      ? [t.product.brand, t.product.model, t.product.season].filter(Boolean).join(" ")
+      : "—";
+
+    return (
+      <li className="rounded-xl border p-3 grid gap-2 bg-white">
+        <div className="text-sm font-medium">
+          {t.title}
+          {typeof t.score === "number" ? (
+            <span className="ml-2 text-slate-600">· note {t.score}</span>
+          ) : null}
+        </div>
+
+        <div className="text-xs text-slate-500">
+          Produit : {productLabel} ·{" "}
+          {t.product?.slug ? (
+            <a
+              className="underline"
+              href={`/p/${t.product.slug}`}
+              target="_blank"
+              rel="noreferrer"
+            >
+              voir
+            </a>
+          ) : (
+            "—"
+          )}
+          {" · "}
+          {t.sourceName}
+          {t.publishedAt ? ` · ${t.publishedAt.toISOString().slice(0, 10)}` : ""}
+          {" · "}
+          <span
+            className={
+              t.status === "APPROVED"
+                ? "text-green-600"
+                : t.status === "REJECTED"
+                ? "text-red-600"
+                : "text-slate-600"
+            }
+          >
+            {t.status.toLowerCase()}
+          </span>
+        </div>
+
+        {t.excerpt ? <div className="text-sm text-slate-700">{t.excerpt}</div> : null}
+
+        {t.sourceUrl ? (
+          <a
+            href={t.sourceUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-xs underline text-slate-600"
+          >
+            Lire la source
+          </a>
+        ) : null}
+
+        <div className="flex flex-wrap gap-2">
+          <form action={approveTest.bind(null, t.id)}>
+            <button className="btn" type="submit">
+              Approuver
+            </button>
+          </form>
+          <form action={rejectTest.bind(null, t.id)}>
+            <button className="btn-secondary" type="submit">
+              Rejeter
+            </button>
+          </form>
+          <form action={deleteTest.bind(null, t.id)}>
+            <button className="btn-outline" type="submit">
+              Supprimer
+            </button>
+          </form>
+        </div>
+      </li>
+    );
+  };
 
   return (
-    <main className="py-6">
-      <h1 className="text-2xl font-semibold">Tests & Essais</h1>
+    <div className="grid gap-8">
+      {/* Note UX : création côté front (fiche produit) */}
+      <section className="rounded-xl border border-dashed p-4 bg-surface/50">
+        <p className="text-sm text-slate-600">
+          La création de tests se fait depuis chaque fiche produit (lien « Je veux ajouter un test à ce produit »).
+          Cette page sert uniquement à la modération et à la gestion.
+        </p>
+      </section>
 
-      <section className="mt-6">
-        <ul className="space-y-3">
-          {tests.map((t) => {
-            const productLabel = [t.product.brand, t.product.model, t.product.season]
-              .filter(Boolean)
-              .join(" ");
-            return (
-              <li key={t.id} className="rounded-xl border p-3">
-                <div className="flex items-start justify-between gap-3">
-                  <div>
-                    <div className="font-medium">{t.title}</div>
-                    <div className="text-xs text-slate-600">
-                      {productLabel} · {t.sourceName} · {t.publishedAt.toISOString().slice(0, 10)}
-                      {typeof t.score === "number" ? ` · note ${t.score}` : ""}
-                      {" · "}
-                      <span className={t.status === "APPROVED" ? "text-green-600" : t.status === "REJECTED" ? "text-red-600" : "text-slate-600"}>
-                        {t.status.toLowerCase()}
-                      </span>
-                    </div>
-                    {t.excerpt ? <p className="mt-1 text-sm text-slate-700">{t.excerpt}</p> : null}
-                    {t.sourceUrl ? (
-                      <a
-                        href={t.sourceUrl}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="mt-1 inline-block text-xs underline text-slate-600"
-                      >
-                        Lire la source
-                      </a>
-                    ) : null}
-                  </div>
-
-                  {/* ❗️Pas de action={...}. On utilise des buttons avec formAction typée */}
-                  <div className="flex items-center gap-2">
-                    <form>
-                      <input type="hidden" name="id" value={t.id} />
-                      <button
-                        className="text-xs px-3 py-1.5 rounded-lg border border-ring hover:bg-green-50 text-green-700"
-                        formAction={async (fd: FormData) => {
-                          const idRaw = fd.get("id");
-                          const id = typeof idRaw === "string" ? Number(idRaw) : Number(idRaw);
-                          if (Number.isFinite(id)) {
-                            await approveTest(id);
-                          }
-                        }}
-                      >
-                        Valider
-                      </button>
-                    </form>
-
-                    <form>
-                      <input type="hidden" name="id" value={t.id} />
-                      <button
-                        className="text-xs px-3 py-1.5 rounded-lg border border-ring hover:bg-red-50 text-red-600"
-                        formAction={async (fd: FormData) => {
-                          const idRaw = fd.get("id");
-                          const id = typeof idRaw === "string" ? Number(idRaw) : Number(idRaw);
-                          if (Number.isFinite(id)) {
-                            await rejectTest(id);
-                          }
-                        }}
-                      >
-                        Rejeter
-                      </button>
-                    </form>
-                  </div>
-                </div>
-              </li>
-            );
-          })}
+      <section>
+        <h2 className="text-lg font-semibold">En attente ({pending.length})</h2>
+        <ul className="mt-3 grid gap-3">
+          {pending.map((t) => (
+            <Row key={t.id} t={t} />
+          ))}
+          {pending.length === 0 && (
+            <p className="text-sm text-slate-500">Aucun test en attente.</p>
+          )}
         </ul>
       </section>
-    </main>
+
+      <section>
+        <h2 className="text-lg font-semibold">Approuvés ({approved.length})</h2>
+        <ul className="mt-3 grid gap-3">
+          {approved.map((t) => (
+            <Row key={t.id} t={t} />
+          ))}
+          {approved.length === 0 && (
+            <p className="text-sm text-slate-500">Aucun test approuvé.</p>
+          )}
+        </ul>
+      </section>
+
+      <section>
+        <h2 className="text-lg font-semibold">Rejetés ({rejected.length})</h2>
+        <ul className="mt-3 grid gap-3">
+          {rejected.map((t) => (
+            <Row key={t.id} t={t} />
+          ))}
+          {rejected.length === 0 && (
+            <p className="text-sm text-slate-500">Aucun test rejeté.</p>
+          )}
+        </ul>
+      </section>
+    </div>
   );
 }
