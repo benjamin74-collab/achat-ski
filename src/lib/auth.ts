@@ -8,6 +8,7 @@ import { Role } from "@prisma/client";
 
 type RoleLiteral = "ADMIN" | "USER";
 type UserWithRole = User & { role?: RoleLiteral };
+type JwtWithRole = JWT & { id?: string; role?: RoleLiteral };
 
 export const authOptions: NextAuthOptions = {
   session: { strategy: "jwt" },
@@ -41,9 +42,7 @@ export const authOptions: NextAuthOptions = {
           };
           return user;
         }
-
-        // (Plus tard) comptes publics
-        return null;
+        return null; // (plus tard) comptes publics
       },
     }),
 
@@ -68,16 +67,16 @@ export const authOptions: NextAuthOptions = {
   ],
 
   callbacks: {
-    // ⚠️ Ne PAS rediriger ici : laisser callbackUrl gérer la destination
+    // Ne redirige PAS ici avec signIn(); laisse redirect() gérer.
     async signIn(): Promise<boolean> {
-      return true; // autorise la connexion
+      return true;
     },
 
     async jwt({ token, user }): Promise<JWT> {
       if (user) {
         const role = (user as UserWithRole).role ?? "USER";
-        (token as JWT & { id?: string; role?: RoleLiteral }).id = user.id;
-        (token as JWT & { id?: string; role?: RoleLiteral }).role = role;
+        (token as JwtWithRole).id = user.id;
+        (token as JwtWithRole).role = role;
       }
       return token;
     },
@@ -85,11 +84,43 @@ export const authOptions: NextAuthOptions = {
     async session({ session, token }): Promise<Session> {
       if (session.user) {
         (session.user as typeof session.user & { id: string; role: RoleLiteral }).id =
-          (token as JWT & { id?: string }).id ?? "";
+          (token as JwtWithRole).id ?? "";
         (session.user as typeof session.user & { id: string; role: RoleLiteral }).role =
-          ((token as JWT & { role?: RoleLiteral }).role ?? "USER") as RoleLiteral;
+          ((token as JwtWithRole).role ?? "USER") as RoleLiteral;
       }
       return session;
+    },
+
+    // ✅ Toute redirection passe ici. On choisit /admin pour ADMIN, /me sinon.
+    async redirect({ url, baseUrl, token }): Promise<string> {
+      const jwt = token as JwtWithRole | null;
+
+      // Si on nous envoie vers la racine ou une page générique (ex: ancien /after-login),
+      // on choisit la destination selon le rôle.
+      const shouldRouteByRole =
+        url === baseUrl ||
+        url === `${baseUrl}/` ||
+        url.endsWith("/after-login") ||
+        url.endsWith("/api/auth/signin");
+
+      if (shouldRouteByRole) {
+        const dest = jwt?.role === "ADMIN" ? "/admin" : "/me";
+        return `${baseUrl}${dest}`;
+      }
+
+      // URLs relatives -> même origine
+      if (url.startsWith("/")) return `${baseUrl}${url}`;
+
+      // Même origine -> ok
+      try {
+        const u = new URL(url);
+        if (u.origin === baseUrl) return url;
+      } catch {
+        /* noop */
+      }
+
+      // fallback
+      return baseUrl;
     },
   },
 

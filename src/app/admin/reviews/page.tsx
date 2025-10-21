@@ -61,7 +61,7 @@ export default async function ReviewsAdminPage() {
       {/* Note d’UX : on indique où créer un avis (depuis la fiche produit) */}
       <section className="rounded-xl border border-dashed p-4 bg-surface/50">
         <p className="text-sm text-slate-600">
-          La création d’avis se fait désormais depuis chaque fiche produit (liens « Je souhaite donner un avis »). 
+          La création d’avis se fait depuis chaque fiche produit (liens « Je souhaite donner un avis »). 
           Cette page sert uniquement à la modération et à la gestion.
         </p>
       </section>
