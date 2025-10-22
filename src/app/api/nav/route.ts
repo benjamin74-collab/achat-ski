@@ -7,7 +7,7 @@ type NavItem = {
   name: string;
   slug: string;
   parentId: number | null;
-  sortOrder: number;
+  order: number;
   children: NavItem[];
 };
 
@@ -15,16 +15,14 @@ export const runtime = "nodejs";
 
 export async function GET() {
   const rows = await prisma.category.findMany({
-    where: { isNav: true, published: true },
-    orderBy: [{ sortOrder: "asc" }, { name: "asc" }],
-    select: { id: true, name: true, slug: true, parentId: true, sortOrder: true },
+    where: { isInMenu: true, published: true },
+    orderBy: [{ order: "asc" }, { name: "asc" }],
+    select: { id: true, name: true, slug: true, parentId: true, order: true },
   });
 
   // index par id
   const byId = new Map<number, NavItem>();
-  rows.forEach((r) =>
-    byId.set(r.id, { ...r, children: [] })
-  );
+  rows.forEach((r) => byId.set(r.id, { ...r, children: [] }));
 
   // relier parents/enfants
   const roots: NavItem[] = [];
