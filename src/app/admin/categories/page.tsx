@@ -12,19 +12,18 @@ export default async function AdminCategoriesPage() {
   // 🔒 Admin only
   if (!session || role !== "ADMIN") return notFound();
 
-  // ✅ Aligne avec le schéma: isInMenu / order + parent relation
+  // ✅ Utilise uniquement `select`, pas de `include`
   const cats = await prisma.category.findMany({
-    include: { parent: { select: { name: true } } },
     orderBy: [{ parentId: "asc" }, { order: "asc" }, { name: "asc" }],
     select: {
       id: true,
       name: true,
       slug: true,
       parentId: true,
-      parent: { select: { name: true } },
       isInMenu: true,
       published: true,
       order: true,
+      parent: { select: { name: true } },
     },
   });
 
