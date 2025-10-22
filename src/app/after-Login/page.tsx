@@ -6,8 +6,7 @@ import { redirect } from "next/navigation";
 export default async function AfterLoginPage() {
   const session = await getServerSession(authOptions);
 
-  // non connecté → page d’accueil
-  if (!session?.user) redirect("/");
+  if (!session?.user) redirect("/"); // pas connecté -> accueil
 
   const role = session.user.role;
   redirect(role === "ADMIN" ? "/admin" : "/me");

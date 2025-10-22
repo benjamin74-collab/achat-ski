@@ -77,17 +77,27 @@ model Product {
   id          Int             @id @default(autoincrement())
   brand       String
   model       String
-  season      String? // ex: "2025/26"
-  category    String? // all-mountain, rando, freeride... (on gardera un lien fort plus tard)
+  season      String?         // ex: "2025/26"
+
+  // ⚠️ Migration en douceur : on introduit la vraie relation vers Category.
+  // Ancien champ libre (texte) mis en commentaire si tu veux couper plus tard :
+  // category    String?      // all-mountain, rando, freeride... (deprecated)
+
+  // Nouvelle relation (principale) vers Category
+  categoryId  Int?
+  category    Category?       @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+
   gtin        String?         @unique
   slug        String          @unique
   attributes  Json?
   createdAt   DateTime        @default(now())
   description String?
   skus        Sku[]
-  clicks      Click[] // back-relation pour Click.product
+  clicks      Click[]         // back-relation pour Click.product
   reviews     Review[]
   tests       EditorialTest[]
+
+  @@index([categoryId])
 }
 
 model Sku {
@@ -191,33 +201,45 @@ model EditorialTest {
 }
 
 /* -----------------------------
-   Catégories HIÉRARCHIQUES + SEO
+   Catégories HIÉRARCHIQUES + SEO + MAPPINGS AFFILIÉS
 ------------------------------ */
 model Category {
-  id              Int      @id @default(autoincrement())
-  slug            String   @unique
+  id              Int       @id @default(autoincrement())
+  slug            String    @unique
   name            String
 
   // Hiérarchie
   parentId        Int?
-  parent          Category?   @relation("CategoryHierarchy", fields: [parentId], references: [id], onDelete: SetNull)
-  children        Category[]  @relation("CategoryHierarchy")
+  parent          Category?  @relation("CategoryHierarchy", fields: [parentId], references: [id], onDelete: SetNull)
+  children        Category[] @relation("CategoryHierarchy")
 
   // Contenu & SEO
   intro           String?
-  content         String?
+  content         String?     // Markdown ou texte
   metaTitle       String?
   metaDescription String?
 
-  // Navigation & tri
-  isNav           Boolean  @default(true)   // inclure dans le menu
-  sortOrder       Int      @default(0)      // ordre au sein du même parent
+  // Navigation & tri (aligne avec ton BO : Menu, Ordre, Publié)
+  isInMenu        Boolean  @default(true)  // afficher dans le menu
+  order           Int      @default(0)     // ordre dans le menu / sous-menu
   published       Boolean  @default(true)
+
+  // Mappings affiliés (chaînes exactes depuis les flux)
+  mapKwanko       String[]  // ex: ["Ski > All-Mountain", "Skis polyvalents"]
+  mapEkosport     String[]
+  mapSnowleader   String[]
+  mapGlisshop     String[]
+
+  // Aliases / slugs secondaires (utile pour 301, recherche, variations)
+  aliases         String[]
+
+  // Relation inverse depuis Product (si tu veux requêter depuis la catégorie)
+  products        Product[]
 
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
 
-  @@index([parentId, sortOrder])
+  @@index([parentId, order])
   @@index([slug])
   @@index([published])
 }
