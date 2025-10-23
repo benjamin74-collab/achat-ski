@@ -38,6 +38,7 @@ export default async function ProductPage({ params }: PageProps) {
     prisma.product.findUnique({
       where: { slug: params.slug },
       include: {
+        category: { select: { name: true, slug: true } }, // <- relation catégorie
         skus: {
           select: {
             id: true,
@@ -131,14 +132,15 @@ export default async function ProductPage({ params }: PageProps) {
     ["Marque", product.brand ?? "—"],
     ["Modèle", product.model ?? "—"],
     ["Saison", product.season ?? "—"],
-    ["Catégorie", product.category ?? "—"],
+    ["Catégorie", product.category?.name ?? "—"], // <- nom de la catégorie
   ];
 
+  // Produits similaires : même marque et même catégorie (relation)
   const related = await prisma.product.findMany({
     where: {
       id: { not: product.id },
       ...(product.brand ? { brand: product.brand } : {}),
-      ...(product.category ? { category: product.category } : {}),
+      ...(product.category?.slug ? { category: { is: { slug: product.category.slug } } } : {}),
     },
     take: 6,
     orderBy: { createdAt: "desc" },
@@ -155,7 +157,7 @@ export default async function ProductPage({ params }: PageProps) {
   // ---- Tests
   const tests = product.tests;
 
-  // ---- JSON-LD (inchangé)
+  // ---- JSON-LD
   const inStockOffers = offersFlat.filter((o) => o.inStock);
   const hasStock = inStockOffers.length > 0;
 
@@ -198,7 +200,7 @@ export default async function ProductPage({ params }: PageProps) {
     brand: product.brand ? { "@type": "Brand", name: product.brand } : undefined,
     sku: product.skus?.[0]?.variant ?? undefined,
     gtin13: product.skus?.[0]?.gtin ?? undefined,
-    category: product.category ?? undefined,
+    category: product.category?.name ?? undefined, // <- nom de la catégorie
     url: canonicalUrl,
     ...(offersFlat.length > 0
       ? {
@@ -244,7 +246,10 @@ export default async function ProductPage({ params }: PageProps) {
       <Breadcrumbs
         items={[
           { label: "Accueil", href: "/" },
-          { label: product.category ?? "Catégorie", href: product.category ? `/c/${product.category}` : undefined },
+          {
+            label: product.category?.name ?? "Catégorie",
+            href: product.category?.slug ? `/c/${product.category.slug}` : undefined,
+          },
           { label: title },
         ]}
       />
@@ -270,7 +275,7 @@ export default async function ProductPage({ params }: PageProps) {
           <h1 className="text-2xl font-semibold">{title}</h1>
 
           <div className="mt-1 text-neutral-600">
-            {product.category ?? "—"} ·{" "}
+            {product.category?.name ?? "—"} ·{" "}
             {product.brand ? (
               <a href={`/b/${encodeURIComponent(product.brand)}`} className="underline hover:no-underline">
                 {product.brand}
