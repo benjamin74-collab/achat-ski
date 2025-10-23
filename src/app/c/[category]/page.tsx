@@ -1,3 +1,4 @@
+// src/app/c/[category]/page.tsx
 import Link from "next/link";
 import type { Prisma } from "@prisma/client";
 import { prisma } from "../../../lib/prisma";
@@ -49,23 +50,23 @@ export default async function CategoryPage({
   params: Promise<PageParams>;
   searchParams?: { [key: string]: string | string[] | undefined };
 }) {
-  const { category } = await params;
+  const { category } = await params; // slug de catégorie
   const parsed = parseSearchParams(searchParams);
   const { page, sort, brands, season } = parsed;
 
   const pageSize = 12;
   const skip = (Math.max(1, page) - 1) * pageSize;
 
-  // listes pour filtres (marques, saisons)
+  // Listes pour filtres (marques, saisons) — filtrées par la relation Category.slug
   const [brandRows, seasonRows] = await Promise.all([
     prisma.product.findMany({
-      where: { category },
+      where: { category: { is: { slug: category } } },
       select: { brand: true },
       distinct: ["brand"],
       orderBy: { brand: "asc" },
     }),
     prisma.product.findMany({
-      where: { category },
+      where: { category: { is: { slug: category } } },
       select: { season: true },
       distinct: ["season"],
       orderBy: { season: "desc" },
@@ -75,11 +76,13 @@ export default async function CategoryPage({
   const allSeasons = seasonRows.map((s) => s.season!).filter(Boolean);
 
   // Filtre DB typé
-  const where: Prisma.ProductWhereInput = { category };
+  const where: Prisma.ProductWhereInput = {
+    category: { is: { slug: category } },
+  };
   if (brands.length) where.brand = { in: brands };
   if (season) where.season = season;
 
-  // Récup produits + offres (pour calcul min total côté serveur)
+  // Récup produits + offres (+ relation category pour l'affichage)
   const [total, productsRaw] = await Promise.all([
     prisma.product.count({ where }),
     prisma.product.findMany({
@@ -88,6 +91,7 @@ export default async function CategoryPage({
       skip,
       take: pageSize,
       include: {
+        category: { select: { name: true, slug: true } },
         skus: { include: { offers: true } },
       },
     }),
@@ -152,7 +156,7 @@ export default async function CategoryPage({
                   key={p.id}
                   href={`/p/${p.slug}`}
                   title={cardTitle}
-                  subtitle={p.category ?? undefined}
+                  subtitle={p.category?.name ?? undefined}
                   // imageUrl={...} // si tu ajoutes une image dans ta requête, passe-la ici
                   minPriceCents={p.minTotal ?? null}
                   // offerCount={...} // si tu calcules un nombre d'offres, passe-le ici
