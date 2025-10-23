@@ -5,7 +5,6 @@ import { prisma } from "../../../lib/prisma";
 import ProductCard from "../../../components/ProductCard";
 import FiltersBar from "../../../components/FiltersBar";
 import SortSelect from "../../../components/SortSelect";
-import { categoryLabel } from "../../../lib/categories";
 import { totalCents } from "../../../lib/format";
 import Breadcrumbs from "../../../components/Breadcrumbs";
 
@@ -54,6 +53,30 @@ export default async function CategoryPage({
   const parsed = parseSearchParams(searchParams);
   const { page, sort, brands, season } = parsed;
 
+  // --- Charger la catégorie (SEO + arborescence)
+  const cat = await prisma.category.findUnique({
+    where: { slug: category },
+    include: {
+      children: {
+        where: { published: true, isInMenu: true },
+        orderBy: [{ order: "asc" }, { name: "asc" }],
+        select: { id: true, slug: true, name: true },
+      },
+    },
+  });
+  if (!cat || !cat.published) {
+    // 404 si inexistante ou non publiée
+    // on garde la convention Next: throw notFound via route segment
+    // mais ici, simple redirection UI (évite import notFound pour rester minimal)
+    // Si tu préfères, tu peux importer notFound() et l’appeler.
+    return (
+      <div className="container-page py-8">
+        <Breadcrumbs items={[{ href: "/", label: "Accueil" }]} />
+        <h1 className="text-xl font-semibold">Catégorie introuvable</h1>
+      </div>
+    );
+  }
+
   const pageSize = 12;
   const skip = (Math.max(1, page) - 1) * pageSize;
 
@@ -87,7 +110,7 @@ export default async function CategoryPage({
     prisma.product.count({ where }),
     prisma.product.findMany({
       where,
-      orderBy: sort === "newest" ? { id: "desc" } : undefined, // tri par défaut pour "newest"
+      orderBy: sort === "newest" ? { id: "asc" } : undefined, // "newest": à ajuster selon ton champ (id ou createdAt)
       skip,
       take: pageSize,
       include: {
@@ -119,7 +142,6 @@ export default async function CategoryPage({
       : products;
 
   const pages = Math.max(1, Math.ceil(total / pageSize));
-  const title = categoryLabel(category);
 
   return (
     <div className="container-page py-8">
@@ -135,19 +157,48 @@ export default async function CategoryPage({
             items={[
               { href: "/", label: "Accueil" },
               { label: "Catégories", href: "/#categories" },
-              { label: title },
+              { label: cat.name },
             ]}
           />
+
+          {/* En-tête + stats */}
           <div className="card p-4 flex items-center justify-between">
             <div>
-              <h1 className="text-xl font-bold">{title}</h1>
+              <h1 className="text-xl font-bold">{cat.name}</h1>
               <p className="text-neutral-600 text-sm">
                 {total} produit{total > 1 ? "s" : ""} trouvé{total > 1 ? "s" : ""}.
               </p>
+              {cat.intro && <p className="text-neutral-600 text-sm mt-1">{cat.intro}</p>}
             </div>
             <SortSelect />
           </div>
 
+          {/* Contenu SEO (markdown/texte) */}
+          {cat.content && cat.content.trim() && (
+            <section className="rounded-2xl border border-ring bg-surface/60 p-5 shadow-card">
+              <article className="prose max-w-none">
+                <pre className="whitespace-pre-wrap text-sm">{cat.content}</pre>
+              </article>
+            </section>
+          )}
+
+          {/* Sous-catégories */}
+          {cat.children.length > 0 && (
+            <section className="space-y-3">
+              <h2 className="text-lg font-semibold">Sous-catégories</h2>
+              <ul className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
+                {cat.children.map((sc) => (
+                  <li key={sc.id} className="rounded-xl border p-4 hover:bg-accent/30">
+                    <a href={`/c/${sc.slug}`} className="font-medium">
+                      {sc.name}
+                    </a>
+                  </li>
+                ))}
+              </ul>
+            </section>
+          )}
+
+          {/* Liste produits */}
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
             {sorted.map((p) => {
               const cardTitle = [p.brand, p.model, p.season].filter(Boolean).join(" ");
@@ -157,9 +208,7 @@ export default async function CategoryPage({
                   href={`/p/${p.slug}`}
                   title={cardTitle}
                   subtitle={p.category?.name ?? undefined}
-                  // imageUrl={...} // si tu ajoutes une image dans ta requête, passe-la ici
                   minPriceCents={p.minTotal ?? null}
-                  // offerCount={...} // si tu calcules un nombre d'offres, passe-le ici
                 />
               );
             })}
@@ -195,9 +244,17 @@ export default async function CategoryPage({
 
 export async function generateMetadata({ params }: { params: Promise<PageParams> }) {
   const { category } = await params;
-  const title = `${categoryLabel(category)} — Achat-Ski`;
-  return {
-    title,
-    description: `Comparez les prix des produits ${categoryLabel(category)} chez nos marchands partenaires.`,
-  };
+  const cat = await prisma.category.findUnique({
+    where: { slug: category },
+    select: { name: true, metaTitle: true, metaDescription: true, intro: true, published: true },
+  });
+
+  if (!cat || !cat.published) {
+    return { title: "Catégorie introuvable — Achat-Ski", description: "Cette catégorie n'existe pas ou n'est pas publiée." };
+  }
+
+  const title = cat.metaTitle || `${cat.name} — Achat-Ski`;
+  const description = cat.metaDescription || cat.intro || `Guide d'achat et comparatif ${cat.name}.`;
+
+  return { title, description };
 }
