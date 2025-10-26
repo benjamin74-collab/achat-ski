@@ -8,11 +8,8 @@ import Link from "next/link";
 export default async function AdminCategoriesPage() {
   const session = await getServerSession(authOptions);
   const role = session?.user?.role;
-
-  // 🔒 Admin only
   if (!session || role !== "ADMIN") return notFound();
 
-  // ✅ Utilise uniquement `select`, pas de `include`
   const cats = await prisma.category.findMany({
     orderBy: [{ parentId: "asc" }, { order: "asc" }, { name: "asc" }],
     select: {
@@ -53,6 +50,7 @@ export default async function AdminCategoriesPage() {
               <th className="border border-ring px-3 py-2 text-center">Menu</th>
               <th className="border border-ring px-3 py-2 text-center">Publié</th>
               <th className="border border-ring px-3 py-2 text-right">Ordre</th>
+              <th className="border border-ring px-3 py-2 text-right">Actions</th>
             </tr>
           </thead>
           <tbody>
@@ -70,6 +68,11 @@ export default async function AdminCategoriesPage() {
                   {c.published ? "✅" : "❌"}
                 </td>
                 <td className="border border-ring px-3 py-2 text-right">{c.order}</td>
+                <td className="border border-ring px-3 py-2 text-right">
+                  <Link href={`/admin/categories/${c.slug}`} className="underline">
+                    Modifier
+                  </Link>
+                </td>
               </tr>
             ))}
           </tbody>

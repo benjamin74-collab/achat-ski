@@ -7,6 +7,7 @@ import FiltersBar from "../../../components/FiltersBar";
 import SortSelect from "../../../components/SortSelect";
 import { totalCents } from "../../../lib/format";
 import Breadcrumbs from "../../../components/Breadcrumbs";
+import DOMPurify from "isomorphic-dompurify";
 
 export const revalidate = 120;
 
@@ -65,10 +66,6 @@ export default async function CategoryPage({
     },
   });
   if (!cat || !cat.published) {
-    // 404 si inexistante ou non publiée
-    // on garde la convention Next: throw notFound via route segment
-    // mais ici, simple redirection UI (évite import notFound pour rester minimal)
-    // Si tu préfères, tu peux importer notFound() et l’appeler.
     return (
       <div className="container-page py-8">
         <Breadcrumbs items={[{ href: "/", label: "Accueil" }]} />
@@ -80,7 +77,7 @@ export default async function CategoryPage({
   const pageSize = 12;
   const skip = (Math.max(1, page) - 1) * pageSize;
 
-  // Listes pour filtres (marques, saisons) — filtrées par la relation Category.slug
+  // Listes pour filtres (marques, saisons)
   const [brandRows, seasonRows] = await Promise.all([
     prisma.product.findMany({
       where: { category: { is: { slug: category } } },
@@ -105,12 +102,12 @@ export default async function CategoryPage({
   if (brands.length) where.brand = { in: brands };
   if (season) where.season = season;
 
-  // Récup produits + offres (+ relation category pour l'affichage)
+  // Récup produits + offres
   const [total, productsRaw] = await Promise.all([
     prisma.product.count({ where }),
     prisma.product.findMany({
       where,
-      orderBy: sort === "newest" ? { id: "asc" } : undefined, // "newest": à ajuster selon ton champ (id ou createdAt)
+      orderBy: sort === "newest" ? { id: "asc" } : undefined,
       skip,
       take: pageSize,
       include: {
@@ -143,6 +140,9 @@ export default async function CategoryPage({
 
   const pages = Math.max(1, Math.ceil(total / pageSize));
 
+  // Sanitize HTML content
+  const safeHtml = cat.content ? DOMPurify.sanitize(cat.content) : "";
+
   return (
     <div className="container-page py-8">
       <div className="flex flex-col gap-4 md:grid md:grid-cols-12">
@@ -173,12 +173,10 @@ export default async function CategoryPage({
             <SortSelect />
           </div>
 
-          {/* Contenu SEO (markdown/texte) */}
-          {cat.content && cat.content.trim() && (
+          {/* Contenu SEO (HTML collé) */}
+          {safeHtml && (
             <section className="rounded-2xl border border-ring bg-surface/60 p-5 shadow-card">
-              <article className="prose max-w-none">
-                <pre className="whitespace-pre-wrap text-sm">{cat.content}</pre>
-              </article>
+              <article className="prose max-w-none" dangerouslySetInnerHTML={{ __html: safeHtml }} />
             </section>
           )}
 

@@ -1,4 +1,4 @@
-// src/app/admin/categories/partials/NewCategoryForm.tsx
+// src/app/admin/categories/partials/EditCategoryForm.tsx
 "use client";
 
 import { useState, FormEvent } from "react";
@@ -7,17 +7,37 @@ import HtmlEditor from "./HtmlEditor";
 
 export type ParentOption = { id: number; name: string };
 
-type Props = {
-  parents?: ParentOption[];
+type Initial = {
+  id: number;
+  slug: string;
+  name: string;
+  intro: string | null;
+  content: string | null;
+  metaTitle: string | null;
+  metaDescription: string | null;
+  parentId: number | null;
+  isInMenu: boolean;
+  order: number;
+  published: boolean;
+  mapKwanko: string[];
+  mapEkosport: string[];
+  mapSnowleader: string[];
+  mapGlisshop: string[];
+  aliases: string[];
 };
 
-export default function NewCategoryForm({ parents = [] }: Props) {
+export default function EditCategoryForm({
+  initial,
+  parents = [],
+}: {
+  initial: Initial;
+  parents?: ParentOption[];
+}) {
   const [loading, setLoading] = useState(false);
   const [ok, setOk] = useState<string | null>(null);
   const [err, setErr] = useState<string | null>(null);
 
-  const strToArray = (v: FormDataEntryValue | null) =>
-    v ? String(v).split("\n").map(s => s.trim()).filter(Boolean) : [];
+  const arrToLines = (a?: string[] | null) => (a && a.length ? a.join("\n") : "");
 
   async function onSubmit(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -26,10 +46,9 @@ export default function NewCategoryForm({ parents = [] }: Props) {
     setLoading(true);
 
     const fd = new FormData(e.currentTarget);
-
     try {
       await upsertCategory({
-        slug: String(fd.get("slug") ?? "").trim(),
+        slug: String(fd.get("slug") ?? "").trim(), // on autorise le changement si besoin
         name: String(fd.get("name") ?? "").trim(),
 
         intro: fd.get("intro") ? String(fd.get("intro")) : undefined,
@@ -37,21 +56,19 @@ export default function NewCategoryForm({ parents = [] }: Props) {
         metaTitle: fd.get("metaTitle") ? String(fd.get("metaTitle")) : undefined,
         metaDescription: fd.get("metaDescription") ? String(fd.get("metaDescription")) : undefined,
 
-        published: String(fd.get("published") ?? "true") === "true",
-
         parentId: String(fd.get("parentId") ?? "") || null,
         isInMenu: String(fd.get("isInMenu") ?? "true") === "true",
         order: Number(fd.get("order") ?? 0),
+        published: String(fd.get("published") ?? "true") === "true",
 
-        mapKwanko: strToArray(fd.get("mapKwanko")),
-        mapEkosport: strToArray(fd.get("mapEkosport")),
-        mapSnowleader: strToArray(fd.get("mapSnowleader")),
-        mapGlisshop: strToArray(fd.get("mapGlisshop")),
-        aliases: strToArray(fd.get("aliases")),
+        mapKwanko: String(fd.get("mapKwanko") || "").split("\n").map(s => s.trim()).filter(Boolean),
+        mapEkosport: String(fd.get("mapEkosport") || "").split("\n").map(s => s.trim()).filter(Boolean),
+        mapSnowleader: String(fd.get("mapSnowleader") || "").split("\n").map(s => s.trim()).filter(Boolean),
+        mapGlisshop: String(fd.get("mapGlisshop") || "").split("\n").map(s => s.trim()).filter(Boolean),
+        aliases: String(fd.get("aliases") || "").split("\n").map(s => s.trim()).filter(Boolean),
       });
 
-      setOk("Catégorie enregistrée !");
-      (e.currentTarget as HTMLFormElement).reset();
+      setOk("Catégorie mise à jour !");
     } catch (error: unknown) {
       setErr(error instanceof Error ? error.message : "Erreur inconnue");
     } finally {
@@ -65,11 +82,11 @@ export default function NewCategoryForm({ parents = [] }: Props) {
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
         <div className="grid gap-1">
           <label className="text-sm">Slug</label>
-          <input name="slug" required className="rounded-xl border border-ring px-3 py-2" placeholder="skis-all-mountain" />
+          <input name="slug" required defaultValue={initial.slug} className="rounded-xl border border-ring px-3 py-2" />
         </div>
         <div className="grid gap-1">
           <label className="text-sm">Nom</label>
-          <input name="name" required className="rounded-xl border border-ring px-3 py-2" placeholder="Skis All-Mountain" />
+          <input name="name" required defaultValue={initial.name} className="rounded-xl border border-ring px-3 py-2" />
         </div>
       </div>
 
@@ -77,7 +94,7 @@ export default function NewCategoryForm({ parents = [] }: Props) {
       <div className="grid grid-cols-1 sm:grid-cols-4 gap-3">
         <div className="grid gap-1">
           <label className="text-sm">Parent</label>
-          <select name="parentId" className="rounded-xl border border-ring px-3 py-2">
+          <select name="parentId" className="rounded-xl border border-ring px-3 py-2" defaultValue={initial.parentId ?? ""}>
             <option value="">— Aucun —</option>
             {parents.map((p) => (
               <option key={p.id} value={p.id}>{p.name}</option>
@@ -87,7 +104,7 @@ export default function NewCategoryForm({ parents = [] }: Props) {
 
         <div className="grid gap-1">
           <label className="text-sm">Afficher dans le menu ?</label>
-          <select name="isInMenu" defaultValue="true" className="rounded-xl border border-ring px-3 py-2">
+          <select name="isInMenu" defaultValue={initial.isInMenu ? "true" : "false"} className="rounded-xl border border-ring px-3 py-2">
             <option value="true">Oui</option>
             <option value="false">Non</option>
           </select>
@@ -95,12 +112,12 @@ export default function NewCategoryForm({ parents = [] }: Props) {
 
         <div className="grid gap-1">
           <label className="text-sm">Ordre (menu)</label>
-          <input name="order" type="number" defaultValue={0} className="rounded-xl border border-ring px-3 py-2" />
+          <input name="order" type="number" defaultValue={initial.order ?? 0} className="rounded-xl border border-ring px-3 py-2" />
         </div>
 
         <div className="grid gap-1">
           <label className="text-sm">Publié ?</label>
-          <select name="published" defaultValue="true" className="rounded-xl border border-ring px-3 py-2">
+          <select name="published" defaultValue={initial.published ? "true" : "false"} className="rounded-xl border border-ring px-3 py-2">
             <option value="true">Oui</option>
             <option value="false">Non</option>
           </select>
@@ -110,51 +127,51 @@ export default function NewCategoryForm({ parents = [] }: Props) {
       {/* Intro */}
       <div className="grid gap-1">
         <label className="text-sm">Intro (court)</label>
-        <input name="intro" className="rounded-xl border border-ring px-3 py-2" />
+        <input name="intro" defaultValue={initial.intro ?? ""} className="rounded-xl border border-ring px-3 py-2" />
       </div>
 
       {/* Contenu HTML + aperçu */}
-      <HtmlEditor name="content" label="Contenu (HTML)" rows={12} />
+      <HtmlEditor name="content" label="Contenu (HTML)" rows={12} initialValue={initial.content ?? ""} />
 
       {/* SEO */}
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
         <div className="grid gap-1">
           <label className="text-sm">Meta title</label>
-          <input name="metaTitle" className="rounded-xl border border-ring px-3 py-2" />
+          <input name="metaTitle" defaultValue={initial.metaTitle ?? ""} className="rounded-xl border border-ring px-3 py-2" />
         </div>
         <div className="grid gap-1">
           <label className="text-sm">Meta description</label>
-          <input name="metaDescription" className="rounded-xl border border-ring px-3 py-2" />
+          <input name="metaDescription" defaultValue={initial.metaDescription ?? ""} className="rounded-xl border border-ring px-3 py-2" />
         </div>
       </div>
 
       {/* Mappings affiliés */}
       <div className="grid gap-1">
         <label className="text-sm">Mappings Kwanko (1 par ligne)</label>
-        <textarea name="mapKwanko" rows={3} className="rounded-xl border border-ring px-3 py-2" placeholder={"Ski > All-Mountain\nSkis polyvalents"} />
+        <textarea name="mapKwanko" rows={3} defaultValue={arrToLines(initial.mapKwanko)} className="rounded-xl border border-ring px-3 py-2" />
       </div>
       <div className="grid gap-1">
         <label className="text-sm">Mappings Ekosport (1 par ligne)</label>
-        <textarea name="mapEkosport" rows={3} className="rounded-xl border border-ring px-3 py-2" />
+        <textarea name="mapEkosport" rows={3} defaultValue={arrToLines(initial.mapEkosport)} className="rounded-xl border border-ring px-3 py-2" />
       </div>
       <div className="grid gap-1">
         <label className="text-sm">Mappings Snowleader (1 par ligne)</label>
-        <textarea name="mapSnowleader" rows={3} className="rounded-xl border border-ring px-3 py-2" />
+        <textarea name="mapSnowleader" rows={3} defaultValue={arrToLines(initial.mapSnowleader)} className="rounded-xl border border-ring px-3 py-2" />
       </div>
       <div className="grid gap-1">
         <label className="text-sm">Mappings Glisshop (1 par ligne)</label>
-        <textarea name="mapGlisshop" rows={3} className="rounded-xl border border-ring px-3 py-2" />
+        <textarea name="mapGlisshop" rows={3} defaultValue={arrToLines(initial.mapGlisshop)} className="rounded-xl border border-ring px-3 py-2" />
       </div>
 
       {/* Aliases */}
       <div className="grid gap-1">
         <label className="text-sm">Aliases / Slugs secondaires (1 par ligne)</label>
-        <textarea name="aliases" rows={2} className="rounded-xl border border-ring px-3 py-2" placeholder={"allmountain\npolyvalent"} />
+        <textarea name="aliases" rows={2} defaultValue={arrToLines(initial.aliases)} className="rounded-xl border border-ring px-3 py-2" />
       </div>
 
       <div className="flex items-center gap-3">
         <button className="btn" type="submit" disabled={loading}>
-          {loading ? "Enregistrement..." : "Enregistrer"}
+          {loading ? "Mise à jour..." : "Enregistrer"}
         </button>
         {ok && <span className="text-sm text-green-600">{ok}</span>}
         {err && <span className="text-sm text-red-600">{err}</span>}
