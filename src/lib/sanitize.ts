@@ -1,12 +1,9 @@
 // src/lib/sanitize.ts
 import xss from "xss";
 
-/**
- * Sanitize HTML côté serveur, sans jsdom.
- * Adapte la whitelist selon tes besoins SEO/UX.
- */
 export function sanitizeHtml(input: string) {
-  const whiteList: xss.IWhiteList = {
+  // liste blanche minimale (ajuste selon tes besoins)
+  const whiteList = {
     h1: [], h2: [], h3: [], h4: [], h5: [], h6: [],
     p: [], br: [], hr: [], blockquote: [],
     strong: [], b: [], em: [], i: [], u: [], s: [], mark: [],
@@ -21,32 +18,25 @@ export function sanitizeHtml(input: string) {
     section: ["class"],
     article: ["class"],
     details: [], summary: []
-  };
+  } as Record<string, string[]>;
 
-  const options: xss.IFilterXSSOptions = {
+  const options = {
     whiteList,
-    stripIgnoreTag: true,       // supprime les tags non whitelistés
+    stripIgnoreTag: true,
     stripIgnoreTagBody: ["script", "style", "iframe"],
-    css: false,                 // pas de CSS inline
-    onTagAttr(tag, name, value) {
-      // Sécurise <a>
+    css: false,
+    onTagAttr(tag: string, name: string, value: string) {
       if (tag === "a" && name === "href") {
-        // n'autorise que http/https/mailto/tel/# ancres
         if (!/^(https?:|mailto:|tel:|#)/i.test(value)) return "";
       }
-      // Sécurise <img>
       if (tag === "img" && name === "src") {
         if (!/^(https?:|data:image\/(png|jpeg|jpg|webp|gif);base64,)/i.test(value)) return "";
       }
       return value;
     },
-    onTag(tag, html) {
-      // ajoute rel="nofollow noopener" par défaut sur les liens
+    onTag(tag: string, html: string) {
       if (tag === "a") {
-        return html.replace(
-          /^<a\s/i,
-          '<a rel="nofollow noopener" '
-        );
+        return html.replace(/^<a\s/i, '<a rel="nofollow noopener" ');
       }
       return html;
     }

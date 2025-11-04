@@ -1,8 +1,8 @@
 // src/app/admin/categories/partials/HtmlEditor.tsx
 "use client";
 
-import { useState, useId } from "react";
-import DOMPurify from "isomorphic-dompurify";
+import { useState, useId, useMemo } from "react";
+import { sanitizeHtml } from "../../../../lib/sanitize";
 
 type Props = {
   name?: string;            // name du champ soumis dans le <form> (hidden)
@@ -21,13 +21,15 @@ export default function HtmlEditor({
 }: Props) {
   const [value, setValue] = useState<string>(initialValue);
   const id = useId();
-  const sanitized = value ? DOMPurify.sanitize(value) : "";
+
+  // Aperçu sanitisé (memo pour éviter de recalculer à chaque render)
+  const sanitized = useMemo(() => (value ? sanitizeHtml(value) : ""), [value]);
 
   return (
     <div className="grid gap-2">
       <div className="flex items-center justify-between">
         <label htmlFor={id} className="text-sm">{label}</label>
-        <span className="text-xs text-neutral-500">Coller votre HTML → aperçu à droite</span>
+        <span className="text-xs text-neutral-500">Collez votre HTML → aperçu à droite</span>
       </div>
 
       {/* zone d'édition */}
@@ -51,7 +53,7 @@ export default function HtmlEditor({
         </div>
       </div>
 
-      {/* champ réel soumis au formulaire */}
+      {/* champ réel soumis au formulaire (on stocke la valeur brute ; la sanitation est faite pour l'affichage et devra aussi être refaite côté serveur à la sauvegarde/avant rendu) */}
       <input type="hidden" name={name} value={value} />
     </div>
   );
