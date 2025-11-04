@@ -32,7 +32,8 @@ export async function extractToc(
 
   const toc: TocItem[] = [];
 
-  visit<Element>(tree, "element", (node) => {
+  // ✅ Pas de génériques sur visit; on type le paramètre
+  visit(tree, "element", (node: Element) => {
     const tag = node.tagName as Element["tagName"];
     if (!allowed.has(tag as "h2" | "h3" | "h4")) return;
 
@@ -46,9 +47,9 @@ export async function extractToc(
         ? String(idProp[0])
         : "";
 
-    // texte plat du heading
+    // Récup texte plat du heading
     let text = "";
-    visit<Text>(node, "text", (t) => {
+    visit(node, "text", (t: Text) => {
       text += t.value;
     });
     text = text.trim();
