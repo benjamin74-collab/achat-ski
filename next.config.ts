@@ -4,43 +4,26 @@ import type { NextConfig } from "next";
 const nextConfig: NextConfig = {
   reactStrictMode: true,
 
-  experimental: {
-    // Assouplit la résolution des dépendances ESM/CJS côté Node
-    // -> évite de nombreux "ERR_REQUIRE_ESM"
-    esmExternals: "loose",
-  },
+  // IMPORTANT : pas d'option "experimental.esmExternals" (Next 15 déconseille fortement)
+  // Pas de manipulation des "externals" non plus : ça peut empêcher Next de générer ses manifests.
 
   webpack: (config, { isServer }) => {
     if (isServer) {
-      // 1) Empêche tout import de `jsdom` pendant le SSR
-      //    (si un import statique traîne côté server, il sera résolu vers `false`)
+      // Empêcher tout import de jsdom en SSR (si un import statique traîne)
       config.resolve.alias = {
         ...(config.resolve.alias ?? {}),
         jsdom: false,
       };
     }
 
-    // 2) Filet de sécurité : si Next externalise encore des modules,
-    //    on retire `jsdom` et `parse5` de la liste des externals côté serveur
-    if (isServer && Array.isArray(config.externals)) {
-      config.externals = config.externals.map((external: any) => {
-        if (typeof external !== "function") return external;
-        return (ctx: any, cb: any) => {
-          external(ctx, (err: any, res: any) => {
-            if (err) return cb(err);
-            if (Array.isArray(res)) {
-              // retire jsdom et parse5 des externals
-              res = res.filter(
-                (name: string) =>
-                  !/^jsdom$/.test(name) &&
-                  !/^parse5($|\/)/.test(name)
-              );
-            }
-            cb(null, res);
-          });
-        };
-      });
-    }
+    // Petit filet de sécu contre des deps Node non dispos côté navigateur
+    config.resolve.fallback = {
+      ...(config.resolve.fallback ?? {}),
+      canvas: false,
+      encoding: false,
+      fs: false,
+      path: false,
+    };
 
     return config;
   },

@@ -7,7 +7,7 @@ import FiltersBar from "../../../components/FiltersBar";
 import SortSelect from "../../../components/SortSelect";
 import { totalCents } from "../../../lib/format";
 import Breadcrumbs from "../../../components/Breadcrumbs";
-import DOMPurify from "isomorphic-dompurify";
+import { sanitizeHtml } from "../../../lib/sanitize";
 
 export const revalidate = 120;
 
@@ -50,11 +50,10 @@ export default async function CategoryPage({
   params: Promise<PageParams>;
   searchParams?: { [key: string]: string | string[] | undefined };
 }) {
-  const { category } = await params; // slug de catégorie
+  const { category } = await params;
   const parsed = parseSearchParams(searchParams);
   const { page, sort, brands, season } = parsed;
 
-  // --- Charger la catégorie (SEO + arborescence)
   const cat = await prisma.category.findUnique({
     where: { slug: category },
     include: {
@@ -77,7 +76,6 @@ export default async function CategoryPage({
   const pageSize = 12;
   const skip = (Math.max(1, page) - 1) * pageSize;
 
-  // Listes pour filtres (marques, saisons)
   const [brandRows, seasonRows] = await Promise.all([
     prisma.product.findMany({
       where: { category: { is: { slug: category } } },
@@ -95,14 +93,12 @@ export default async function CategoryPage({
   const allBrands = brandRows.map((b) => b.brand).filter(Boolean);
   const allSeasons = seasonRows.map((s) => s.season!).filter(Boolean);
 
-  // Filtre DB typé
   const where: Prisma.ProductWhereInput = {
     category: { is: { slug: category } },
   };
   if (brands.length) where.brand = { in: brands };
   if (season) where.season = season;
 
-  // Récup produits + offres
   const [total, productsRaw] = await Promise.all([
     prisma.product.count({ where }),
     prisma.product.findMany({
@@ -117,7 +113,6 @@ export default async function CategoryPage({
     }),
   ]);
 
-  // Calcul du min total (prix + port) par produit
   const products = productsRaw.map((p) => {
     const allOffers = p.skus.flatMap((s) => s.offers);
     const minTotal = allOffers.length
@@ -128,7 +123,6 @@ export default async function CategoryPage({
     return { ...p, minTotal };
   });
 
-  // Tri en mémoire si tri par prix
   const sorted =
     sort === "price-asc"
       ? [...products].sort(
@@ -140,18 +134,15 @@ export default async function CategoryPage({
 
   const pages = Math.max(1, Math.ceil(total / pageSize));
 
-  // Sanitize HTML content
-  const safeHtml = cat.content ? DOMPurify.sanitize(cat.content) : "";
+  const safeHtml = cat.content ? sanitizeHtml(cat.content) : "";
 
   return (
     <div className="container-page py-8">
       <div className="flex flex-col gap-4 md:grid md:grid-cols-12">
-        {/* Filtres (colonne gauche) */}
         <aside className="md:col-span-3">
           <FiltersBar brands={allBrands} seasons={allSeasons} />
         </aside>
 
-        {/* Contenu (colonne droite) */}
         <div className="md:col-span-9 flex flex-col gap-4">
           <Breadcrumbs
             items={[
@@ -161,7 +152,6 @@ export default async function CategoryPage({
             ]}
           />
 
-          {/* En-tête + stats */}
           <div className="card p-4 flex items-center justify-between">
             <div>
               <h1 className="text-xl font-bold">{cat.name}</h1>
@@ -173,14 +163,12 @@ export default async function CategoryPage({
             <SortSelect />
           </div>
 
-          {/* Contenu SEO (HTML collé) */}
           {safeHtml && (
             <section className="rounded-2xl border border-ring bg-surface/60 p-5 shadow-card">
               <article className="prose max-w-none" dangerouslySetInnerHTML={{ __html: safeHtml }} />
             </section>
           )}
 
-          {/* Sous-catégories */}
           {cat.children.length > 0 && (
             <section className="space-y-3">
               <h2 className="text-lg font-semibold">Sous-catégories</h2>
@@ -196,7 +184,6 @@ export default async function CategoryPage({
             </section>
           )}
 
-          {/* Liste produits */}
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
             {sorted.map((p) => {
               const cardTitle = [p.brand, p.model, p.season].filter(Boolean).join(" ");
@@ -212,7 +199,6 @@ export default async function CategoryPage({
             })}
           </div>
 
-          {/* Pagination */}
           {pages > 1 && (
             <nav className="mt-2 mb-4 flex items-center gap-2">
               <Link
