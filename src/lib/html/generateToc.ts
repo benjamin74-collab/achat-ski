@@ -21,13 +21,10 @@ export async function buildHtmlWithHeadings(html: string) {
   return String(file);
 }
 
-const allowedLevels = new Set<"h2" | "h3" | "h4">(["h2", "h3", "h4"]);
-
 export async function extractToc(
   html: string,
   levels: Array<"h2" | "h3" | "h4"> = ["h2", "h3", "h4"]
 ): Promise<TocItem[]> {
-  // on limite aussi côté runtime
   const allowed = new Set(levels);
 
   const processor = unified().use(rehypeParse, { fragment: true }).use(rehypeSlug);
@@ -41,8 +38,13 @@ export async function extractToc(
 
     const depth = Number((tag as string).slice(1)); // "h2" -> 2
 
-    const idProp = node.properties?.id;
-    const id = typeof idProp === "string" ? idProp : Array.isArray(idProp) ? String(idProp[0]) : "";
+    const idProp = (node.properties as Record<string, unknown> | undefined)?.id;
+    const id =
+      typeof idProp === "string"
+        ? idProp
+        : Array.isArray(idProp)
+        ? String(idProp[0])
+        : "";
 
     // texte plat du heading
     let text = "";
