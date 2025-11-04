@@ -90,8 +90,15 @@ export default async function CategoryPage({
       orderBy: { season: "desc" },
     }),
   ]);
-  const allBrands = brandRows.map((b) => b.brand).filter(Boolean);
-  const allSeasons = seasonRows.map((s) => s.season!).filter(Boolean);
+
+  // ✅ Type guards -> string[]
+  const allBrands: string[] = brandRows
+    .map((b) => b.brand)
+    .filter((v): v is string => typeof v === "string" && v.length > 0);
+
+  const allSeasons: string[] = seasonRows
+    .map((s) => s.season)
+    .filter((v): v is string => typeof v === "string" && v.length > 0);
 
   const where: Prisma.ProductWhereInput = {
     category: { is: { slug: category } },
