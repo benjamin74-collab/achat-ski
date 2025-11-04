@@ -4,42 +4,53 @@ import rehypeParse from "rehype-parse";
 import rehypeSlug from "rehype-slug";
 import rehypeAutolinkHeadings from "rehype-autolink-headings";
 import { visit } from "unist-util-visit";
+import type { Root, Element, Text } from "hast";
 
 export type TocItem = { id: string; text: string; depth: number };
 
 export async function buildHtmlWithHeadings(html: string) {
-  // Parse -> add ids -> autolink
   const processor = unified()
     .use(rehypeParse, { fragment: true })
     .use(rehypeSlug)
     .use(rehypeAutolinkHeadings, {
       behavior: "append",
-      properties: { ariaHidden: "true", className: ["anchor"] }
+      properties: { ariaHidden: "true", className: ["anchor"] },
     });
 
   const file = await processor.process(html);
   return String(file);
 }
 
-export async function extractToc(html: string, levels: Array<"h2"|"h3"|"h4"> = ["h2","h3","h4"]): Promise<TocItem[]> {
-  const tree = unified()
-    .use(rehypeParse, { fragment: true })
-    .use(rehypeSlug)
-    .parse(html);
+const allowedLevels = new Set<"h2" | "h3" | "h4">(["h2", "h3", "h4"]);
 
-  const tags = new Set(levels);
+export async function extractToc(
+  html: string,
+  levels: Array<"h2" | "h3" | "h4"> = ["h2", "h3", "h4"]
+): Promise<TocItem[]> {
+  // on limite aussi côté runtime
+  const allowed = new Set(levels);
+
+  const processor = unified().use(rehypeParse, { fragment: true }).use(rehypeSlug);
+  const tree = processor.parse(html) as Root;
+
   const toc: TocItem[] = [];
 
-  visit(tree, "element", (node: any) => {
-    if (!tags.has(node.tagName)) return;
-    const depth = Number(node.tagName.slice(1)); // h2 -> 2
-    const id = (node.properties?.id as string) || "";
-    // Récupère le texte plat
+  visit<Element>(tree, "element", (node) => {
+    const tag = node.tagName as Element["tagName"];
+    if (!allowed.has(tag as "h2" | "h3" | "h4")) return;
+
+    const depth = Number((tag as string).slice(1)); // "h2" -> 2
+
+    const idProp = node.properties?.id;
+    const id = typeof idProp === "string" ? idProp : Array.isArray(idProp) ? String(idProp[0]) : "";
+
+    // texte plat du heading
     let text = "";
-    visit(node, (n: any) => {
-      if (n.type === "text") text += n.value;
+    visit<Text>(node, "text", (t) => {
+      text += t.value;
     });
     text = text.trim();
+
     if (text) toc.push({ id, text, depth });
   });
 
