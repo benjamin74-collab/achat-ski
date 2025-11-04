@@ -7,6 +7,7 @@ import { money } from "@/lib/format";
 import type { Metadata } from "next";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
+import { slugify } from "@/lib/slug";
 
 export const runtime = "nodejs";
 export const revalidate = 60;
@@ -38,7 +39,8 @@ export default async function ProductPage({ params }: PageProps) {
     prisma.product.findUnique({
       where: { slug: params.slug },
       include: {
-        category: { select: { name: true, slug: true } }, // <- relation catégorie
+        category: { select: { name: true, slug: true } },
+        Brand: { select: { name: true, slug: true } }, // 🔗 relation marque
         skus: {
           select: {
             id: true,
@@ -93,16 +95,6 @@ export default async function ProductPage({ params }: PageProps) {
 
   if (!product) return notFound();
 
-  // ---- CTA Review/Test (selon session)
-  const productId = product.id;
-  const productUrl = `/p/${product.slug}`;
-  const reviewNewUrl = session
-    ? `/me/reviews/new?productId=${productId}`
-    : `/api/auth/signin?callbackUrl=${encodeURIComponent(productUrl)}`;
-  const testNewUrl = session
-    ? `/me/tests/new?productId=${productId}`
-    : `/api/auth/signin?callbackUrl=${encodeURIComponent(productUrl)}`;
-
   // ---- Prix / Offres
   const offersFlat = product.skus.flatMap((s) =>
     s.offers.map((o) => ({
@@ -119,7 +111,7 @@ export default async function ProductPage({ params }: PageProps) {
     }))
   );
 
-  const title = [product.brand, product.model, product.season].filter(Boolean).join(" ");
+  const title = [product.brand ?? product.Brand?.name, product.model, product.season].filter(Boolean).join(" ");
 
   const minPriceCents = offersFlat
     .filter((o) => o.inStock)
@@ -129,17 +121,20 @@ export default async function ProductPage({ params }: PageProps) {
     }, null);
 
   const specs: Array<[string, string]> = [
-    ["Marque", product.brand ?? "—"],
+    ["Marque", product.Brand?.name ?? product.brand ?? "—"],
     ["Modèle", product.model ?? "—"],
     ["Saison", product.season ?? "—"],
-    ["Catégorie", product.category?.name ?? "—"], // <- nom de la catégorie
+    ["Catégorie", product.category?.name ?? "—"],
   ];
 
-  // Produits similaires : même marque et même catégorie (relation)
+  // Produits similaires : même marque (string ou FK) + même catégorie
   const related = await prisma.product.findMany({
     where: {
       id: { not: product.id },
-      ...(product.brand ? { brand: product.brand } : {}),
+      OR: [
+        product.Brand ? { brandId: product.Brand ? product.Brand.slug && { not: undefined } : undefined } : {},
+        product.brand ? { brand: product.brand } : {},
+      ],
       ...(product.category?.slug ? { category: { is: { slug: product.category.slug } } } : {}),
     },
     take: 6,
@@ -197,10 +192,12 @@ export default async function ProductPage({ params }: PageProps) {
     "@context": "https://schema.org",
     "@type": "Product",
     name: title,
-    brand: product.brand ? { "@type": "Brand", name: product.brand } : undefined,
+    brand: (product.Brand?.name ?? product.brand)
+      ? { "@type": "Brand", name: product.Brand?.name ?? product.brand }
+      : undefined,
     sku: product.skus?.[0]?.variant ?? undefined,
     gtin13: product.skus?.[0]?.gtin ?? undefined,
-    category: product.category?.name ?? undefined, // <- nom de la catégorie
+    category: product.category?.name ?? undefined,
     url: canonicalUrl,
     ...(offersFlat.length > 0
       ? {
@@ -237,6 +234,14 @@ export default async function ProductPage({ params }: PageProps) {
   } satisfies Record<string, unknown>;
 
   const desc = (product as { description?: string | null }).description ?? null;
+
+  // URL vers la page marque
+  const brandUrl =
+    product.Brand?.slug
+      ? `/marques/${product.Brand.slug}`
+      : product.brand
+      ? `/marques/${slugify(product.brand)}`
+      : null;
 
   return (
     <main className="container mx-auto max-w-6xl px-4 py-6">
@@ -276,12 +281,12 @@ export default async function ProductPage({ params }: PageProps) {
 
           <div className="mt-1 text-neutral-600">
             {product.category?.name ?? "—"} ·{" "}
-            {product.brand ? (
-              <a href={`/b/${encodeURIComponent(product.brand)}`} className="underline hover:no-underline">
-                {product.brand}
+            {brandUrl ? (
+              <a href={brandUrl} className="underline hover:no-underline">
+                {product.Brand?.name ?? product.brand}
               </a>
             ) : (
-              "—"
+              product.Brand?.name ?? product.brand ?? "—"
             )}
           </div>
 

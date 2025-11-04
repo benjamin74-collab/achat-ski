@@ -70,14 +70,33 @@ enum Role {
   USER
 }
 
+model Brand {
+  id            Int       @id @default(autoincrement())
+  name          String    @unique
+  slug          String    @unique
+  description   String?   // HTML sanitisé
+  websiteUrl    String?   @db.VarChar(512)
+  logoUrl       String?   @db.VarChar(512)
+  active        Boolean   @default(true)
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  products      Product[] // relation inverse
+}
+
 /* -----------------------------
    CATALOGUE / OFFRES
 ------------------------------ */
 model Product {
   id          Int             @id @default(autoincrement())
-  brand       String
+  brand       String?
+  brandId     Int? 
+  Brand       Brand?    @relation(fields: [brandId], references: [id])
   model       String
   season      String?         // ex: "2025/26"
+  
+  // index utile pour filtres
+  @@index([brandId])
 
   // ⚠️ Migration en douceur : on introduit la vraie relation vers Category.
   // Ancien champ libre (texte) mis en commentaire si tu veux couper plus tard :
