@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { Search } from "lucide-react";
 
+// eslint-disable-next-line @next/next/no-img-element
 export default function HomePage() {
   const cats = [
     { href: "/c/skis-all-mountain", label: "Skis All-Mountain" },
@@ -8,6 +9,34 @@ export default function HomePage() {
     { href: "/c/skis-rando", label: "Skis Rando" },
     { href: "/c/fixations", label: "Fixations" },
     { href: "/c/chaussures", label: "Chaussures" },
+  ];
+
+  const topBrands = [
+    {
+      name: "Rossignol",
+      slug: "rossignol",
+      logo: "https://logos-marques.com/wp-content/uploads/2023/01/Rossignol-emblem.png",
+    },
+    {
+      name: "Salomon",
+      slug: "salomon",
+      logo: "https://upload.wikimedia.org/wikipedia/commons/8/8a/Salomon_group_logo.png",
+    },
+    {
+      name: "Head",
+      slug: "head",
+      logo: "https://www.head.com/HeadV2Logo-iGF.svg",
+    },
+    {
+      name: "Black Crows",
+      slug: "black-crows",
+      logo: "https://upload.wikimedia.org/wikipedia/commons/e/eb/Logo_Black_Crows.svg",
+    },
+    {
+      name: "Atomic",
+      slug: "atomic",
+      logo: "https://upload.wikimedia.org/wikipedia/commons/0/04/Atomic_ski_logo.png",
+    },
   ];
 
   return (
@@ -55,6 +84,25 @@ export default function HomePage() {
                   {c.label}
                 </Link>
               ))}
+
+              {/* ✅ Chip vers l'annuaire des marques */}
+              <Link
+                href="/marques"
+                className="snap-start text-xs md:text-sm rounded-full border border-brand-500 bg-white hover:bg-brand-50 text-brand-600 px-3 py-2 transition shadow-sm hover:shadow-md whitespace-nowrap"
+                aria-label="Accéder à l’annuaire des marques"
+              >
+                🧭 Annuaire des marques
+              </Link>
+            </div>
+
+            {/* ✅ Bouton central (CTA secondaire) */}
+            <div className="mt-4 sm:mt-5 flex justify-center">
+              <a
+                href="/marques"
+                className="inline-flex items-center gap-2 rounded-xl border border-ring bg-white hover:bg-muted text-ink px-4 py-2 text-sm shadow-sm hover:shadow-md"
+              >
+                🧭 Explorer l’annuaire des marques
+              </a>
             </div>
           </div>
         </div>
@@ -91,6 +139,41 @@ export default function HomePage() {
             </p>
           </div>
         </div>
+      </section>
+
+      {/* ---------------- TOP MARQUES ---------------- */}
+      <section className="mt-14 md:mt-18 container-page">
+        <div className="flex items-center justify-between gap-3">
+          <h2 className="text-xl sm:text-2xl font-bold text-ink">Top marques</h2>
+          <a href="/marques" className="text-sm underline text-brand-600 hover:text-brand-700">
+            Voir tout l’annuaire
+          </a>
+        </div>
+
+        <ul className="mt-5 grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-3 sm:gap-4">
+          {topBrands.map((b) => (
+            <li key={b.slug} className="group">
+              <a
+                href={`/marques/${b.slug}`}
+                className="block rounded-2xl border border-ring bg-white p-4 sm:p-5 hover:shadow-card transition"
+                aria-label={`Voir la marque ${b.name}`}
+                title={b.name}
+              >
+                <div className="aspect-[4/3] w-full overflow-hidden rounded-xl bg-muted/40 flex items-center justify-center">
+                  <img
+                    src={b.logo}
+                    alt={b.name}
+                    className="max-h-14 sm:max-h-16 w-auto object-contain"
+                    loading="lazy"
+                  />
+                </div>
+                <div className="mt-2 text-center text-sm font-medium text-ink group-hover:underline">
+                  {b.name}
+                </div>
+              </a>
+            </li>
+          ))}
+        </ul>
       </section>
     </main>
   );
