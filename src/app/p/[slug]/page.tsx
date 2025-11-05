@@ -5,8 +5,7 @@ import PriceTable from "@/components/PriceTable";
 import Breadcrumbs from "@/components/Breadcrumbs";
 import { money } from "@/lib/format";
 import type { Metadata } from "next";
-import { getServerSession } from "next-auth";
-import { authOptions } from "@/lib/auth";
+import type { Prisma } from "@prisma/client";
 import { slugify } from "@/lib/slug";
 
 export const runtime = "nodejs";
@@ -34,64 +33,62 @@ export async function generateMetadata({ params }: { params: { slug: string } })
 }
 
 export default async function ProductPage({ params }: PageProps) {
-  const [session, product] = await Promise.all([
-    getServerSession(authOptions),
-    prisma.product.findUnique({
-      where: { slug: params.slug },
-      include: {
-        category: { select: { name: true, slug: true } },
-        Brand: { select: { name: true, slug: true } }, // 🔗 relation marque
-        skus: {
-          select: {
-            id: true,
-            variant: true,
-            gtin: true,
-            offers: {
-              select: {
-                id: true,
-                skuId: true,
-                merchantId: true,
-                affiliateUrl: true,
-                priceCents: true,
-                currency: true,
-                inStock: true,
-                shippingCents: true,
-                lastSeen: true,
-                merchant: { select: { id: true, name: true, slug: true } },
-              },
+  const product = await prisma.product.findUnique({
+    where: { slug: params.slug },
+    include: {
+      category: { select: { name: true, slug: true } },
+      // 🔗 on ajoute l'id pour pouvoir filtrer par brandId côté "related"
+      Brand: { select: { id: true, name: true, slug: true } },
+      skus: {
+        select: {
+          id: true,
+          variant: true,
+          gtin: true,
+          offers: {
+            select: {
+              id: true,
+              skuId: true,
+              merchantId: true,
+              affiliateUrl: true,
+              priceCents: true,
+              currency: true,
+              inStock: true,
+              shippingCents: true,
+              lastSeen: true,
+              merchant: { select: { id: true, name: true, slug: true } },
             },
           },
         },
-        reviews: {
-          select: {
-            id: true,
-            rating: true,
-            title: true,
-            body: true,
-            authorName: true,
-            sourceName: true,
-            sourceUrl: true,
-            createdAt: true,
-          },
-          orderBy: { createdAt: "desc" },
-          take: 10,
-        },
-        tests: {
-          select: {
-            id: true,
-            title: true,
-            excerpt: true,
-            score: true,
-            sourceName: true,
-            sourceUrl: true,
-            publishedAt: true,
-          },
-          orderBy: { publishedAt: "desc" },
-          take: 10,
-        },
       },
-    }),
-  ]);
+      reviews: {
+        select: {
+          id: true,
+          rating: true,
+          title: true,
+          body: true,
+          authorName: true,
+          sourceName: true,
+          sourceUrl: true,
+          createdAt: true,
+        },
+        orderBy: { createdAt: "desc" },
+        take: 10,
+      },
+      tests: {
+        select: {
+          id: true,
+          title: true,
+          excerpt: true,
+          score: true,
+          sourceName: true,
+          sourceUrl: true,
+          publishedAt: true,
+        },
+        orderBy: { publishedAt: "desc" },
+        take: 10,
+      },
+    },
+  });
 
   if (!product) return notFound();
 
@@ -111,7 +108,9 @@ export default async function ProductPage({ params }: PageProps) {
     }))
   );
 
-  const title = [product.brand ?? product.Brand?.name, product.model, product.season].filter(Boolean).join(" ");
+  const title = [product.Brand?.name ?? product.brand, product.model, product.season]
+    .filter(Boolean)
+    .join(" ");
 
   const minPriceCents = offersFlat
     .filter((o) => o.inStock)
@@ -127,14 +126,19 @@ export default async function ProductPage({ params }: PageProps) {
     ["Catégorie", product.category?.name ?? "—"],
   ];
 
-  // Produits similaires : même marque (string ou FK) + même catégorie
+  // ✅ Filtre type-safe pour "produits similaires" :
+  //    si on a une FK (Brand.id), on filtre sur brandId ; sinon fallback sur la chaîne brand
+  const brandWhere: Prisma.ProductWhereInput =
+    typeof product.Brand?.id === "number"
+      ? { brandId: product.Brand.id }
+      : product.brand
+      ? { brand: product.brand }
+      : {};
+
   const related = await prisma.product.findMany({
     where: {
       id: { not: product.id },
-      OR: [
-        product.Brand ? { brandId: product.Brand ? product.Brand.slug && { not: undefined } : undefined } : {},
-        product.brand ? { brand: product.brand } : {},
-      ],
+      ...brandWhere,
       ...(product.category?.slug ? { category: { is: { slug: product.category.slug } } } : {}),
     },
     take: 6,
