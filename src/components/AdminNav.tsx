@@ -7,6 +7,8 @@ const links = [
   { href: "/admin/reviews", label: "Avis" },
   { href: "/admin/tests", label: "Tests" },
   { href: "/admin/categories", label: "Catégories" },
+  { href: "/admin/brands", label: "Marques" },
+  { href: "/admin/pages", label: "Pages" }, 
 ];
 
 export default function AdminNav() {
