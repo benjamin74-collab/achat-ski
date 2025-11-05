@@ -1,7 +1,6 @@
 import Link from "next/link";
 import { Search } from "lucide-react";
 
-// eslint-disable-next-line @next/next/no-img-element
 export default function HomePage() {
   const cats = [
     { href: "/c/skis-all-mountain", label: "Skis All-Mountain" },
@@ -97,12 +96,12 @@ export default function HomePage() {
 
             {/* ✅ Bouton central (CTA secondaire) */}
             <div className="mt-4 sm:mt-5 flex justify-center">
-              <a
+              <Link
                 href="/marques"
                 className="inline-flex items-center gap-2 rounded-xl border border-ring bg-white hover:bg-muted text-ink px-4 py-2 text-sm shadow-sm hover:shadow-md"
               >
                 🧭 Explorer l’annuaire des marques
-              </a>
+              </Link>
             </div>
           </div>
         </div>
@@ -145,15 +144,15 @@ export default function HomePage() {
       <section className="mt-14 md:mt-18 container-page">
         <div className="flex items-center justify-between gap-3">
           <h2 className="text-xl sm:text-2xl font-bold text-ink">Top marques</h2>
-          <a href="/marques" className="text-sm underline text-brand-600 hover:text-brand-700">
+          <Link href="/marques" className="text-sm underline text-brand-600 hover:text-brand-700">
             Voir tout l’annuaire
-          </a>
+          </Link>
         </div>
 
         <ul className="mt-5 grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-3 sm:gap-4">
           {topBrands.map((b) => (
             <li key={b.slug} className="group">
-              <a
+              <Link
                 href={`/marques/${b.slug}`}
                 className="block rounded-2xl border border-ring bg-white p-4 sm:p-5 hover:shadow-card transition"
                 aria-label={`Voir la marque ${b.name}`}
@@ -170,7 +169,7 @@ export default function HomePage() {
                 <div className="mt-2 text-center text-sm font-medium text-ink group-hover:underline">
                   {b.name}
                 </div>
-              </a>
+              </Link>
             </li>
           ))}
         </ul>
