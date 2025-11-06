@@ -1,4 +1,4 @@
-// src/app/api/admin/pages/route.ts  (POST: create)
+// src/app/api/admin/pages/route.ts
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getServerSession } from "next-auth";
@@ -8,10 +8,14 @@ import { revalidatePath } from "next/cache";
 
 export async function POST(req: Request) {
   const session = await getServerSession(authOptions);
-  if (!session?.user?.role || session.user.role !== "ADMIN") return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  if (!session?.user?.role || session.user.role !== "ADMIN") {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
   const fd = await req.formData();
   const title = String(fd.get("title") || "");
   const slug = slugify(String(fd.get("slug") || title));
+
   const data = {
     title,
     slug,
@@ -22,9 +26,14 @@ export async function POST(req: Request) {
     metaTitle: (fd.get("metaTitle") as string) || null,
     metaDescription: (fd.get("metaDescription") as string) || null,
     published: fd.get("published") === "on",
-    authorId: session.user.id ? Number(session.user.id) : null,
-    tags: String(fd.get("tags") || "").split(",").map(s => s.trim()).filter(Boolean),
+    // 🔧 User.id est un String (cuid)
+    authorId: session.user?.id ? String(session.user.id) : null,
+    tags: String(fd.get("tags") || "")
+      .split(",")
+      .map((s) => s.trim())
+      .filter(Boolean),
   };
+
   await prisma.page.create({ data });
   revalidatePath("/pages");
   revalidatePath(`/pages/${slug}`);

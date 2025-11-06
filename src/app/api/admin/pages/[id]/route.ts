@@ -1,4 +1,4 @@
-// src/app/api/admin/pages/[id]/route.ts  (PUT: update)
+// src/app/api/admin/pages/[id]/route.ts
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getServerSession } from "next-auth";
@@ -8,7 +8,9 @@ import { revalidatePath } from "next/cache";
 
 export async function PUT(req: Request, { params }: { params: { id: string } }) {
   const session = await getServerSession(authOptions);
-  if (!session?.user?.role || session.user.role !== "ADMIN") return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  if (!session?.user?.role || session.user.role !== "ADMIN") {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
 
   const id = Number(params.id);
   const fd = await req.formData();
@@ -25,7 +27,10 @@ export async function PUT(req: Request, { params }: { params: { id: string } }) 
     metaTitle: (fd.get("metaTitle") as string) || null,
     metaDescription: (fd.get("metaDescription") as string) || null,
     published: fd.get("published") === "on",
-    tags: String(fd.get("tags") || "").split(",").map(s => s.trim()).filter(Boolean),
+    tags: String(fd.get("tags") || "")
+      .split(",")
+      .map((s) => s.trim())
+      .filter(Boolean),
   };
 
   const p = await prisma.page.update({ where: { id }, data });

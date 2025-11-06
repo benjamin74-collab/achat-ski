@@ -12,12 +12,14 @@ export async function GET(_req: Request, { params }: { params: { pageId: string 
     include: { user: { select: { name: true } } },
     take: 100,
   });
-  return NextResponse.json(rows.map(r => ({
-    id: r.id,
-    body: r.body,
-    createdAt: r.createdAt.toISOString(),
-    authorName: r.user?.name ?? "Utilisateur",
-  })));
+  return NextResponse.json(
+    rows.map((r) => ({
+      id: r.id,
+      body: r.body,
+      createdAt: r.createdAt.toISOString(),
+      authorName: r.user?.name ?? "Utilisateur",
+    }))
+  );
 }
 
 export async function POST(req: Request, { params }: { params: { pageId: string } }) {
@@ -30,7 +32,8 @@ export async function POST(req: Request, { params }: { params: { pageId: string 
   const created = await prisma.pageComment.create({
     data: {
       pageId,
-      userId: Number(session.user.id),
+      // 🔧 User.id est un String (cuid)
+      userId: String(session.user.id),
       body: String(body ?? "").slice(0, 5000),
       published: true,
     },
