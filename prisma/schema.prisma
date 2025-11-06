@@ -13,12 +13,15 @@ datasource db {
  * ------------------------------
  */
 model User {
-  id            String    @id @default(cuid())
+  id            String       @id @default(cuid())
   name          String?
-  email         String?   @unique
+  email         String?      @unique
   emailVerified DateTime?
   image         String?
-  role          Role      @default(USER)
+  role          Role         @default(USER)
+  avatarId      Int?
+  avatar        MediaAsset?  @relation("UserAvatar", fields: [avatarId], references: [id])
+  mediaCreated  MediaAsset[] @relation("MediaCreatedBy")
 
   // Relations NextAuth
   accounts Account[]
@@ -78,27 +81,33 @@ enum Role {
 }
 
 model Brand {
-  id          Int      @id @default(autoincrement())
-  name        String   @unique
-  slug        String   @unique
+  id          Int         @id @default(autoincrement())
+  name        String      @unique
+  slug        String      @unique
   description String? // HTML sanitisé
-  websiteUrl  String?  @db.VarChar(512)
-  logoUrl     String?  @db.VarChar(512)
-  active      Boolean  @default(true)
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  websiteUrl  String?     @db.VarChar(512)
+  logoUrl     String?     @db.VarChar(512)
+  active      Boolean     @default(true)
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+  logoId      Int?
+  logo        MediaAsset? @relation("BrandLogo", fields: [logoId], references: [id])
 
   products Product[] // relation inverse
 }
 
 model Page {
-  id           Int     @id @default(autoincrement())
-  slug         String  @unique
+  id           Int         @id @default(autoincrement())
+  slug         String      @unique
   title        String
-  content      String  @db.Text
+  content      String      @db.Text
   intro        String?
   thumbnailUrl String?
+  thumbnailId  Int?
+  thumbnail    MediaAsset? @relation("PageThumbnail", fields: [thumbnailId], references: [id])
   bannerUrl    String?
+  bannerId     Int?
+  banner       MediaAsset? @relation("PageBanner", fields: [bannerId], references: [id])
 
   // String pour matcher User.id (cuid), et relation vers User
   authorId String?
@@ -330,4 +339,37 @@ model ImportRun {
   offersUpserted Int       @default(0)
   offersDisabled Int       @default(0)
   notes          String?
+}
+
+/**
+ * -----------------------------
+ * MEDIA
+ * ------------------------------
+ */
+model MediaAsset {
+  id          Int       @id @default(autoincrement())
+  slug        String    @unique
+  title       String?
+  alt         String?
+  kind        MediaKind @default(IMAGE) // extension future: VIDEO, DOC, etc.
+  mime        String
+  width       Int?
+  height      Int?
+  bytes       Int?
+  // chemin objet dans le storage (Vercel Blob ou S3)
+  storageKey  String    @unique
+  publicUrl   String    @db.VarChar(1024)
+  createdAt   DateTime  @default(now())
+  createdById String?
+  createdBy   User?     @relation(name: "MediaCreatedBy", fields: [createdById], references: [id])
+
+  // back-relations (facultatives)
+  brandsLogo     Brand[] @relation("BrandLogo")
+  pagesThumbnail Page[]  @relation("PageThumbnail")
+  pagesBanner    Page[]  @relation("PageBanner")
+  usersAvatar    User[]  @relation("UserAvatar")
+}
+
+enum MediaKind {
+  IMAGE
 }

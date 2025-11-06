@@ -16,23 +16,59 @@ type Params = { slug: string };
 export async function generateMetadata({ params }: { params: Params }): Promise<Metadata> {
   const p = await prisma.page.findFirst({
     where: { slug: params.slug, published: true },
-    select: { title: true, intro: true, metaTitle: true, metaDescription: true, slug: true, bannerUrl: true }
+    select: {
+      title: true,
+      intro: true,
+      metaTitle: true,
+      metaDescription: true,
+      slug: true,
+      bannerUrl: true,
+      // nouveaux champs assets
+      bannerAsset: { select: { url: true, width: true, height: true } },
+      thumbnailAsset: { select: { url: true, width: true, height: true } },
+      thumbnailUrl: true,
+    },
   });
   if (!p) return { title: "Page introuvable" };
+
   const site = process.env.NEXT_PUBLIC_SITE_URL ?? "https://achat-ski.vercel.app";
   const url = `${site}/pages/${p.slug}`;
+
+  // Choix d'image pour meta: priorité bannière asset > bannière URL > thumbnail asset > thumbnail URL
+  const ogCandidate =
+    p.bannerAsset?.url
+      ? { url: p.bannerAsset.url, width: p.bannerAsset.width ?? undefined, height: p.bannerAsset.height ?? undefined }
+      : p.bannerUrl
+      ? { url: p.bannerUrl }
+      : p.thumbnailAsset?.url
+      ? { url: p.thumbnailAsset.url, width: p.thumbnailAsset.width ?? undefined, height: p.thumbnailAsset.height ?? undefined }
+      : p.thumbnailUrl
+      ? { url: p.thumbnailUrl }
+      : undefined;
+
   return {
     title: p.metaTitle ?? p.title,
     description: p.metaDescription ?? p.intro ?? undefined,
     alternates: { canonical: url },
-    openGraph: { title: p.metaTitle ?? p.title, description: p.metaDescription ?? p.intro ?? undefined, url, images: p.bannerUrl ? [p.bannerUrl] : undefined },
+    openGraph: {
+      title: p.metaTitle ?? p.title,
+      description: p.metaDescription ?? p.intro ?? undefined,
+      url,
+      ...(ogCandidate ? { images: [ogCandidate] } : {}),
+      type: "article",
+    },
   };
 }
 
 export default async function PageDetail({ params }: { params: Params }) {
   const page = await prisma.page.findFirst({
     where: { slug: params.slug, published: true },
-    include: { author: { select: { id: true, name: true } } },
+    include: {
+      author: { select: { id: true, name: true } },
+      // nouveaux champs assets
+      bannerAsset: { select: { url: true, width: true, height: true } },
+      thumbnailAsset: { select: { url: true, width: true, height: true } },
+    },
   });
 
   if (!page) return notFound();
@@ -41,13 +77,22 @@ export default async function PageDetail({ params }: { params: Params }) {
   const site = process.env.NEXT_PUBLIC_SITE_URL ?? "https://achat-ski.vercel.app";
   const canonicalUrl = `${site}/pages/${page.slug}`;
 
-  // JSON-LD Article/BlogPosting (SEO & “résultat IA”)
+  // Image d'entête (affichage) : priorité bannière asset > bannière URL
+  const bannerSrc = page.bannerAsset?.url ?? page.bannerUrl ?? null;
+
+  // JSON-LD Article/BlogPosting
+  const imagesForLd: string[] = [];
+  if (page.bannerAsset?.url) imagesForLd.push(page.bannerAsset.url);
+  else if (page.bannerUrl) imagesForLd.push(page.bannerUrl);
+  if (page.thumbnailAsset?.url) imagesForLd.push(page.thumbnailAsset.url);
+  else if (page.thumbnailUrl) imagesForLd.push(page.thumbnailUrl);
+
   const jsonLd = {
     "@context": "https://schema.org",
     "@type": "BlogPosting",
     headline: page.title,
     description: page.metaDescription ?? page.intro ?? undefined,
-    image: page.bannerUrl ? [page.bannerUrl] : undefined,
+    image: imagesForLd.length ? imagesForLd : undefined,
     datePublished: page.createdAt.toISOString(),
     dateModified: page.updatedAt.toISOString(),
     author: page.author?.name ? { "@type": "Person", name: page.author.name } : undefined,
@@ -69,10 +114,10 @@ export default async function PageDetail({ params }: { params: Params }) {
           Publié le {page.createdAt.toISOString().slice(0,10)}
           {page.author?.name ? <> · par <span className="font-medium">{page.author.name}</span></> : null}
         </div>
-        {page.bannerUrl ? (
+        {bannerSrc ? (
           <div className="mt-4 overflow-hidden rounded-2xl border bg-muted">
             {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src={page.bannerUrl} alt={page.title} className="w-full h-auto object-cover" />
+            <img src={bannerSrc} alt={page.title} className="w-full h-auto object-cover" />
           </div>
         ) : null}
       </header>
@@ -84,7 +129,8 @@ export default async function PageDetail({ params }: { params: Params }) {
       </div>
 
       {/* Contenu HTML sécurisé */}
-      <article className="prose max-w-none mt-6"
+      <article
+        className="prose max-w-none mt-6"
         dangerouslySetInnerHTML={{ __html: html }}
       />
 

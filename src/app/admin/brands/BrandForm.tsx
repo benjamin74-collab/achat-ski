@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import MediaPicker from "@/components/admin/MediaPicker";
 
 type BrandFormProps = {
   initial?: {
@@ -8,7 +9,7 @@ type BrandFormProps = {
     name?: string;
     slug?: string;
     websiteUrl?: string | null;
-    logoUrl?: string | null;
+    logoUrl?: string | null; // fallback (ancienne méthode par URL)
     description?: string | null;
     active?: boolean;
   };
@@ -48,10 +49,27 @@ export default function BrandForm({ initial, onSubmit, onDelete }: BrandFormProp
           <label className="text-sm">Site web</label>
           <input name="websiteUrl" defaultValue={initial?.websiteUrl ?? ""} className="input" />
         </div>
+
+        {/* ── Nouveau : sélecteur/Upload via médiathèque ─────────────────────── */}
         <div className="grid gap-1">
-          <label className="text-sm">Logo URL</label>
-          <input name="logoUrl" defaultValue={initial?.logoUrl ?? ""} className="input" />
+          <MediaPicker
+            label="Logo (médiathèque)"
+            nameId="logoAssetId"
+            kind="brand-logo"
+            folder="brands"
+            accept="image/*"
+            initial={null /* on ne connaît pas l'id du média existant ici */}
+          />
+          <p className="text-xs text-neutral-500">
+            Vous pouvez aussi renseigner une URL externe ci-dessous (fallback).
+          </p>
         </div>
+      </div>
+
+      {/* Fallback URL logo (compat ascendante) */}
+      <div className="grid gap-1">
+        <label className="text-sm">Logo URL (optionnel)</label>
+        <input name="logoUrl" defaultValue={initial?.logoUrl ?? ""} className="input" />
       </div>
 
       <div className="grid gap-1">

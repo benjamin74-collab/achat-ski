@@ -1,10 +1,10 @@
-// src/app/admin/pages/_PageForm.tsx
 "use client";
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import HtmlEditor from "@/app/admin/categories/partials/HtmlEditor";
 import { slugify } from "@/lib/slug";
+import MediaPicker from "@/components/admin/MediaPicker";
 
 type PageData = {
   id?: number;
@@ -12,12 +12,15 @@ type PageData = {
   slug?: string;
   intro?: string | null;
   content?: string;
-  thumbnailUrl?: string | null;
-  bannerUrl?: string | null;
+  thumbnailUrl?: string | null; // fallback URL
+  bannerUrl?: string | null;    // fallback URL
   published?: boolean;
   metaTitle?: string | null;
   metaDescription?: string | null;
   tags?: string[] | null;
+  // si tu veux pré-remplir un jour :
+  // thumbnailAssetId?: number | null;
+  // bannerAssetId?: number | null;
 };
 
 export default function PageForm({ initial }: { initial?: PageData }) {
@@ -61,13 +64,31 @@ export default function PageForm({ initial }: { initial?: PageData }) {
         <textarea name="intro" defaultValue={initial?.intro ?? ""} rows={3} className="input" />
       </div>
 
+      {/* ── Miniature & Bannière via médiathèque + fallback URL ─────────────── */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <div className="grid gap-2">
-          <label className="text-sm">Miniature (URL)</label>
+          <MediaPicker
+            label="Miniature (médiathèque)"
+            nameId="thumbnailAssetId"
+            kind="page-thumb"
+            folder="pages/thumbs"
+            accept="image/*"
+            initial={null}
+          />
+          <label className="text-sm">Miniature (URL externe – optionnel)</label>
           <input name="thumbnailUrl" defaultValue={initial?.thumbnailUrl ?? ""} className="input" />
         </div>
+
         <div className="grid gap-2">
-          <label className="text-sm">Bannière (URL)</label>
+          <MediaPicker
+            label="Bannière (médiathèque)"
+            nameId="bannerAssetId"
+            kind="page-banner"
+            folder="pages/banners"
+            accept="image/*"
+            initial={null}
+          />
+          <label className="text-sm">Bannière (URL externe – optionnel)</label>
           <input name="bannerUrl" defaultValue={initial?.bannerUrl ?? ""} className="input" />
         </div>
       </div>

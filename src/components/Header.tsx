@@ -23,6 +23,12 @@ export default function Header() {
   const profileHref = isAdmin ? "/admin" : "/me";
   const profileLabel = isAdmin ? "Admin" : "Mon profil";
 
+  // Avatar: on privilégie une image de session (OAuth), puis un champ custom (si exposé), sinon initiales
+  const avatarUrl =
+    (session?.user as any)?.image ||
+    (session?.user as any)?.avatarUrl ||
+    null;
+
   // petites initiales pour avatar fallback
   const initials = (() => {
     const n = session?.user?.name || session?.user?.email || "";
@@ -81,9 +87,21 @@ export default function Header() {
                     href={profileHref}
                     className="hidden sm:inline-flex items-center gap-2 rounded-lg border border-ring bg-white px-3 py-2 text-sm text-ink hover:bg-muted"
                   >
-                    <span className="inline-flex h-6 w-6 items-center justify-center rounded-full bg-brand-500 text-white text-xs font-semibold">
-                      {initials || "ME"}
-                    </span>
+                    {/* Avatar ou initiales */}
+                    {avatarUrl ? (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img
+                        src={avatarUrl}
+                        alt={session.user?.name ?? "Avatar"}
+                        className="h-6 w-6 rounded-full object-cover"
+                        loading="lazy"
+                        decoding="async"
+                      />
+                    ) : (
+                      <span className="inline-flex h-6 w-6 items-center justify-center rounded-full bg-brand-500 text-white text-xs font-semibold">
+                        {initials || "ME"}
+                      </span>
+                    )}
                     <span className="max-w-[12ch] truncate">{profileLabel}</span>
                   </Link>
                   <button onClick={() => signOut({ callbackUrl: "/" })} className="btn-outline">
