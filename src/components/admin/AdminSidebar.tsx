@@ -9,7 +9,8 @@ type Item = { href: string; label: string; desc?: string };
 const NAV: Item[] = [
   { href: "/admin", label: "Tableau de bord", desc: "Vue d’ensemble" },
   { href: "/admin/reviews", label: "Avis", desc: "Créer, lister, modérer" },
-  { href: "/admin/tests", label: "Tests (à venir)", desc: "Lier aux produits" },
+  // ⬇️ Retrait de “(à venir)”
+  { href: "/admin/tests", label: "Tests", desc: "Lier aux produits" },
   { href: "/admin/categories", label: "Catégories", desc: "Texte + SEO" },
   { href: "/admin/brands", label: "Marques", desc: "Ajouter, modifier, supprimer" },
   { href: "/admin/pages", label: "Pages", desc: "Pages statiques / blog" },  
@@ -33,9 +34,7 @@ export default function AdminSidebar() {
                 <Link
                   href={item.href}
                   className={`block rounded-xl px-3 py-2 transition ${
-                    active
-                      ? "bg-brand-500 text-white"
-                      : "text-ink hover:bg-muted"
+                    active ? "bg-brand-500 text-white" : "text-ink hover:bg-muted"
                   }`}
                 >
                   <div className="text-sm font-medium">{item.label}</div>
