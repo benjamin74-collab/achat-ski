@@ -15,23 +15,30 @@ type NavItem = {
   children: NavItem[];
 };
 
+type SessionUser = {
+  name?: string | null;
+  email?: string | null;
+  role?: Role;
+  image?: string | null;      // standard NextAuth
+  avatarUrl?: string | null;  // champ custom éventuel
+};
+
 export default function Header() {
   const pathname = usePathname();
   const { data: session, status } = useSession();
-  const role: Role = ((session?.user as { role?: Role })?.role) ?? "USER";
+
+  const user = (session?.user as SessionUser | undefined) ?? undefined;
+  const role: Role = user?.role ?? "USER";
   const isAdmin = role === "ADMIN";
   const profileHref = isAdmin ? "/admin" : "/me";
   const profileLabel = isAdmin ? "Admin" : "Mon profil";
 
-  // Avatar: on privilégie une image de session (OAuth), puis un champ custom (si exposé), sinon initiales
-  const avatarUrl =
-    (session?.user as any)?.image ||
-    (session?.user as any)?.avatarUrl ||
-    null;
+  // Avatar: image OAuth > champ custom > null
+  const avatarUrl = user?.image ?? user?.avatarUrl ?? null;
 
   // petites initiales pour avatar fallback
   const initials = (() => {
-    const n = session?.user?.name || session?.user?.email || "";
+    const n = user?.name || user?.email || "";
     return n
       .split(/[^\p{L}\p{N}]+/u)
       .filter(Boolean)
@@ -92,7 +99,7 @@ export default function Header() {
                       // eslint-disable-next-line @next/next/no-img-element
                       <img
                         src={avatarUrl}
-                        alt={session.user?.name ?? "Avatar"}
+                        alt={user?.name ?? "Avatar"}
                         className="h-6 w-6 rounded-full object-cover"
                         loading="lazy"
                         decoding="async"
