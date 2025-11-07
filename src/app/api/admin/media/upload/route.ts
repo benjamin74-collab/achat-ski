@@ -49,9 +49,9 @@ export async function POST(req: Request) {
       mime: file.type || "application/octet-stream",
       width: null,
       height: null,
-      bytes: (blob.size as number | undefined) ?? file.size ?? null,
+      bytes: typeof file.size === "number" ? file.size : null, // 👈 fix ici
       storageKey: blob.pathname, // clé interne (ex: "uploads/2024-11-07-...-image.png")
-      publicUrl: blob.url,       // URL publique (https://..vercel-storage.com/..)
+      publicUrl: blob.url,       // URL publique
       createdById: session.user.id, // User.id (String)
     },
     select: {
