@@ -1,4 +1,5 @@
 // src/app/pages/page.tsx
+/* eslint-disable @next/next/no-img-element */
 import Link from "next/link";
 import { prisma } from "@/lib/prisma";
 
@@ -13,10 +14,9 @@ export default async function PagesIndex() {
       slug: true,
       title: true,
       intro: true,
+      // Pour l’instant on reste sur l’URL directe. On branchera la médiathèque plus tard.
+      thumbnailUrl: true,
       createdAt: true,
-      // ↓ nouvelles sélections pour la médiathèque
-      thumbnailUrl: true, // fallback (ancienne logique)
-      thumbnailAsset: { select: { url: true } }, // médiathèque
     },
   });
 
@@ -28,40 +28,24 @@ export default async function PagesIndex() {
       </div>
 
       <ul className="mt-6 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-        {pages.map((p) => {
-          const thumb =
-            p.thumbnailAsset?.url // priorité à l’asset local
-            ?? p.thumbnailUrl     // fallback URL externe
-            ?? null;
-
-          return (
-            <li key={p.id} className="rounded-2xl border border-ring bg-white hover:shadow-card transition">
-              <Link href={`/pages/${p.slug}`} className="block">
-                <div className="aspect-[16/9] w-full overflow-hidden rounded-t-2xl bg-muted">
-                  {thumb ? (
-                    // eslint-disable-next-line @next/next/no-img-element
-                    <img
-                      src={thumb}
-                      alt={p.title}
-                      className="h-full w-full object-cover"
-                      loading="lazy"
-                      decoding="async"
-                    />
-                  ) : null}
+        {pages.map((p) => (
+          <li key={p.id} className="rounded-2xl border border-ring bg-white hover:shadow-card transition">
+            <Link href={`/pages/${p.slug}`} className="block">
+              <div className="aspect-[16/9] w-full overflow-hidden rounded-t-2xl bg-muted">
+                {p.thumbnailUrl ? (
+                  <img src={p.thumbnailUrl} alt={p.title} className="h-full w-full object-cover" loading="lazy" />
+                ) : null}
+              </div>
+              <div className="p-4">
+                <h2 className="text-base font-semibold">{p.title}</h2>
+                {p.intro ? <p className="text-sm text-slate-600 mt-1 line-clamp-2">{p.intro}</p> : null}
+                <div className="mt-2 text-xs text-slate-500">
+                  Publié le {p.createdAt.toISOString().slice(0, 10)}
                 </div>
-                <div className="p-4">
-                  <h2 className="text-base font-semibold">{p.title}</h2>
-                  {p.intro ? (
-                    <p className="text-sm text-slate-600 mt-1 line-clamp-2">{p.intro}</p>
-                  ) : null}
-                  <div className="mt-2 text-xs text-slate-500">
-                    Publié le {p.createdAt.toISOString().slice(0, 10)}
-                  </div>
-                </div>
-              </Link>
-            </li>
-          );
-        })}
+              </div>
+            </Link>
+          </li>
+        ))}
       </ul>
     </main>
   );
