@@ -1,4 +1,5 @@
 // src/app/pages/[slug]/page.tsx
+/* eslint-disable @next/next/no-img-element */
 import { notFound } from "next/navigation";
 import type { Metadata } from "next";
 import Link from "next/link";
@@ -23,9 +24,6 @@ export async function generateMetadata({ params }: { params: Params }): Promise<
       metaDescription: true,
       slug: true,
       bannerUrl: true,
-      // nouveaux champs assets
-      bannerAsset: { select: { url: true, width: true, height: true } },
-      thumbnailAsset: { select: { url: true, width: true, height: true } },
       thumbnailUrl: true,
     },
   });
@@ -34,17 +32,8 @@ export async function generateMetadata({ params }: { params: Params }): Promise<
   const site = process.env.NEXT_PUBLIC_SITE_URL ?? "https://achat-ski.vercel.app";
   const url = `${site}/pages/${p.slug}`;
 
-  // Choix d'image pour meta: priorité bannière asset > bannière URL > thumbnail asset > thumbnail URL
-  const ogCandidate =
-    p.bannerAsset?.url
-      ? { url: p.bannerAsset.url, width: p.bannerAsset.width ?? undefined, height: p.bannerAsset.height ?? undefined }
-      : p.bannerUrl
-      ? { url: p.bannerUrl }
-      : p.thumbnailAsset?.url
-      ? { url: p.thumbnailAsset.url, width: p.thumbnailAsset.width ?? undefined, height: p.thumbnailAsset.height ?? undefined }
-      : p.thumbnailUrl
-      ? { url: p.thumbnailUrl }
-      : undefined;
+  // Choix d'image OG: priorité bannière, sinon miniature
+  const ogImage = p.bannerUrl ?? p.thumbnailUrl ?? undefined;
 
   return {
     title: p.metaTitle ?? p.title,
@@ -54,7 +43,7 @@ export async function generateMetadata({ params }: { params: Params }): Promise<
       title: p.metaTitle ?? p.title,
       description: p.metaDescription ?? p.intro ?? undefined,
       url,
-      ...(ogCandidate ? { images: [ogCandidate] } : {}),
+      ...(ogImage ? { images: [ogImage] } : {}),
       type: "article",
     },
   };
@@ -63,12 +52,7 @@ export async function generateMetadata({ params }: { params: Params }): Promise<
 export default async function PageDetail({ params }: { params: Params }) {
   const page = await prisma.page.findFirst({
     where: { slug: params.slug, published: true },
-    include: {
-      author: { select: { id: true, name: true } },
-      // nouveaux champs assets
-      bannerAsset: { select: { url: true, width: true, height: true } },
-      thumbnailAsset: { select: { url: true, width: true, height: true } },
-    },
+    include: { author: { select: { id: true, name: true } } },
   });
 
   if (!page) return notFound();
@@ -77,15 +61,13 @@ export default async function PageDetail({ params }: { params: Params }) {
   const site = process.env.NEXT_PUBLIC_SITE_URL ?? "https://achat-ski.vercel.app";
   const canonicalUrl = `${site}/pages/${page.slug}`;
 
-  // Image d'entête (affichage) : priorité bannière asset > bannière URL
-  const bannerSrc = page.bannerAsset?.url ?? page.bannerUrl ?? null;
+  // Image d'entête: bannière si présente
+  const bannerSrc = page.bannerUrl ?? null;
 
   // JSON-LD Article/BlogPosting
   const imagesForLd: string[] = [];
-  if (page.bannerAsset?.url) imagesForLd.push(page.bannerAsset.url);
-  else if (page.bannerUrl) imagesForLd.push(page.bannerUrl);
-  if (page.thumbnailAsset?.url) imagesForLd.push(page.thumbnailAsset.url);
-  else if (page.thumbnailUrl) imagesForLd.push(page.thumbnailUrl);
+  if (page.bannerUrl) imagesForLd.push(page.bannerUrl);
+  if (page.thumbnailUrl) imagesForLd.push(page.thumbnailUrl);
 
   const jsonLd = {
     "@context": "https://schema.org",
@@ -116,7 +98,6 @@ export default async function PageDetail({ params }: { params: Params }) {
         </div>
         {bannerSrc ? (
           <div className="mt-4 overflow-hidden rounded-2xl border bg-muted">
-            {/* eslint-disable-next-line @next/next/no-img-element */}
             <img src={bannerSrc} alt={page.title} className="w-full h-auto object-cover" />
           </div>
         ) : null}
