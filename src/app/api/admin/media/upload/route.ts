@@ -4,6 +4,7 @@ import { put } from "@vercel/blob";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { slugify } from "@/lib/slug";
 
 export const runtime = "nodejs";
 
@@ -15,7 +16,6 @@ export async function POST(req: Request) {
 
   const form = await req.formData();
   const file = form.get("file") as File | null;
-  // on n’utilise plus `kind` pour éviter l’avertissement no-unused-vars
   const alt = String(form.get("alt") || "");
   const title = String(form.get("title") || "");
   const folder = String(form.get("folder") || "uploads");
@@ -30,38 +30,44 @@ export async function POST(req: Request) {
     );
   }
 
-  // chemin: dossier/horodatage-nomfichier
-  const ts = new Date().toISOString().replace(/[:.]/g, "-");
+  // nom de fichier nettoyé + chemin
+  const tsIso = new Date().toISOString().replace(/[:.]/g, "-");
   const cleanName = file.name.replace(/[^\w.\-]+/g, "_");
-  const pathname = `${folder}/${ts}-${cleanName}`;
+  const pathname = `${folder}/${tsIso}-${cleanName}`;
 
-  // Upload vers Vercel Blob
+  // upload vers Blob
   const blob = await put(pathname, file, {
     access: "public",
     addRandomSuffix: false,
     contentType: file.type || undefined,
-    token, // important pour le runtime
+    token,
   });
 
-  // File.size est typé `number` dans lib.dom.d.ts → pas besoin de `any`
+  // taille du fichier côté runtime
   const bytes: number | null = Number.isFinite(file.size) ? file.size : null;
 
-  // Enregistrement base (modèle MediaAsset du schéma Prisma)
+  // slug unique pour MediaAsset (ex: "salomon-logo-k9j3u4")
+  const base = slugify(title || cleanName.replace(/\.[^.]+$/, "")) || "media";
+  const uniqueSuffix = Date.now().toString(36);
+  const slug = `${base}-${uniqueSuffix}`;
+
   const asset = await prisma.mediaAsset.create({
     data: {
-      kind: "IMAGE", // enum MediaKind
+      slug,                // <-- requis par ton modèle
+      kind: "IMAGE",
       mime: file.type || "application/octet-stream",
       width: null,
       height: null,
       bytes,
-      storageKey: blob.pathname, // ex: uploads/2025-11-07-...-image.png
-      publicUrl: blob.url,
+      storageKey: blob.pathname,  // ex: "uploads/2025-11-07-...-image.png"
+      publicUrl: blob.url,        // URL publique
       title: title || null,
       alt: alt || null,
-      createdById: session.user.id, // User.id (String)
+      createdById: session.user.id,
     },
     select: {
       id: true,
+      slug: true,
       publicUrl: true,
       storageKey: true,
       mime: true,
