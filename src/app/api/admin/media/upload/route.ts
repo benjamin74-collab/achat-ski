@@ -4,7 +4,6 @@ import { put } from "@vercel/blob";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-import { slugify } from "@/lib/slug";
 
 export const runtime = "nodejs";
 
@@ -16,48 +15,52 @@ export async function POST(req: Request) {
 
   const form = await req.formData();
   const file = form.get("file") as File | null;
+  const kind = String(form.get("kind") || "generic");
   const alt = String(form.get("alt") || "");
   const title = String(form.get("title") || "");
-  const folder = String(form.get("folder") || "uploads"); // ex: brand-logos / pages / avatars ...
+  const folder = String(form.get("folder") || "uploads");
 
   if (!file) return NextResponse.json({ error: "No file" }, { status: 400 });
 
-  // Nom de fichier propre + chemin de stockage
+  // ✅ Récupère le token côté serveur
+  const token = process.env.BLOB_READ_WRITE_TOKEN;
+  if (!token) {
+    return NextResponse.json(
+      { error: "Missing BLOB_READ_WRITE_TOKEN at runtime" },
+      { status: 500 }
+    );
+  }
+
   const ts = new Date().toISOString().replace(/[:.]/g, "-");
-  const cleanName = (file.name || "upload").replace(/[^\w.\-]+/g, "_");
+  const cleanName = file.name.replace(/[^\w.\-]+/g, "_");
   const pathname = `${folder}/${ts}-${cleanName}`;
 
-  // Upload vers Vercel Blob
+  // ✅ On passe explicitement le token à put()
   const blob = await put(pathname, file, {
     access: "public",
     addRandomSuffix: false,
     contentType: file.type || undefined,
+    token, // 👈 important
   });
 
-  // Génère un slug unique pour le média (basé sur titre ou nom de fichier sans extension)
-  const baseSlug =
-    slugify(title || cleanName.replace(/\.[^.]+$/, "")) || "media";
-  const uniqueSlug = `${baseSlug}-${ts}`.toLowerCase();
-
-  // Enregistrement en base, en respectant le modèle MediaAsset
   const asset = await prisma.mediaAsset.create({
     data: {
-      slug: uniqueSlug,
-      title: title || null,
-      alt: alt || null,
-      kind: "IMAGE", // enum MediaKind
+      // Si votre modèle s’appelle différemment (mime/publicUrl/storageKey), adaptez ici :
+      kind: "IMAGE",
       mime: file.type || "application/octet-stream",
       width: null,
       height: null,
-      bytes: typeof file.size === "number" ? file.size : null, // 👈 fix ici
-      storageKey: blob.pathname, // clé interne (ex: "uploads/2024-11-07-...-image.png")
-      publicUrl: blob.url,       // URL publique
-      createdById: session.user.id, // User.id (String)
+      bytes: typeof (file as any).size === "number" ? (file as any).size : null,
+      storageKey: blob.pathname,
+      publicUrl: blob.url,
+      title: title || null,
+      alt: alt || null,
+      createdById: session.user.id,
     },
     select: {
       id: true,
-      slug: true,
       publicUrl: true,
+      storageKey: true,
       mime: true,
       bytes: true,
       title: true,
