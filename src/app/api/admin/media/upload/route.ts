@@ -15,14 +15,13 @@ export async function POST(req: Request) {
 
   const form = await req.formData();
   const file = form.get("file") as File | null;
-  const kind = String(form.get("kind") || "generic");
+  // on n’utilise plus `kind` pour éviter l’avertissement no-unused-vars
   const alt = String(form.get("alt") || "");
   const title = String(form.get("title") || "");
   const folder = String(form.get("folder") || "uploads");
 
   if (!file) return NextResponse.json({ error: "No file" }, { status: 400 });
 
-  // ✅ Récupère le token côté serveur
   const token = process.env.BLOB_READ_WRITE_TOKEN;
   if (!token) {
     return NextResponse.json(
@@ -31,31 +30,35 @@ export async function POST(req: Request) {
     );
   }
 
+  // chemin: dossier/horodatage-nomfichier
   const ts = new Date().toISOString().replace(/[:.]/g, "-");
   const cleanName = file.name.replace(/[^\w.\-]+/g, "_");
   const pathname = `${folder}/${ts}-${cleanName}`;
 
-  // ✅ On passe explicitement le token à put()
+  // Upload vers Vercel Blob
   const blob = await put(pathname, file, {
     access: "public",
     addRandomSuffix: false,
     contentType: file.type || undefined,
-    token, // 👈 important
+    token, // important pour le runtime
   });
 
+  // File.size est typé `number` dans lib.dom.d.ts → pas besoin de `any`
+  const bytes: number | null = Number.isFinite(file.size) ? file.size : null;
+
+  // Enregistrement base (modèle MediaAsset du schéma Prisma)
   const asset = await prisma.mediaAsset.create({
     data: {
-      // Si votre modèle s’appelle différemment (mime/publicUrl/storageKey), adaptez ici :
-      kind: "IMAGE",
+      kind: "IMAGE", // enum MediaKind
       mime: file.type || "application/octet-stream",
       width: null,
       height: null,
-      bytes: typeof (file as any).size === "number" ? (file as any).size : null,
-      storageKey: blob.pathname,
+      bytes,
+      storageKey: blob.pathname, // ex: uploads/2025-11-07-...-image.png
       publicUrl: blob.url,
       title: title || null,
       alt: alt || null,
-      createdById: session.user.id,
+      createdById: session.user.id, // User.id (String)
     },
     select: {
       id: true,
