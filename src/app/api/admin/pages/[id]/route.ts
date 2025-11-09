@@ -7,14 +7,10 @@ import { slugify } from "@/lib/slug";
 import { revalidatePath } from "next/cache";
 import { sanitizeHtml } from "@/lib/sanitize";
 
-function numOrNull(v: FormDataEntryValue | null): number | null {
-  const s = (v as string | null) ?? null;
-  if (!s) return null;
-  const n = Number(s);
-  return Number.isFinite(n) ? n : null;
-}
-
-export async function PUT(req: Request, { params }: { params: { id: string } }) {
+export async function PUT(
+  req: Request,
+  { params }: { params: { id: string } }
+) {
   const session = await getServerSession(authOptions);
   if (!session?.user?.role || session.user.role !== "ADMIN") {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
@@ -26,36 +22,76 @@ export async function PUT(req: Request, { params }: { params: { id: string } }) 
   }
 
   const fd = await req.formData();
+
   const title = String(fd.get("title") || "");
   const slug = slugify(String(fd.get("slug") || title));
+  const intro = (fd.get("intro") as string) || null;
+  const contentRaw = (fd.get("content") as string) || "";
+  const content = sanitizeHtml(contentRaw);
 
-  const thumbnailAssetId = numOrNull(fd.get("thumbnailAssetId"));
-  const bannerAssetId = numOrNull(fd.get("bannerAssetId"));
+  // Fallback URLs (si aucun asset n’est choisi)
+  const thumbnailUrl = ((fd.get("thumbnailUrl") as string) || "").trim() || null;
+  const bannerUrl = ((fd.get("bannerUrl") as string) || "").trim() || null;
 
-  const data = {
+  // Ids d’assets (médiathèque)
+  const thumbnailAssetIdRaw = fd.get("thumbnailAssetId");
+  const bannerAssetIdRaw = fd.get("bannerAssetId");
+
+  const thumbnailAssetId = thumbnailAssetIdRaw
+    ? Number(String(thumbnailAssetIdRaw))
+    : null;
+  const bannerAssetId = bannerAssetIdRaw
+    ? Number(String(bannerAssetIdRaw))
+    : null;
+
+  // Meta + statut + tags
+  const metaTitle = ((fd.get("metaTitle") as string) || "").trim() || null;
+  const metaDescription =
+    ((fd.get("metaDescription") as string) || "").trim() || null;
+  const published = fd.get("published") === "on";
+  const tags = String(fd.get("tags") || "")
+    .split(",")
+    .map((s) => s.trim())
+    .filter(Boolean);
+
+  // Construction du payload en combinant relations + fallbacks URL
+  const data: any = {
     title,
     slug,
-    intro: (fd.get("intro") as string) || null,
-    content: sanitizeHtml((fd.get("content") as string) || ""),
-    thumbnailUrl: ((fd.get("thumbnailUrl") as string) || "").trim() || null,
-    bannerUrl: ((fd.get("bannerUrl") as string) || "").trim() || null,
-    metaTitle: (fd.get("metaTitle") as string) || null,
-    metaDescription: (fd.get("metaDescription") as string) || null,
-    published: fd.get("published") === "on",
-    tags: String(fd.get("tags") || "")
-      .split(",")
-      .map((s) => s.trim())
-      .filter(Boolean),
-    // champs asset optionnels (on n’écrase pas si null)
-    ...(thumbnailAssetId !== null ? { thumbnailAssetId } : {}),
-    ...(bannerAssetId !== null ? { bannerAssetId } : {}),
+    intro,
+    content,
+    metaTitle,
+    metaDescription,
+    published,
+    tags,
   };
 
-  const updated = await prisma.page.update({ where: { id }, data });
+  // Bannière : si on a un asset, on le connecte et on met l’URL à null
+  // sinon on disconnect la relation et on garde l’URL si fournie
+  if (bannerAssetId) {
+    data.banner = { connect: { id: bannerAssetId } };
+    data.bannerUrl = null;
+  } else {
+    data.banner = { disconnect: true };
+    data.bannerUrl = bannerUrl;
+  }
 
-  revalidatePath("/admin/pages");
+  // Miniature : même logique
+  if (thumbnailAssetId) {
+    data.thumbnail = { connect: { id: thumbnailAssetId } };
+    data.thumbnailUrl = null;
+  } else {
+    data.thumbnail = { disconnect: true };
+    data.thumbnailUrl = thumbnailUrl;
+  }
+
+  await prisma.page.update({
+    where: { id },
+    data,
+  });
+
   revalidatePath("/pages");
-  revalidatePath(`/pages/${updated.slug}`);
+  revalidatePath(`/pages/${slug}`);
 
-  return NextResponse.json({ ok: true, slug: updated.slug });
+  return NextResponse.json({ ok: true, slug });
 }
