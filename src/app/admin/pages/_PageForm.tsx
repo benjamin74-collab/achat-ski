@@ -1,6 +1,7 @@
+// src/app/admin/pages/_PageForm.tsx
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import HtmlEditor from "@/app/admin/categories/partials/HtmlEditor";
 import { slugify } from "@/lib/slug";
@@ -18,14 +19,30 @@ type PageData = {
   metaTitle?: string | null;
   metaDescription?: string | null;
   tags?: string[] | null;
-  // si tu veux pré-remplir un jour :
-  // thumbnailAssetId?: number | null;
-  // bannerAssetId?: number | null;
+  // nouveaux champs (si présents quand on édite)
+  kind?: "GUIDE" | "COMPARATIF" | "ARTICLE";
+  categoryId?: number | null;
 };
+
+type Cat = { id: number; name: string };
 
 export default function PageForm({ initial }: { initial?: PageData }) {
   const r = useRouter();
   const [saving, setSaving] = useState(false);
+  const [cats, setCats] = useState<Cat[]>([]);
+
+  useEffect(() => {
+    let abort = false;
+    (async () => {
+      try {
+        const res = await fetch("/api/admin/categories/list", { cache: "no-store" });
+        if (!res.ok) return;
+        const data = (await res.json()) as Cat[];
+        if (!abort) setCats(data);
+      } catch {/* ignore */}
+    })();
+    return () => { abort = true; };
+  }, []);
 
   async function onSubmit(formData: FormData) {
     setSaving(true);
@@ -57,6 +74,36 @@ export default function PageForm({ initial }: { initial?: PageData }) {
           placeholder="ex: bien-choisir-ses-fixations"
           required
         />
+      </div>
+
+      {/* Type d’article + Catégorie */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div className="grid gap-2">
+          <label className="text-sm">Type d’article</label>
+          <select
+            name="kind"
+            defaultValue={initial?.kind ?? "ARTICLE"}
+            className="input"
+          >
+            <option value="GUIDE">Guide</option>
+            <option value="COMPARATIF">Comparatif</option>
+            <option value="ARTICLE">Article</option>
+          </select>
+        </div>
+
+        <div className="grid gap-2">
+          <label className="text-sm">Catégorie (optionnel)</label>
+          <select
+            name="categoryId"
+            defaultValue={initial?.categoryId ?? ""}
+            className="input"
+          >
+            <option value="">Aucune</option>
+            {cats.map((c) => (
+              <option key={c.id} value={c.id}>{c.name}</option>
+            ))}
+          </select>
+        </div>
       </div>
 
       <div className="grid gap-2">

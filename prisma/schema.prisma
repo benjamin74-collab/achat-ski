@@ -109,6 +109,13 @@ model Page {
   bannerId     Int?
   banner       MediaAsset? @relation("PageBanner", fields: [bannerId], references: [id])
 
+  // typage de l’article (Guide / Comparatif / Article)
+  kind PageKind @default(ARTICLE)
+
+  // relation (facultative) à Category
+  categoryId Int?
+  category   Category? @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+
   // String pour matcher User.id (cuid), et relation vers User
   authorId String?
   author   User?   @relation(fields: [authorId], references: [id])
@@ -125,6 +132,12 @@ model Page {
   tags String[]
 
   comments PageComment[]
+}
+
+enum PageKind {
+  GUIDE
+  COMPARATIF
+  ARTICLE
 }
 
 model PageComment {
@@ -317,6 +330,7 @@ model Category {
 
   // Relation inverse depuis Product (si tu veux requêter depuis la catégorie)
   products Product[]
+  pages    Page[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt

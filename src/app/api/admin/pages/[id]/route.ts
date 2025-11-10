@@ -6,7 +6,7 @@ import { authOptions } from "@/lib/auth";
 import { slugify } from "@/lib/slug";
 import { revalidatePath } from "next/cache";
 import { sanitizeHtml } from "@/lib/sanitize";
-import type { Prisma } from "@prisma/client";
+import type { Prisma, PageKind } from "@prisma/client";
 
 export async function PUT(
   req: Request,
@@ -38,6 +38,13 @@ export async function PUT(
     .map((s) => s.trim())
     .filter((s) => s.length > 0);
 
+  // nouveaux champs
+  const kindStr = String(fd.get("kind") || "ARTICLE").toUpperCase();
+  const kind: PageKind = ["GUIDE", "COMPARATIF", "ARTICLE"].includes(kindStr) ? (kindStr as PageKind) : "ARTICLE";
+
+  const categoryIdRaw = fd.get("categoryId");
+  const categoryId = categoryIdRaw ? Number(String(categoryIdRaw)) : null;
+
   // Fallback URLs si pas d’asset
   const thumbnailUrl = (String(fd.get("thumbnailUrl") ?? "").trim() || null) as string | null;
   const bannerUrl = (String(fd.get("bannerUrl") ?? "").trim() || null) as string | null;
@@ -56,21 +63,24 @@ export async function PUT(
     metaTitle,
     metaDescription,
     published,
-    // Prisma attend { set: [...] } pour remplacer un tableau
+    kind,
+    // remplace entièrement le tableau de tags
     tags: { set: tagsArray },
 
-    // Bannière: connect si ID fourni, sinon on “libère” la relation et on conserve l’URL de fallback
+    // Catégorie (connect ou set null)
+    ...(categoryId
+      ? { category: { connect: { id: categoryId } } }
+      : { category: { disconnect: true } }),
+
     banner: bannerAssetId ? { connect: { id: bannerAssetId } } : { disconnect: true },
     bannerUrl: bannerAssetId ? null : bannerUrl,
 
-    // Miniature: même logique
     thumbnail: thumbnailAssetId ? { connect: { id: thumbnailAssetId } } : { disconnect: true },
     thumbnailUrl: thumbnailAssetId ? null : thumbnailUrl,
   };
 
   const updated = await prisma.page.update({ where: { id: idNum }, data });
 
-  // Revalidations (si le slug change, on nettoie aussi l’ancien)
   revalidatePath("/pages");
   revalidatePath(`/pages/${updated.slug}`);
 

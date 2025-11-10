@@ -6,7 +6,7 @@ import { authOptions } from "@/lib/auth";
 import { slugify } from "@/lib/slug";
 import { revalidatePath } from "next/cache";
 import { sanitizeHtml } from "@/lib/sanitize";
-import type { Prisma } from "@prisma/client";
+import type { Prisma, PageKind } from "@prisma/client";
 
 export async function POST(req: Request) {
   const session = await getServerSession(authOptions);
@@ -29,6 +29,13 @@ export async function POST(req: Request) {
     .map((s) => s.trim())
     .filter(Boolean);
 
+  // nouveaux champs
+  const kindStr = String(fd.get("kind") || "ARTICLE").toUpperCase();
+  const kind: PageKind = ["GUIDE", "COMPARATIF", "ARTICLE"].includes(kindStr) ? (kindStr as PageKind) : "ARTICLE";
+
+  const categoryIdRaw = fd.get("categoryId");
+  const categoryId = categoryIdRaw ? Number(String(categoryIdRaw)) : null;
+
   // Fallbacks URL si pas d’asset
   const thumbnailUrl = ((fd.get("thumbnailUrl") as string) || "").trim() || null;
   const bannerUrl = ((fd.get("bannerUrl") as string) || "").trim() || null;
@@ -39,7 +46,6 @@ export async function POST(req: Request) {
   const thumbnailAssetId = thumbnailAssetIdRaw ? Number(String(thumbnailAssetIdRaw)) : null;
   const bannerAssetId = bannerAssetIdRaw ? Number(String(bannerAssetIdRaw)) : null;
 
-  // Construction des données Prisma (typées)
   const data: Prisma.PageCreateInput = {
     title,
     slug,
@@ -48,12 +54,12 @@ export async function POST(req: Request) {
     metaTitle,
     metaDescription,
     published,
-    tags, // en CREATE, un string[] direct est valide
+    tags,
+    kind,
+    ...(categoryId ? { category: { connect: { id: categoryId } } } : {}),
 
-    // Auteur relié (plutôt que authorId brut)
     ...(session.user?.id ? { author: { connect: { id: String(session.user.id) } } } : {}),
 
-    // Relations media + fallbacks URL
     ...(bannerAssetId
       ? { banner: { connect: { id: bannerAssetId } }, bannerUrl: null }
       : { bannerUrl }),
