@@ -1,11 +1,11 @@
 // src/app/admin/pages/_PageForm.tsx
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { useRouter } from "next/navigation";
-import HtmlEditor from "@/app/admin/categories/partials/HtmlEditor";
 import { slugify } from "@/lib/slug";
 import MediaPicker from "@/components/admin/MediaPicker";
+import RichTextEditor from "@/components/admin/RichTextEditor";
 
 type PageData = {
   id?: number;
@@ -13,36 +13,24 @@ type PageData = {
   slug?: string;
   intro?: string | null;
   content?: string;
-  thumbnailUrl?: string | null; // fallback URL
-  bannerUrl?: string | null;    // fallback URL
+  // fallbacks URL
+  thumbnailUrl?: string | null;
+  bannerUrl?: string | null;
+  // médiathèque (pré-remplissage)
+  thumbnailAssetId?: number | null;
+  thumbnailAssetUrl?: string | null;
+  bannerAssetId?: number | null;
+  bannerAssetUrl?: string | null;
+
   published?: boolean;
   metaTitle?: string | null;
   metaDescription?: string | null;
   tags?: string[] | null;
-  // nouveaux champs (si présents quand on édite)
-  kind?: "GUIDE" | "COMPARATIF" | "ARTICLE";
-  categoryId?: number | null;
 };
-
-type Cat = { id: number; name: string };
 
 export default function PageForm({ initial }: { initial?: PageData }) {
   const r = useRouter();
   const [saving, setSaving] = useState(false);
-  const [cats, setCats] = useState<Cat[]>([]);
-
-  useEffect(() => {
-    let abort = false;
-    (async () => {
-      try {
-        const res = await fetch("/api/admin/categories/list", { cache: "no-store" });
-        if (!res.ok) return;
-        const data = (await res.json()) as Cat[];
-        if (!abort) setCats(data);
-      } catch {/* ignore */}
-    })();
-    return () => { abort = true; };
-  }, []);
 
   async function onSubmit(formData: FormData) {
     setSaving(true);
@@ -76,42 +64,12 @@ export default function PageForm({ initial }: { initial?: PageData }) {
         />
       </div>
 
-      {/* Type d’article + Catégorie */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <div className="grid gap-2">
-          <label className="text-sm">Type d’article</label>
-          <select
-            name="kind"
-            defaultValue={initial?.kind ?? "ARTICLE"}
-            className="input"
-          >
-            <option value="GUIDE">Guide</option>
-            <option value="COMPARATIF">Comparatif</option>
-            <option value="ARTICLE">Article</option>
-          </select>
-        </div>
-
-        <div className="grid gap-2">
-          <label className="text-sm">Catégorie (optionnel)</label>
-          <select
-            name="categoryId"
-            defaultValue={initial?.categoryId ?? ""}
-            className="input"
-          >
-            <option value="">Aucune</option>
-            {cats.map((c) => (
-              <option key={c.id} value={c.id}>{c.name}</option>
-            ))}
-          </select>
-        </div>
-      </div>
-
       <div className="grid gap-2">
         <label className="text-sm">Intro (meta/preview)</label>
         <textarea name="intro" defaultValue={initial?.intro ?? ""} rows={3} className="input" />
       </div>
 
-      {/* ── Miniature & Bannière via médiathèque + fallback URL ─────────────── */}
+      {/* Miniature & Bannière (médiathèque + URL fallback) */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <div className="grid gap-2">
           <MediaPicker
@@ -120,7 +78,11 @@ export default function PageForm({ initial }: { initial?: PageData }) {
             kind="page-thumb"
             folder="pages/thumbs"
             accept="image/*"
-            initial={null}
+            initial={
+              initial?.thumbnailAssetId && initial?.thumbnailAssetUrl
+                ? { id: initial.thumbnailAssetId, url: initial.thumbnailAssetUrl }
+                : null
+            }
           />
           <label className="text-sm">Miniature (URL externe – optionnel)</label>
           <input name="thumbnailUrl" defaultValue={initial?.thumbnailUrl ?? ""} className="input" />
@@ -133,14 +95,23 @@ export default function PageForm({ initial }: { initial?: PageData }) {
             kind="page-banner"
             folder="pages/banners"
             accept="image/*"
-            initial={null}
+            initial={
+              initial?.bannerAssetId && initial?.bannerAssetUrl
+                ? { id: initial.bannerAssetId, url: initial.bannerAssetUrl }
+                : null
+            }
           />
           <label className="text-sm">Bannière (URL externe – optionnel)</label>
           <input name="bannerUrl" defaultValue={initial?.bannerUrl ?? ""} className="input" />
         </div>
       </div>
 
-      <HtmlEditor name="content" initialValue={initial?.content ?? ""} label="Contenu (HTML)" rows={16} />
+      <RichTextEditor
+        name="content"
+        initialValue={initial?.content ?? ""}
+        label="Contenu (WYSIWYG)"
+        rows={18}
+      />
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <div className="grid gap-2">

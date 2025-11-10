@@ -5,7 +5,11 @@ import { prisma } from "@/lib/prisma";
 export default async function AdminPages() {
   const rows = await prisma.page.findMany({
     orderBy: { createdAt: "desc" },
-    select: { id: true, slug: true, title: true, published: true, createdAt: true }
+    select: {
+      id: true, slug: true, title: true, published: true, createdAt: true,
+      thumbnailUrl: true,
+      thumbnail: { select: { publicUrl: true } },
+    }
   });
 
   return (
@@ -18,6 +22,7 @@ export default async function AdminPages() {
       <table className="mt-4 w-full text-sm">
         <thead>
           <tr className="text-left text-slate-500">
+            <th className="py-2">Miniature</th>
             <th className="py-2">Titre</th>
             <th className="py-2">Slug</th>
             <th className="py-2">Statut</th>
@@ -26,17 +31,26 @@ export default async function AdminPages() {
           </tr>
         </thead>
         <tbody>
-          {rows.map(r => (
-            <tr key={r.id} className="border-t">
-              <td className="py-2">{r.title}</td>
-              <td className="py-2 text-slate-600">{r.slug}</td>
-              <td className="py-2">{r.published ? "Publié" : "Brouillon"}</td>
-              <td className="py-2">{r.createdAt.toISOString().slice(0,10)}</td>
-              <td className="py-2 text-right">
-                <Link href={`/admin/pages/${r.id}/edit`} className="underline">Éditer</Link>
-              </td>
-            </tr>
-          ))}
+          {rows.map(r => {
+            const thumb = r.thumbnail?.publicUrl ?? r.thumbnailUrl ?? null;
+            return (
+              <tr key={r.id} className="border-t">
+                <td className="py-2">
+                  {thumb ? (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img src={thumb} alt="" width={64} height={36} className="rounded border object-cover aspect-video" />
+                  ) : <span className="text-slate-400">—</span>}
+                </td>
+                <td className="py-2">{r.title}</td>
+                <td className="py-2 text-slate-600">{r.slug}</td>
+                <td className="py-2">{r.published ? "Publié" : "Brouillon"}</td>
+                <td className="py-2">{r.createdAt.toISOString().slice(0,10)}</td>
+                <td className="py-2 text-right">
+                  <Link href={`/admin/pages/${r.id}/edit`} className="underline">Éditer</Link>
+                </td>
+              </tr>
+            );
+          })}
         </tbody>
       </table>
     </div>
