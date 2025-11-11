@@ -1,141 +1,151 @@
+// src/components/admin/RichTextEditor.tsx
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
-type Mode = "visual" | "html";
-
 type Props = {
-  name: string;                 // ex: "content"
-  label?: string;               // ex: "Contenu"
-  initialValue?: string;        // HTML initial
-  rows?: number;
+  name: string;
+  label?: string;
+  initialValue?: string;
 };
 
-function sanitizePastedHtml(html: string): string {
-  // Filtre hyper simple (tu as déjà un sanitize côté serveur)
-  // Ici on garde le HTML tel quel pour conserver le style auteur.
-  return html;
-}
+type Mode = "wysiwyg" | "html";
 
-export default function RichTextEditor({
-  name,
-  label = "Contenu",
-  initialValue = "",
-  rows = 16,
-}: Props) {
-  const [mode, setMode] = useState<Mode>("visual");
+export default function RichTextEditor({ name, label = "Contenu", initialValue = "" }: Props) {
+  const [mode, setMode] = useState<Mode>("wysiwyg");
   const [html, setHtml] = useState<string>(initialValue);
-  const hiddenRef = useRef<HTMLInputElement>(null);
-  const visualRef = useRef<HTMLDivElement>(null);
-  const htmlRef = useRef<HTMLTextAreaElement>(null);
+  const editorRef = useRef<HTMLDivElement | null>(null);
+  const textareaRef = useRef<HTMLTextAreaElement | null>(null);
 
-  // sync hidden input à chaque modif
+  // hydrate WYSIWYG when switching back from HTML
   useEffect(() => {
-    if (hiddenRef.current) hiddenRef.current.value = html;
+    if (mode === "wysiwyg" && editorRef.current) {
+      editorRef.current.innerHTML = html || "";
+    }
+  }, [mode, html]);
+
+  // keep hidden textarea in sync for form submit
+  useEffect(() => {
+    if (textareaRef.current) textareaRef.current.value = html;
   }, [html]);
 
-  // commandes “rich text” (execCommand marche encore dans la majorité des navigateurs)
   const exec = useCallback((cmd: string, value?: string) => {
+    // eslint-disable-next-line deprecation/deprecation
     document.execCommand(cmd, false, value);
-    // récupère le HTML actualisé
-    if (visualRef.current) setHtml(visualRef.current.innerHTML);
+    if (editorRef.current) setHtml(editorRef.current.innerHTML);
   }, []);
 
-  const onPaste = useCallback((e: React.ClipboardEvent<HTMLDivElement>) => {
-    if (mode !== "visual") return;
-    // colle proprement du HTML si présent, sinon texte
-    const htmlData = e.clipboardData.getData("text/html");
-    const textData = e.clipboardData.getData("text/plain");
-    if (htmlData) {
-      e.preventDefault();
-      const clean = sanitizePastedHtml(htmlData);
-      document.execCommand("insertHTML", false, clean);
-      if (visualRef.current) setHtml(visualRef.current.innerHTML);
-    } else if (textData) {
-      e.preventDefault();
-      document.execCommand("insertText", false, textData);
-      if (visualRef.current) setHtml(visualRef.current.innerHTML);
-    }
-  }, [mode]);
+  const applyHeading = useCallback((tag: "H2" | "H3") => {
+    // eslint-disable-next-line deprecation/deprecation
+    document.execCommand("formatBlock", false, tag);
+    if (editorRef.current) setHtml(editorRef.current.innerHTML);
+  }, []);
 
-  const toolbar = useMemo(
-    () => (
-      <div className="flex flex-wrap gap-2">
-        <button type="button" onClick={() => exec("bold")} className="rt-btn">B</button>
-        <button type="button" onClick={() => exec("italic")} className="rt-btn"><em>I</em></button>
-        <button type="button" onClick={() => exec("formatBlock", "<h2>")} className="rt-btn">H2</button>
-        <button type="button" onClick={() => exec("formatBlock", "<h3>")} className="rt-btn">H3</button>
-        <button type="button" onClick={() => exec("insertUnorderedList")} className="rt-btn">• Liste</button>
-        <button type="button" onClick={() => exec("insertOrderedList")} className="rt-btn">1. Liste</button>
-        <button type="button" onClick={() => exec("formatBlock", "<blockquote>")} className="rt-btn">❝</button>
-        <button
-          type="button"
-          onClick={() => {
-            const url = prompt("URL du lien :");
-            if (url) exec("createLink", url);
-          }}
-          className="rt-btn"
-        >
-          Lien
-        </button>
-        <button type="button" onClick={() => exec("removeFormat")} className="rt-btn">Effacer style</button>
-      </div>
-    ),
-    [exec]
-  );
+  const makeLink = useCallback(() => {
+    const url = prompt("URL du lien :");
+    if (!url) return;
+    exec("createLink", url);
+  }, [exec]);
+
+  const toggleMode = useCallback(() => {
+    setMode((m) => (m === "wysiwyg" ? "html" : "wysiwyg"));
+  }, []);
+
+  const toolbarBtn =
+    "inline-flex items-center gap-1 rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-xs hover:bg-slate-50";
+
+  const sep = <div className="w-px h-6 bg-slate-200 mx-1" />;
 
   return (
     <div className="grid gap-2">
-      <label className="text-sm font-medium">{label}</label>
-
-      {/* Onglets */}
-      <div className="inline-flex rounded-lg border border-ring bg-white overflow-hidden w-fit">
+      <div className="flex items-center justify-between">
+        <label className="text-sm">{label}</label>
         <button
           type="button"
-          onClick={() => setMode("visual")}
-          className={`px-3 py-1.5 text-sm ${mode === "visual" ? "bg-brand-50 text-brand-700" : "hover:bg-muted"}`}
-          aria-pressed={mode === "visual"}
+          onClick={toggleMode}
+          className="btn-outline btn-sm"
+          title={mode === "wysiwyg" ? "Basculer en vue HTML" : "Revenir à l’éditeur visuel"}
         >
-          Éditeur
-        </button>
-        <button
-          type="button"
-          onClick={() => setMode("html")}
-          className={`px-3 py-1.5 text-sm ${mode === "html" ? "bg-brand-50 text-brand-700" : "hover:bg-muted"}`}
-          aria-pressed={mode === "html"}
-        >
-          HTML
+          {mode === "wysiwyg" ? "Voir HTML" : "Éditeur visuel"}
         </button>
       </div>
 
-      {/* Barre d’outils */}
-      {mode === "visual" && (
-        <div className="rounded-lg border border-ring bg-white p-2">{toolbar}</div>
+      {/* Toolbar */}
+      {mode === "wysiwyg" && (
+        <div className="sticky top-16 z-10 rounded-xl border border-slate-200 bg-white p-2 flex flex-wrap items-center gap-1">
+          <div className="flex items-center gap-1">
+            <button type="button" className={toolbarBtn} onClick={() => applyHeading("H2")} title="Titre H2">
+              H2
+            </button>
+            <button type="button" className={toolbarBtn} onClick={() => applyHeading("H3")} title="Titre H3">
+              H3
+            </button>
+          </div>
+
+          {sep}
+
+          <div className="flex items-center gap-1">
+            <button type="button" className={toolbarBtn} onClick={() => exec("bold")} title="Gras (Ctrl/Cmd+B)">
+              <span className="font-bold">B</span>
+            </button>
+            <button type="button" className={toolbarBtn} onClick={() => exec("italic")} title="Italique (Ctrl/Cmd+I)">
+              <span className="italic">I</span>
+            </button>
+            <button type="button" className={toolbarBtn} onClick={() => exec("underline")} title="Souligné (Ctrl/Cmd+U)">
+              <span className="underline">U</span>
+            </button>
+            <button type="button" className={toolbarBtn} onClick={() => exec("removeFormat")} title="Retirer la mise en forme">
+              Clear
+            </button>
+          </div>
+
+          {sep}
+
+          <div className="flex items-center gap-1">
+            <button type="button" className={toolbarBtn} onClick={() => exec("insertUnorderedList")} title="Liste à puces">
+              • Liste
+            </button>
+            <button type="button" className={toolbarBtn} onClick={() => exec("insertOrderedList")} title="Liste numérotée">
+              1. Liste
+            </button>
+            <button type="button" className={toolbarBtn} onClick={makeLink} title="Insérer un lien">
+              Lien
+            </button>
+          </div>
+
+          {sep}
+
+          <div className="flex items-center gap-1">
+            <button type="button" className={toolbarBtn} onClick={() => exec("undo")} title="Annuler">
+              ↶
+            </button>
+            <button type="button" className={toolbarBtn} onClick={() => exec("redo")} title="Rétablir">
+              ↷
+            </button>
+          </div>
+        </div>
       )}
 
-      {/* Zone d’édition */}
-      {mode === "visual" ? (
+      {/* Editor / HTML area */}
+      {mode === "wysiwyg" ? (
         <div
-          ref={visualRef}
-          className="rt-editor"
+          ref={editorRef}
+          className="prose min-h-[320px] rounded-xl border border-slate-200 bg-white p-4 focus:outline-none"
           contentEditable
           suppressContentEditableWarning
-          onInput={(e) => setHtml((e.target as HTMLDivElement).innerHTML)}
-          onPaste={onPaste}
+          onInput={(e) => setHtml((e.currentTarget as HTMLDivElement).innerHTML)}
           dangerouslySetInnerHTML={{ __html: html }}
         />
       ) : (
         <textarea
-          ref={htmlRef}
-          className="textarea"
-          rows={rows}
+          className="input min-h-[320px] font-mono"
           value={html}
-          onChange={(e) => setHtml(e.target.value)}
+          onChange={(e) => setHtml(e.currentTarget.value)}
         />
       )}
 
-      {/* champ réel envoyé au serveur */}
-      <input ref={hiddenRef} type="hidden" name={name} defaultValue={initialValue} />
+      {/* champ réel pour le form submit */}
+      <textarea ref={textareaRef} name={name} defaultValue={initialValue} className="hidden" />
     </div>
   );
 }
