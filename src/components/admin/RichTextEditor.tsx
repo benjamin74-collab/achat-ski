@@ -1,7 +1,7 @@
 // src/components/admin/RichTextEditor.tsx
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 type Props = {
   name: string;
@@ -30,13 +30,11 @@ export default function RichTextEditor({ name, label = "Contenu", initialValue =
   }, [html]);
 
   const exec = useCallback((cmd: string, value?: string) => {
-    // eslint-disable-next-line deprecation/deprecation
     document.execCommand(cmd, false, value);
     if (editorRef.current) setHtml(editorRef.current.innerHTML);
   }, []);
 
   const applyHeading = useCallback((tag: "H2" | "H3") => {
-    // eslint-disable-next-line deprecation/deprecation
     document.execCommand("formatBlock", false, tag);
     if (editorRef.current) setHtml(editorRef.current.innerHTML);
   }, []);
@@ -53,7 +51,6 @@ export default function RichTextEditor({ name, label = "Contenu", initialValue =
 
   const toolbarBtn =
     "inline-flex items-center gap-1 rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-xs hover:bg-slate-50";
-
   const sep = <div className="w-px h-6 bg-slate-200 mx-1" />;
 
   return (
@@ -70,7 +67,6 @@ export default function RichTextEditor({ name, label = "Contenu", initialValue =
         </button>
       </div>
 
-      {/* Toolbar */}
       {mode === "wysiwyg" && (
         <div className="sticky top-16 z-10 rounded-xl border border-slate-200 bg-white p-2 flex flex-wrap items-center gap-1">
           <div className="flex items-center gap-1">
@@ -126,7 +122,6 @@ export default function RichTextEditor({ name, label = "Contenu", initialValue =
         </div>
       )}
 
-      {/* Editor / HTML area */}
       {mode === "wysiwyg" ? (
         <div
           ref={editorRef}
