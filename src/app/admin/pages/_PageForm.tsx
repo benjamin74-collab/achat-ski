@@ -3,9 +3,9 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import HtmlEditor from "@/app/admin/categories/partials/HtmlEditor";
 import { slugify } from "@/lib/slug";
 import MediaPicker from "@/components/admin/MediaPicker";
+import RichTextEditor from "@/components/admin/RichTextEditor";
 
 type PageData = {
   id?: number;
@@ -21,7 +21,7 @@ type PageData = {
   metaDescription?: string | null;
   tags?: string[] | null;
 
-  // ✅ Pré-remplissage médiathèque (ajoutés)
+  // Pré-remplissage médiathèque
   thumbnailAssetId?: number | null;
   thumbnailAssetUrl?: string | null;
   bannerAssetId?: number | null;
@@ -34,10 +34,9 @@ export default function PageForm({ initial }: { initial?: PageData }) {
 
   async function onSubmit(formData: FormData) {
     setSaving(true);
-    const res = await fetch(initial?.id ? `/api/admin/pages/${initial.id}` : `/api/admin/pages`, {
-      method: initial?.id ? "PUT" : "POST",
-      body: formData,
-    });
+    const url = initial?.id ? `/api/admin/pages/${initial.id}` : `/api/admin/pages`;
+    const method = initial?.id ? "PUT" : "POST";
+    const res = await fetch(url, { method, body: formData });
     setSaving(false);
     if (res.ok) {
       const { slug } = await res.json();
@@ -45,7 +44,7 @@ export default function PageForm({ initial }: { initial?: PageData }) {
     }
   }
 
-  // ✅ Construit l’état initial pour MediaPicker à partir des props
+  // État initial pour MediaPicker à partir des props
   const initialThumb =
     initial?.thumbnailAssetId && initial?.thumbnailAssetUrl
       ? { id: initial.thumbnailAssetId, url: initial.thumbnailAssetUrl, filename: null, alt: null }
@@ -80,7 +79,7 @@ export default function PageForm({ initial }: { initial?: PageData }) {
         <textarea name="intro" defaultValue={initial?.intro ?? ""} rows={3} className="input" />
       </div>
 
-      {/* ── Miniature & Bannière via médiathèque + fallback URL ─────────────── */}
+      {/* Miniature & Bannière via médiathèque + fallback URL */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <div className="grid gap-2">
           <MediaPicker
@@ -109,7 +108,12 @@ export default function PageForm({ initial }: { initial?: PageData }) {
         </div>
       </div>
 
-      <HtmlEditor name="content" initialValue={initial?.content ?? ""} label="Contenu (HTML)" rows={16} />
+      {/* Éditeur WYSIWYG + onglet HTML */}
+      <RichTextEditor
+        name="content"
+        label="Contenu (WYSIWYG / HTML)"
+        initialValue={initial?.content ?? ""}
+      />
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <div className="grid gap-2">
@@ -133,7 +137,9 @@ export default function PageForm({ initial }: { initial?: PageData }) {
       </label>
 
       <div className="flex gap-2">
-        <button disabled={saving} className="btn">{saving ? "Enregistrement…" : "Enregistrer"}</button>
+        <button disabled={saving} className="btn">
+          {saving ? "Enregistrement…" : "Enregistrer"}
+        </button>
       </div>
     </form>
   );
