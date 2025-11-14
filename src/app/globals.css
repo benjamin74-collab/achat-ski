@@ -185,6 +185,10 @@
   @apply mt-3 mb-1.5 text-base md:text-lg font-semibold;
 }
 
+.editor-prose h4 {
+  @apply mt-2.5 mb-1 text-sm md:text-base font-semibold;
+}
+
 .editor-prose ul,
 .editor-prose ol {
   @apply text-sm;
