@@ -169,3 +169,23 @@
 .prose {
   @apply leading-relaxed;
 }
+
+/* ---------------------------------
+   WYSIWYG – styles de prévisualisation
+---------------------------------- */
+.editor-prose p {
+  @apply text-sm;
+}
+
+.editor-prose h2 {
+  @apply mt-4 mb-2 text-lg md:text-xl font-semibold;
+}
+
+.editor-prose h3 {
+  @apply mt-3 mb-1.5 text-base md:text-lg font-semibold;
+}
+
+.editor-prose ul,
+.editor-prose ol {
+  @apply text-sm;
+}

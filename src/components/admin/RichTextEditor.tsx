@@ -275,13 +275,13 @@ export default function RichTextEditor({
 
       {/* Zone d’édition */}
       {mode === "visual" ? (
-        <div
-          ref={visualRef}
-          className="min-h-[260px] rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm leading-relaxed focus-within:outline-none focus-within:ring-2 focus-within:ring-brand-500/60"
-          contentEditable
-          suppressContentEditableWarning
-          onInput={handleVisualInput}
-        />
+		  <div
+			ref={visualRef}
+			className="min-h-[260px] rounded-xl border border-slate-200 bg-white px-3 py-2 leading-relaxed focus-within:outline-none focus-within:ring-2 focus-within:ring-brand-500/60 editor-prose"
+			contentEditable
+			suppressContentEditableWarning
+			onInput={handleVisualInput}
+		  />
       ) : (
         <textarea
           className="input min-h-[260px] font-mono text-xs"
