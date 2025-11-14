@@ -2,19 +2,26 @@
 
 /**
  * Configuration d’un emplacement pub.
- * Tu pourras l’enrichir plus tard (provider, targeting, etc.)
+ * Champs optionnels pour que tu puisses commencer simple,
+ * puis brancher un vrai provider plus tard.
  */
 export type AdConfig = {
-  provider: "adsense" | "gam" | "custom";
-  slotId: string;
-  sizes?: [number, number][]; // ex: [[300,250], [336,280]]
+  // Pour de la pub “classique” (ex: AdSense, GAM)
+  provider?: "adsense" | "gam" | "custom";
+  slotId?: string;
+  sizes?: [number, number][];
+
+  // Pour les encarts “maison” (image + lien)
+  imageUrl?: string;
+  linkUrl?: string;
+  label?: string;
 };
 
 /**
  * Dictionnaire des emplacements pubs du site.
  *
- * - Si la valeur est `null` → pas de pub rendue (le composant AdSlot ne s’affiche pas).
- * - Si tu définis un objet { provider, slotId, ... } → AdSlot pourra afficher le script associé.
+ * - null  => aucun affichage (le composant ne rend rien)
+ * - objet => l’encart est visible (si les champs nécessaires sont remplis)
  */
 export const AD_CONFIG: Record<string, AdConfig | null> = {
   page_top: null,
