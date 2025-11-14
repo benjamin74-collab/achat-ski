@@ -19,6 +19,23 @@ export default function AdminMediaPage() {
   const [title, setTitle] = useState("");
   const [alt, setAlt] = useState("");
 
+  // ✅ Mode "sélection depuis l'éditeur" (popup)
+  const [selectMode, setSelectMode] = useState(false);
+  const [selectType, setSelectType] = useState<"image" | "video">("image");
+
+  useEffect(() => {
+    // On détecte les paramètres ?mode=select&type=image|video
+    if (typeof window !== "undefined") {
+      const params = new URLSearchParams(window.location.search);
+      if (params.get("mode") === "select") {
+        setSelectMode(true);
+        const t = params.get("type");
+        if (t === "video") setSelectType("video");
+        else setSelectType("image");
+      }
+    }
+  }, []);
+
   async function refresh() {
     const r = await fetch("/api/media/list", { cache: "no-store" });
     const j = await r.json();
@@ -54,11 +71,46 @@ export default function AdminMediaPage() {
     else alert("Impossible de supprimer");
   }
 
+  // ✅ Sélection d’un média pour l’éditeur visuel
+  function onSelect(asset: Asset) {
+    if (!selectMode) return;
+
+    try {
+      if (window.opener) {
+        window.opener.postMessage(
+          {
+            type: "media-selected",
+            payload: {
+              url: asset.publicUrl,
+              alt: asset.alt || asset.title || "",
+              kind: selectType, // "image" ou "video" (pour l’instant on gère surtout l’image)
+            },
+          },
+          window.location.origin
+        );
+      }
+    } catch (e) {
+      console.error("postMessage error", e);
+    }
+
+    // On ferme la popup après sélection
+    window.close();
+  }
+
   return (
     <div className="space-y-6">
-      <h1 className="text-2xl font-semibold">Médiathèque</h1>
+      <div className="flex items-center justify-between gap-3">
+        <h1 className="text-2xl font-semibold">Médiathèque</h1>
 
-      <form onSubmit={onUpload} className="rounded-xl border p-4 space-y-3">
+        {selectMode && (
+          <div className="rounded-full bg-emerald-50 px-3 py-1 text-xs font-medium text-emerald-700 border border-emerald-200">
+            Mode sélection&nbsp;: cliquez sur une image pour l&apos;insérer dans le contenu
+          </div>
+        )}
+      </div>
+
+      {/* Formulaire d’upload (conservé même en mode select, pratique si on veut téléverser puis choisir) */}
+      <form onSubmit={onUpload} className="rounded-xl border p-4 space-y-3 bg-white">
         <div className="grid gap-3 sm:grid-cols-3">
           <div className="sm:col-span-2">
             <input
@@ -89,20 +141,39 @@ export default function AdminMediaPage() {
         </div>
       </form>
 
+      {/* Grille des médias */}
       <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-3">
         {assets.map((a) => (
-          <div key={a.id} className="rounded-xl border overflow-hidden">
-            <img src={a.publicUrl} alt={a.alt || a.title || ""} className="aspect-square object-cover w-full" />
-            <div className="p-2 text-xs">
+          <div
+            key={a.id}
+            className={
+              "rounded-xl border overflow-hidden bg-white flex flex-col " +
+              (selectMode ? "cursor-pointer hover:border-brand-500 hover:shadow-card transition" : "")
+            }
+            onClick={() => selectMode && onSelect(a)}
+          >
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src={a.publicUrl}
+              alt={a.alt || a.title || ""}
+              className="aspect-square object-cover w-full"
+            />
+            <div className="p-2 text-xs flex-1 flex flex-col">
               <div className="font-medium truncate">{a.title || a.slug}</div>
               <div className="text-slate-500 truncate">{a.mime}</div>
-              <button
-                type="button"
-                className="mt-1 text-red-600 hover:underline"
-                onClick={() => onDelete(a.id)}
-              >
-                Supprimer
-              </button>
+
+              {!selectMode && (
+                <button
+                  type="button"
+                  className="mt-1 text-red-600 hover:underline self-start"
+                  onClick={(e) => {
+                    e.stopPropagation(); // évite de déclencher la sélection
+                    onDelete(a.id);
+                  }}
+                >
+                  Supprimer
+                </button>
+              )}
             </div>
           </div>
         ))}
