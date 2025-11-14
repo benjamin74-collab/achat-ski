@@ -1,7 +1,9 @@
 // src/components/admin/RichTextEditor.tsx
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useState, useRef, useEffect } from "react";
+
+type Mode = "visual" | "html";
 
 type Props = {
   name: string;
@@ -9,248 +11,314 @@ type Props = {
   initialValue?: string;
 };
 
-type Mode = "wysiwyg" | "html";
+type MediaType = "image" | "video";
 
 export default function RichTextEditor({
   name,
   label = "Contenu",
   initialValue = "",
 }: Props) {
-  const [mode, setMode] = useState<Mode>("wysiwyg");
-  const [html, setHtml] = useState<string>(initialValue);
+  const [mode, setMode] = useState<Mode>("visual");
+  const [value, setValue] = useState<string>(initialValue);
   const editorRef = useRef<HTMLDivElement | null>(null);
-  const textareaRef = useRef<HTMLTextAreaElement | null>(null);
 
-  // Hydrate le WYSIWYG quand on revient du mode HTML
+  // Dialog média
+  const [showMediaDialog, setShowMediaDialog] = useState(false);
+  const [mediaType, setMediaType] = useState<MediaType>("image");
+  const [mediaUrlInput, setMediaUrlInput] = useState("");
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
+
+  // Initialisation du contenu visuel
   useEffect(() => {
-    if (mode === "wysiwyg" && editorRef.current) {
-      editorRef.current.innerHTML = html || "";
+    if (mode === "visual" && editorRef.current) {
+      editorRef.current.innerHTML = value || "";
     }
-  }, [mode, html]);
+  }, [mode, value]);
 
-  // Sync textarea cachée (pour submit)
-  useEffect(() => {
-    if (textareaRef.current) textareaRef.current.value = html;
-  }, [html]);
+  function syncFromDom() {
+    if (editorRef.current && mode === "visual") {
+      setValue(editorRef.current.innerHTML);
+    }
+  }
 
-  const exec = useCallback((cmd: string, value?: string) => {
-    document.execCommand(cmd, false, value);
-    if (editorRef.current) setHtml(editorRef.current.innerHTML);
-  }, []);
+  function applyCommand(command: string, arg?: string) {
+    if (mode !== "visual") return;
+    document.execCommand(command, false, arg);
+    syncFromDom();
+  }
 
-  const applyHeading = useCallback((tag: "H2" | "H3") => {
-    document.execCommand("formatBlock", false, tag);
-    if (editorRef.current) setHtml(editorRef.current.innerHTML);
-  }, []);
+  function toggleMode(next: Mode) {
+    if (next === mode) return;
+    if (next === "html") {
+      // On repasse en HTML -> on sync depuis le DOM
+      syncFromDom();
+      setMode("html");
+    } else {
+      // On repasse en visuel
+      setMode("visual");
+    }
+  }
 
-  const makeLink = useCallback(() => {
-    const url = prompt("URL du lien :");
+  function openMediaDialog(type: MediaType) {
+    setMediaType(type);
+    setMediaUrlInput("");
+    setShowMediaDialog(true);
+  }
+
+  function closeMediaDialog() {
+    setShowMediaDialog(false);
+    setMediaUrlInput("");
+    if (fileInputRef.current) {
+      fileInputRef.current.value = "";
+    }
+  }
+
+  function insertMediaHtml(url: string) {
     if (!url) return;
-    exec("createLink", url);
-  }, [exec]);
+    const htmlSnippet =
+      mediaType === "image"
+        ? `<img src="${url}" alt="" />`
+        : `<video controls src="${url}" />`;
 
-  const insertImage = useCallback(() => {
-    const url = prompt("URL de l’image (https://…) :");
-    if (!url) return;
-    const alt = prompt("Texte alternatif (alt) :") ?? "";
-    const snippet = `<img src="${url}" alt="${alt.replace(/"/g, "&quot;")}" />`;
-    document.execCommand("insertHTML", false, snippet);
-    if (editorRef.current) setHtml(editorRef.current.innerHTML);
-  }, []);
+    if (mode === "visual") {
+      // On insère à la position du curseur
+      document.execCommand("insertHTML", false, htmlSnippet);
+      syncFromDom();
+    } else {
+      setValue((prev) => `${prev}\n${htmlSnippet}`);
+    }
+  }
 
-  const insertVideo = useCallback(() => {
-    const htmlEmbed = prompt(
-      "Code d’intégration vidéo (iframe ou balise <video>) :"
-    );
-    if (!htmlEmbed) return;
-    document.execCommand("insertHTML", false, htmlEmbed);
-    if (editorRef.current) setHtml(editorRef.current.innerHTML);
-  }, []);
+  async function handleMediaFileChange(
+    e: React.ChangeEvent<HTMLInputElement>
+  ) {
+    const file = e.target.files?.[0];
+    if (!file) return;
 
-  const toggleMode = useCallback(() => {
-    setMode((m) => (m === "wysiwyg" ? "html" : "wysiwyg"));
-  }, []);
+    try {
+      const fd = new FormData();
+      fd.append("file", file);
+      fd.append("folder", "pages/content");
+      fd.append("kind", mediaType === "image" ? "page-image" : "page-video");
 
-  const toolbarBtn =
-    "inline-flex items-center gap-1 rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-xs text-slate-700 hover:bg-slate-50";
-  const groupClass = "flex items-center gap-1";
-  const sep = <div className="w-px h-6 bg-slate-200 mx-1" />;
+      const res = await fetch("/api/admin/media/upload", {
+        method: "POST",
+        body: fd,
+      });
+      if (!res.ok) throw new Error("Upload failed");
+      const json = await res.json();
+      const url: string = json.asset.url;
+      insertMediaHtml(url);
+      closeMediaDialog();
+    } catch (err) {
+      console.error(err);
+      alert("Échec du téléversement du média");
+    }
+  }
+
+  function handleInsertFromUrl() {
+    if (!mediaUrlInput) return;
+    insertMediaHtml(mediaUrlInput.trim());
+    closeMediaDialog();
+  }
 
   return (
-    <div className="grid gap-2 w-full">
-      <div className="flex items-center justify-between">
-        <label className="text-sm font-medium">{label}</label>
-        <button
-          type="button"
-          onClick={toggleMode}
-          className="btn-outline btn-sm"
-          title={
-            mode === "wysiwyg"
-              ? "Basculer en vue HTML"
-              : "Revenir à l’éditeur visuel"
-          }
-        >
-          {mode === "wysiwyg" ? "Voir HTML" : "Éditeur visuel"}
-        </button>
+    <div className="grid gap-2">
+      <div className="flex items-center justify-between gap-3">
+        <label className="text-sm font-medium text-slate-700">
+          {label}
+        </label>
+        <div className="flex items-center gap-2 text-xs">
+          <button
+            type="button"
+            onClick={() => toggleMode("visual")}
+            className={
+              mode === "visual"
+                ? "px-2 py-1 rounded-md bg-brand-500 text-white"
+                : "px-2 py-1 rounded-md border border-slate-300 bg-white text-slate-600 hover:bg-slate-50"
+            }
+          >
+            Éditeur visuel
+          </button>
+          <button
+            type="button"
+            onClick={() => toggleMode("html")}
+            className={
+              mode === "html"
+                ? "px-2 py-1 rounded-md bg-slate-800 text-white"
+                : "px-2 py-1 rounded-md border border-slate-300 bg-white text-slate-600 hover:bg-slate-50"
+            }
+          >
+            Mode HTML
+          </button>
+        </div>
       </div>
 
-      {mode === "wysiwyg" && (
-        <div className="rounded-xl border border-slate-200 bg-slate-50 px-2 py-2 flex flex-wrap items-center gap-2 w-full">
-          <div className={groupClass}>
-            <button
-              type="button"
-              className={toolbarBtn}
-              onClick={() => applyHeading("H2")}
-              title="Titre H2"
-            >
-              H2
-            </button>
-            <button
-              type="button"
-              className={toolbarBtn}
-              onClick={() => applyHeading("H3")}
-              title="Titre H3"
-            >
-              H3
-            </button>
-          </div>
+      {/* Toolbar (masquée en mode HTML) */}
+      {mode === "visual" && (
+        <div className="flex flex-wrap items-center gap-2 rounded-xl border border-slate-200 bg-slate-50 px-2 py-1.5 text-xs text-slate-700">
+          <button
+            type="button"
+            onClick={() => applyCommand("bold")}
+            className="px-2 py-1 rounded-md hover:bg-white"
+          >
+            <strong>B</strong>
+          </button>
+          <button
+            type="button"
+            onClick={() => applyCommand("italic")}
+            className="px-2 py-1 rounded-md hover:bg-white italic"
+          >
+            I
+          </button>
+          <button
+            type="button"
+            onClick={() => applyCommand("insertUnorderedList")}
+            className="px-2 py-1 rounded-md hover:bg-white"
+          >
+            • Liste
+          </button>
+          <button
+            type="button"
+            onClick={() => applyCommand("insertOrderedList")}
+            className="px-2 py-1 rounded-md hover:bg-white"
+          >
+            1. Liste
+          </button>
+          <button
+            type="button"
+            onClick={() => applyCommand("formatBlock", "<h2>")}
+            className="px-2 py-1 rounded-md hover:bg-white"
+          >
+            H2
+          </button>
+          <button
+            type="button"
+            onClick={() => applyCommand("formatBlock", "<h3>")}
+            className="px-2 py-1 rounded-md hover:bg-white"
+          >
+            H3
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              const url = window.prompt("URL du lien :");
+              if (url) applyCommand("createLink", url);
+            }}
+            className="px-2 py-1 rounded-md hover:bg-white"
+          >
+            Lien
+          </button>
 
-          {sep}
+          <span className="mx-2 h-4 w-px bg-slate-300" />
 
-          <div className={groupClass}>
-            <button
-              type="button"
-              className={toolbarBtn}
-              onClick={() => exec("bold")}
-              title="Gras (Ctrl/Cmd+B)"
-            >
-              <span className="font-bold">Gras</span>
-            </button>
-            <button
-              type="button"
-              className={toolbarBtn}
-              onClick={() => exec("italic")}
-              title="Italique (Ctrl/Cmd+I)"
-            >
-              <span className="italic">Italique</span>
-            </button>
-            <button
-              type="button"
-              className={toolbarBtn}
-              onClick={() => exec("underline")}
-              title="Souligné (Ctrl/Cmd+U)"
-            >
-              <span className="underline">Souligné</span>
-            </button>
-            <button
-              type="button"
-              className={toolbarBtn}
-              onClick={() => exec("removeFormat")}
-              title="Retirer la mise en forme"
-            >
-              Clear
-            </button>
-          </div>
-
-          {sep}
-
-          <div className={groupClass}>
-            <button
-              type="button"
-              className={toolbarBtn}
-              onClick={() => exec("insertUnorderedList")}
-              title="Liste à puces"
-            >
-              • Liste
-            </button>
-            <button
-              type="button"
-              className={toolbarBtn}
-              onClick={() => exec("insertOrderedList")}
-              title="Liste numérotée"
-            >
-              1. Liste
-            </button>
-          </div>
-
-          {sep}
-
-          <div className={groupClass}>
-            <button
-              type="button"
-              className={toolbarBtn}
-              onClick={makeLink}
-              title="Insérer un lien"
-            >
-              Lien
-            </button>
-            <button
-              type="button"
-              className={toolbarBtn}
-              onClick={insertImage}
-              title="Insérer une image (URL)"
-            >
-              Image
-            </button>
-            <button
-              type="button"
-              className={toolbarBtn}
-              onClick={insertVideo}
-              title="Insérer une vidéo (embed)"
-            >
-              Vidéo
-            </button>
-          </div>
-
-          {sep}
-
-          <div className={groupClass}>
-            <button
-              type="button"
-              className={toolbarBtn}
-              onClick={() => exec("undo")}
-              title="Annuler"
-            >
-              ↶ Annuler
-            </button>
-            <button
-              type="button"
-              className={toolbarBtn}
-              onClick={() => exec("redo")}
-              title="Rétablir"
-            >
-              ↷ Rétablir
-            </button>
-          </div>
+          <button
+            type="button"
+            onClick={() => openMediaDialog("image")}
+            className="px-2 py-1 rounded-md hover:bg-white"
+          >
+            🖼️ Image
+          </button>
+          <button
+            type="button"
+            onClick={() => openMediaDialog("video")}
+            className="px-2 py-1 rounded-md hover:bg-white"
+          >
+            🎬 Vidéo
+          </button>
         </div>
       )}
 
-      {mode === "wysiwyg" ? (
-        <div
-          ref={editorRef}
-          className="prose w-full max-w-full min-h-[320px] rounded-xl border border-slate-200 bg-white p-4 focus:outline-none"
-          contentEditable
-          suppressContentEditableWarning
-          onInput={(e) =>
-            setHtml((e.currentTarget as HTMLDivElement).innerHTML)
-          }
-          dangerouslySetInnerHTML={{ __html: html }}
-        />
-      ) : (
-        <textarea
-          className="input w-full min-h-[320px] font-mono text-xs"
-          value={html}
-          onChange={(e) => setHtml(e.currentTarget.value)}
-        />
-      )}
+      {/* Zone d’édition */}
+      <div className="rounded-2xl border border-slate-200 bg-white">
+        {mode === "visual" ? (
+          <div
+            ref={editorRef}
+            className="min-h-[260px] max-h-[600px] overflow-y-auto px-3 py-2 text-sm leading-relaxed focus:outline-none"
+            contentEditable
+            suppressContentEditableWarning
+            onInput={syncFromDom}
+          />
+        ) : (
+          <textarea
+            className="input min-h-[260px] max-h-[600px] resize-y"
+            value={value}
+            onChange={(e) => setValue(e.target.value)}
+          />
+        )}
+      </div>
 
-      {/* champ réel pour le form submit */}
-      <textarea
-        ref={textareaRef}
-        name={name}
-        defaultValue={initialValue}
-        className="hidden"
-      />
+      {/* Champ hidden qui sera envoyé au backend */}
+      <input type="hidden" name={name} value={value} />
+
+      {/* Dialog insertion média */}
+      {showMediaDialog && (
+        <div className="fixed inset-0 z-40 flex items-center justify-center bg-black/40">
+          <div className="w-full max-w-md rounded-2xl bg-white p-4 shadow-xl">
+            <h3 className="text-sm font-semibold text-slate-800 mb-2">
+              Insérer une {mediaType === "image" ? "image" : "vidéo"}
+            </h3>
+            <p className="text-xs text-slate-500 mb-3">
+              Téléverse un fichier OU colle une URL (par exemple depuis la
+              médiathèque).
+            </p>
+
+            <div className="grid gap-3">
+              <div className="grid gap-1">
+                <label className="text-xs font-medium text-slate-700">
+                  Téléverser un fichier
+                </label>
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept={mediaType === "image" ? "image/*" : "video/*"}
+                  onChange={handleMediaFileChange}
+                  className="text-xs"
+                />
+              </div>
+
+              <div className="grid gap-1">
+                <label className="text-xs font-medium text-slate-700">
+                  URL du média
+                </label>
+                <input
+                  className="input text-xs"
+                  placeholder="https://…"
+                  value={mediaUrlInput}
+                  onChange={(e) => setMediaUrlInput(e.target.value)}
+                />
+              </div>
+            </div>
+
+            <div className="mt-4 flex items-center justify-between gap-2">
+              <button
+                type="button"
+                className="btn-outline btn-sm"
+                onClick={() => window.open("/admin/media", "_blank")}
+              >
+                Ouvrir la médiathèque
+              </button>
+              <div className="flex gap-2">
+                <button
+                  type="button"
+                  className="btn-outline btn-sm"
+                  onClick={closeMediaDialog}
+                >
+                  Annuler
+                </button>
+                <button
+                  type="button"
+                  className="btn btn-sm"
+                  onClick={handleInsertFromUrl}
+                  disabled={!mediaUrlInput.trim()}
+                >
+                  Insérer
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

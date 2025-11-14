@@ -28,12 +28,15 @@ type PageData = {
   bannerAssetUrl?: string | null;
 };
 
-type TabKey = "infos" | "content" | "seo";
+type TabKey = "general" | "content" | "seo";
 
 export default function PageForm({ initial }: { initial?: PageData }) {
   const r = useRouter();
   const [saving, setSaving] = useState(false);
-  const [activeTab, setActiveTab] = useState<TabKey>("infos");
+  const [activeTab, setActiveTab] = useState<TabKey>("general");
+
+  // slug courant (pour le bouton "Visualiser")
+  const [currentSlug, setCurrentSlug] = useState<string>(initial?.slug ?? "");
 
   async function onSubmit(formData: FormData) {
     setSaving(true);
@@ -51,6 +54,7 @@ export default function PageForm({ initial }: { initial?: PageData }) {
     }
   }
 
+  // État initial pour MediaPicker (miniature)
   const initialThumb =
     initial?.thumbnailAssetId && initial?.thumbnailAssetUrl
       ? {
@@ -61,6 +65,7 @@ export default function PageForm({ initial }: { initial?: PageData }) {
         }
       : null;
 
+  // État initial pour MediaPicker (bannière)
   const initialBanner =
     initial?.bannerAssetId && initial?.bannerAssetUrl
       ? {
@@ -71,95 +76,136 @@ export default function PageForm({ initial }: { initial?: PageData }) {
         }
       : null;
 
-  const tabBtnBase =
-    "px-3 py-2 text-sm font-medium border-b-2 -mb-px transition-colors";
-  const tabInactive =
-    "border-transparent text-slate-500 hover:text-slate-800 hover:border-slate-200";
-  const tabActive = "border-brand-500 text-brand-700";
+  function handleSlugBlur(e: React.FocusEvent<HTMLInputElement>) {
+    const raw = e.currentTarget.value || "";
+    const s = slugify(raw);
+    e.currentTarget.value = s;
+    setCurrentSlug(s);
+  }
+
+  function handlePreviewClick() {
+    if (!currentSlug) return;
+    window.open(`/pages/${currentSlug}`, "_blank", "noopener,noreferrer");
+  }
 
   return (
-    <form
-      action={onSubmit}
-      className="grid gap-4 max-w-4xl mx-auto"
-      autoComplete="off"
-    >
-      {/* Onglets */}
-      <div className="card">
-        <div className="border-b border-slate-200 mb-4">
-          <nav className="flex gap-4">
-            <button
-              type="button"
-              onClick={() => setActiveTab("infos")}
-              className={`${tabBtnBase} ${
-                activeTab === "infos" ? tabActive : tabInactive
-              }`}
-            >
-              Infos générales
-            </button>
-            <button
-              type="button"
-              onClick={() => setActiveTab("content")}
-              className={`${tabBtnBase} ${
-                activeTab === "content" ? tabActive : tabInactive
-              }`}
-            >
-              Contenu
-            </button>
-            <button
-              type="button"
-              onClick={() => setActiveTab("seo")}
-              className={`${tabBtnBase} ${
-                activeTab === "seo" ? tabActive : tabInactive
-              }`}
-            >
-              SEO & Tags
-            </button>
-          </nav>
+    <form action={onSubmit} className="grid gap-4">
+      {/* Bandeau top : publié + actions */}
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between rounded-2xl border border-slate-200 bg-white px-4 py-3 shadow-sm">
+        <div className="flex items-center gap-3">
+          <label className="inline-flex items-center gap-2 text-sm">
+            <input
+              type="checkbox"
+              name="published"
+              defaultChecked={initial?.published ?? false}
+            />
+            <span>Publié</span>
+          </label>
+          {initial?.id && (
+            <span className="text-xs text-slate-500">
+              ID #{initial.id} {currentSlug && `· /pages/${currentSlug}`}
+            </span>
+          )}
         </div>
+        <div className="flex items-center gap-2">
+          <button
+            type="button"
+            className="btn-outline btn-sm"
+            onClick={handlePreviewClick}
+            disabled={!currentSlug}
+          >
+            Visualiser
+          </button>
+          <button disabled={saving} className="btn">
+            {saving ? "Enregistrement…" : "Enregistrer"}
+          </button>
+        </div>
+      </div>
 
-        {/* ONGLET 1 : INFOS GÉNÉRALES */}
-        {activeTab === "infos" && (
-          <div className="grid gap-4">
-            <div className="grid gap-2">
-              <label className="text-sm font-medium">Titre</label>
-              <input
-                name="title"
-                defaultValue={initial?.title ?? ""}
-                className="input"
-                required
-              />
-            </div>
+      {/* Onglets */}
+      <div className="border-b border-slate-200 flex gap-2 mt-1">
+        <button
+          type="button"
+          onClick={() => setActiveTab("general")}
+          className={`px-3 py-2 text-sm border-b-2 -mb-px ${
+            activeTab === "general"
+              ? "border-brand-500 text-brand-600 font-semibold"
+              : "border-transparent text-slate-500 hover:text-slate-700"
+          }`}
+        >
+          Infos générales
+        </button>
+        <button
+          type="button"
+          onClick={() => setActiveTab("content")}
+          className={`px-3 py-2 text-sm border-b-2 -mb-px ${
+            activeTab === "content"
+              ? "border-brand-500 text-brand-600 font-semibold"
+              : "border-transparent text-slate-500 hover:text-slate-700"
+          }`}
+        >
+          Contenu
+        </button>
+        <button
+          type="button"
+          onClick={() => setActiveTab("seo")}
+          className={`px-3 py-2 text-sm border-b-2 -mb-px ${
+            activeTab === "seo"
+              ? "border-brand-500 text-brand-600 font-semibold"
+              : "border-transparent text-slate-500 hover:text-slate-700"
+          }`}
+        >
+          SEO & Tags
+        </button>
+      </div>
 
-            <div className="grid gap-2">
-              <label className="text-sm font-medium">Slug (URL)</label>
-              <input
-                name="slug"
-                defaultValue={initial?.slug ?? ""}
-                onBlur={(e) =>
-                  (e.currentTarget.value = slugify(
-                    e.currentTarget.value || ""
-                  ))
-                }
-                className="input"
-                placeholder="ex: comparatif-chaussures-ski-2025"
-                required
-              />
-            </div>
+      {/* Onglet 1 : Infos générales */}
+      {activeTab === "general" && (
+        <div className="card grid gap-4">
+          <div className="grid gap-2">
+            <label className="text-sm font-medium text-slate-700">
+              Titre
+            </label>
+            <input
+              name="title"
+              defaultValue={initial?.title ?? ""}
+              className="input"
+              required
+            />
+          </div>
 
-            <div className="grid gap-2">
-              <label className="text-sm font-medium">
-                Chapeau / Intro (facultatif)
-              </label>
-              <textarea
-                name="intro"
-                defaultValue={initial?.intro ?? ""}
-                rows={3}
-                className="input"
-                placeholder="Court paragraphe d’introduction affiché en haut de l’article et dans les listes."
-              />
-            </div>
+          <div className="grid gap-2">
+            <label className="text-sm font-medium text-slate-700">
+              Slug (URL)
+            </label>
+            <input
+              name="slug"
+              defaultValue={initial?.slug ?? ""}
+              onBlur={handleSlugBlur}
+              className="input"
+              placeholder="ex: bien-choisir-ses-fixations"
+              required
+            />
+            <p className="text-xs text-slate-500">
+              Utilisé pour l’URL : <code>/pages/{currentSlug || "mon-article"}</code>
+            </p>
+          </div>
 
-            {/* Miniature */}
+          <div className="grid gap-2">
+            <label className="text-sm font-medium text-slate-700">
+              Intro (chapeau / meta preview)
+            </label>
+            <textarea
+              name="intro"
+              defaultValue={initial?.intro ?? ""}
+              rows={3}
+              className="input"
+              placeholder="Court résumé de l’article (utilisé comme chapeau et fallback meta description)."
+            />
+          </div>
+
+          {/* Miniature & bannière */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div className="grid gap-2">
               <MediaPicker
                 label="Miniature (médiathèque)"
@@ -169,7 +215,9 @@ export default function PageForm({ initial }: { initial?: PageData }) {
                 accept="image/*"
                 initial={initialThumb}
               />
-              <label className="text-sm">Miniature (URL externe – optionnel)</label>
+              <label className="text-xs text-slate-500">
+                Miniature (URL externe – optionnel)
+              </label>
               <input
                 name="thumbnailUrl"
                 defaultValue={initial?.thumbnailUrl ?? ""}
@@ -178,7 +226,6 @@ export default function PageForm({ initial }: { initial?: PageData }) {
               />
             </div>
 
-            {/* Bannière – maintenant juste en dessous de la miniature */}
             <div className="grid gap-2">
               <MediaPicker
                 label="Bannière (médiathèque)"
@@ -188,7 +235,9 @@ export default function PageForm({ initial }: { initial?: PageData }) {
                 accept="image/*"
                 initial={initialBanner}
               />
-              <label className="text-sm">Bannière (URL externe – optionnel)</label>
+              <label className="text-xs text-slate-500">
+                Bannière (URL externe – optionnel)
+              </label>
               <input
                 name="bannerUrl"
                 defaultValue={initial?.bannerUrl ?? ""}
@@ -197,86 +246,61 @@ export default function PageForm({ initial }: { initial?: PageData }) {
               />
             </div>
           </div>
-        )}
+        </div>
+      )}
 
-        {/* ONGLET 2 : CONTENU */}
-        {activeTab === "content" && (
-          <div className="grid gap-4">
-            <RichTextEditor
-              name="content"
-              label="Contenu de la page"
-              initialValue={initial?.content ?? ""}
-            />
-          </div>
-        )}
+      {/* Onglet 2 : Contenu */}
+      {activeTab === "content" && (
+        <div className="card">
+          <RichTextEditor
+            name="content"
+            label="Contenu de la page"
+            initialValue={initial?.content ?? ""}
+          />
+        </div>
+      )}
 
-        {/* ONGLET 3 : SEO + TAGS */}
-        {activeTab === "seo" && (
-          <div className="grid gap-4">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div className="grid gap-2">
-                <label className="text-sm font-medium">Meta Title</label>
-                <input
-                  name="metaTitle"
-                  defaultValue={initial?.metaTitle ?? ""}
-                  className="input"
-                  placeholder="Titre SEO (si vide, le titre sera utilisé)"
-                />
-              </div>
-              <div className="grid gap-2">
-                <label className="text-sm font-medium">Meta Description</label>
-                <input
-                  name="metaDescription"
-                  defaultValue={initial?.metaDescription ?? ""}
-                  className="input"
-                  placeholder="Description SEO (150–160 caractères recommandés)"
-                />
-              </div>
-            </div>
-
+      {/* Onglet 3 : SEO & Tags */}
+      {activeTab === "seo" && (
+        <div className="card grid gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="grid gap-2">
-              <label className="text-sm font-medium">
-                Tags (séparés par des virgules)
+              <label className="text-sm font-medium text-slate-700">
+                Meta Title
               </label>
               <input
-                name="tags"
-                defaultValue={initial?.tags?.join(", ") ?? ""}
+                name="metaTitle"
+                defaultValue={initial?.metaTitle ?? ""}
                 className="input"
-                placeholder="chaussures de ski, comparatif, freeride…"
+                placeholder="Titre SEO (sinon titre de l’article)"
               />
             </div>
-
-            <label className="inline-flex items-center gap-2">
+            <div className="grid gap-2">
+              <label className="text-sm font-medium text-slate-700">
+                Meta Description
+              </label>
               <input
-                type="checkbox"
-                name="published"
-                defaultChecked={initial?.published ?? false}
+                name="metaDescription"
+                defaultValue={initial?.metaDescription ?? ""}
+                className="input"
+                placeholder="Description SEO (sinon intro de l’article)"
               />
-              <span className="text-sm">Publié</span>
-            </label>
+            </div>
           </div>
-        )}
-      </div>
 
-      {/* Boutons d’action */}
-      <div className="flex items-center justify-between gap-3">
-        {initial?.id && initial.slug && (
-          <a
-            href={`/pages/${initial.slug}`}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="btn-outline"
-          >
-            Visualiser
-          </a>
-        )}
-
-        <div className="flex gap-2 ml-auto">
-          <button disabled={saving} className="btn">
-            {saving ? "Enregistrement…" : "Enregistrer"}
-          </button>
+          <div className="grid gap-2">
+            <label className="text-sm font-medium text-slate-700">
+              Tags (séparés par des virgules)
+            </label>
+            <input
+              name="tags"
+              defaultValue={initial?.tags?.join(", ") ?? ""}
+              className="input"
+              placeholder="chaussures de ski, ajustement, confort…"
+            />
+          </div>
         </div>
-      </div>
+      )}
     </form>
   );
 }
