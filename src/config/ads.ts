@@ -1,11 +1,21 @@
 // src/config/ads.ts
-export type AdSlotConfig = {
-  imageUrl?: string;
-  linkUrl?: string;
-  label?: string;
-  html?: string; // au cas où tu veuilles coller un script / iframe
+
+/**
+ * Configuration d’un emplacement pub.
+ * Tu pourras l’enrichir plus tard (provider, targeting, etc.)
+ */
+export type AdConfig = {
+  provider: "adsense" | "gam" | "custom";
+  slotId: string;
+  sizes?: [number, number][]; // ex: [[300,250], [336,280]]
 };
 
+/**
+ * Dictionnaire des emplacements pubs du site.
+ *
+ * - Si la valeur est `null` → pas de pub rendue (le composant AdSlot ne s’affiche pas).
+ * - Si tu définis un objet { provider, slotId, ... } → AdSlot pourra afficher le script associé.
+ */
 export const AD_CONFIG: Record<string, AdConfig | null> = {
   page_top: null,
   page_sidebar: null,
