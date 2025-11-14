@@ -35,7 +35,6 @@ export default function PageForm({ initial }: { initial?: PageData }) {
   const [saving, setSaving] = useState(false);
   const [activeTab, setActiveTab] = useState<TabKey>("general");
 
-  // slug courant (pour le bouton "Visualiser")
   const [currentSlug, setCurrentSlug] = useState<string>(initial?.slug ?? "");
 
   async function onSubmit(formData: FormData) {
@@ -54,7 +53,6 @@ export default function PageForm({ initial }: { initial?: PageData }) {
     }
   }
 
-  // État initial pour MediaPicker (miniature)
   const initialThumb =
     initial?.thumbnailAssetId && initial?.thumbnailAssetUrl
       ? {
@@ -65,7 +63,6 @@ export default function PageForm({ initial }: { initial?: PageData }) {
         }
       : null;
 
-  // État initial pour MediaPicker (bannière)
   const initialBanner =
     initial?.bannerAssetId && initial?.bannerAssetUrl
       ? {
@@ -163,9 +160,7 @@ export default function PageForm({ initial }: { initial?: PageData }) {
       {activeTab === "general" && (
         <div className="card grid gap-4">
           <div className="grid gap-2">
-            <label className="text-sm font-medium text-slate-700">
-              Titre
-            </label>
+            <label className="text-sm font-medium text-slate-700">Titre</label>
             <input
               name="title"
               defaultValue={initial?.title ?? ""}
@@ -204,8 +199,8 @@ export default function PageForm({ initial }: { initial?: PageData }) {
             />
           </div>
 
-          {/* Miniature & bannière */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          {/* Miniature puis bannière, l’une sous l’autre */}
+          <div className="grid gap-4">
             <div className="grid gap-2">
               <MediaPicker
                 label="Miniature (médiathèque)"
