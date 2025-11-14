@@ -43,12 +43,13 @@ export default function RichTextEditor({
   const [library, setLibrary] = useState<MediaLite[]>([]);
   const [libraryLoaded, setLibraryLoaded] = useState(false);
 
-  // Sync valeur -> éditeur visuel quand on passe en "visual"
+  // ✅ Sync valeur -> éditeur visuel UNIQUEMENT quand on passe / repasse en "visual"
   useEffect(() => {
     if (mode === "visual" && visualRef.current) {
       visualRef.current.innerHTML = value || "";
     }
-  }, [mode, value]);
+    // ⚠️ on ne dépend PAS de `value` pour éviter de déplacer le curseur à chaque frappe
+  }, [mode]); 
 
   // Récupération de la valeur depuis le div contentEditable
   const syncFromVisual = useCallback(() => {
@@ -60,12 +61,10 @@ export default function RichTextEditor({
   // Helpers de formatage très simples
   function wrapSelection(tag: string) {
     if (mode === "html") {
-      // en mode HTML, on ne touche pas au textarea : l’admin gère à la main
       return;
     }
     if (!visualRef.current) return;
 
-    // Pour rester simple, on applique sur tout le contenu
     const html = visualRef.current.innerHTML;
     visualRef.current.innerHTML = `<${tag}>${html}</${tag}>`;
     syncFromVisual();
@@ -90,7 +89,10 @@ export default function RichTextEditor({
   // Insertion image dans le contenu
   function insertImage(url: string, alt: string | null = null) {
     const safeAlt = alt ?? "";
-    const htmlChunk = `<p><img src="${url}" alt="${safeAlt.replace(/"/g, "&quot;")}" /></p>`;
+    const htmlChunk = `<p><img src="${url}" alt="${safeAlt.replace(
+      /"/g,
+      "&quot;"
+    )}" /></p>`;
     insertAtEnd(htmlChunk);
     setImageModalOpen(false);
   }
@@ -114,8 +116,7 @@ export default function RichTextEditor({
       if (!res.ok) throw new Error("Échec upload");
 
       const json = await res.json();
-      const url: string =
-        json.asset.publicUrl ?? json.asset.url ?? "";
+      const url: string = json.asset.publicUrl ?? json.asset.url ?? "";
       const alt: string | null = json.asset.alt ?? json.asset.title ?? null;
 
       if (url) {
@@ -211,11 +212,7 @@ export default function RichTextEditor({
       {/* Barre d’outils */}
       {mode === "visual" && (
         <div className="flex flex-wrap gap-1.5 rounded-xl border border-slate-200 bg-slate-50 px-2 py-1 text-xs">
-          <button
-            type="button"
-            className="btn-xs"
-            onClick={applyParagraph}
-          >
+          <button type="button" className="btn-xs" onClick={applyParagraph}>
             P
           </button>
           <button
@@ -236,14 +233,18 @@ export default function RichTextEditor({
           <button
             type="button"
             className="btn-xs"
-            onClick={() => insertAtEnd("<p><strong>Texte en gras</strong></p>")}
+            onClick={() =>
+              insertAtEnd("<p><strong>Texte en gras</strong></p>")
+            }
           >
             B
           </button>
           <button
             type="button"
             className="btn-xs"
-            onClick={() => insertAtEnd("<p><em>Texte en italique</em></p>")}
+            onClick={() =>
+              insertAtEnd("<p><em>Texte en italique</em></p>")
+            }
           >
             I
           </button>
@@ -263,18 +264,10 @@ export default function RichTextEditor({
             Liste numérotée
           </button>
           <span className="mx-1 h-5 w-px bg-slate-200" />
-          <button
-            type="button"
-            className="btn-xs"
-            onClick={openImageModal}
-          >
+          <button type="button" className="btn-xs" onClick={openImageModal}>
             Image
           </button>
-          <button
-            type="button"
-            className="btn-xs"
-            onClick={insertVideo}
-          >
+          <button type="button" className="btn-xs" onClick={insertVideo}>
             Vidéo
           </button>
         </div>
@@ -298,12 +291,7 @@ export default function RichTextEditor({
       )}
 
       {/* Champ caché pour le <form> */}
-      <textarea
-        name={name}
-        value={value}
-        readOnly
-        className="hidden"
-      />
+      <textarea name={name} value={value} readOnly className="hidden" />
 
       {/* MODALE IMAGE (upload + médiathèque) */}
       {imageModalOpen && (
