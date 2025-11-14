@@ -27,7 +27,7 @@ export default function RichTextEditor({
   const visualRef = useRef<HTMLDivElement | null>(null);
   const textareaRef = useRef<HTMLTextAreaElement | null>(null);
 
-  // Sync initialValue -> états visuel + HTML
+  // 1) Sync initialValue -> état interne
   useEffect(() => {
     setHtml(initialValue || "");
     if (visualRef.current) {
@@ -38,7 +38,14 @@ export default function RichTextEditor({
     }
   }, [initialValue]);
 
-  // Quand l’utilisateur tape dans le mode HTML
+  // 2) Quand on repasse en mode visuel => injecter le HTML dans le contentEditable
+  useEffect(() => {
+    if (mode === "visual" && visualRef.current) {
+      visualRef.current.innerHTML = html || "";
+    }
+  }, [mode, html]);
+
+  // Édition du mode HTML
   const handleHtmlChange = useCallback((e: FormEvent<HTMLTextAreaElement>) => {
     const value = e.currentTarget.value;
     setHtml(value);
@@ -47,7 +54,7 @@ export default function RichTextEditor({
     }
   }, []);
 
-  // Quand l’utilisateur tape dans l’éditeur visuel
+  // Édition du mode visuel
   const handleVisualInput = useCallback(() => {
     if (visualRef.current) {
       const value = visualRef.current.innerHTML;
@@ -58,7 +65,7 @@ export default function RichTextEditor({
     }
   }, []);
 
-  // Utilitaire: vérifier que la sélection est bien dans l’éditeur
+  // Utilitaire : récupérer la sélection dans l’éditeur
   const getSelectionInEditor = useCallback(() => {
     if (typeof window === "undefined") return null;
     const root = visualRef.current;
@@ -73,15 +80,15 @@ export default function RichTextEditor({
     return { sel, range, root };
   }, []);
 
-  // Boutons de style inline (gras, italique, listes…) via execCommand
+  // Boutons inline (gras, italique, listes, etc.)
   const applyInlineCommand = useCallback(
     (command: string, value?: string) => {
       if (mode !== "visual") return;
       const ctx = getSelectionInEditor();
       if (!ctx) return;
 
-      // execCommand est déprécié mais reste le plus simple sur du contentEditable
       document.execCommand(command, false, value);
+
       if (visualRef.current) {
         const newHtml = visualRef.current.innerHTML;
         setHtml(newHtml);
@@ -93,14 +100,13 @@ export default function RichTextEditor({
     [mode, getSelectionInEditor]
   );
 
-  // ✅ Bloque sur la sélection seulement (H2/H3/H4/Paragraphe)
+  // H2 / H3 / H4 / paragraphe sur la sélection uniquement
   const applyBlock = useCallback(
     (block: "p" | "h2" | "h3" | "h4") => {
       if (mode !== "visual") return;
       const ctx = getSelectionInEditor();
       if (!ctx) return;
 
-      // Dans la pratique, Next + contentEditable continuent de supporter execCommand/formatBlock
       const tag = block === "p" ? "p" : block.toUpperCase();
       document.execCommand("formatBlock", false, tag);
 
@@ -115,7 +121,7 @@ export default function RichTextEditor({
     [mode, getSelectionInEditor]
   );
 
-  // Inserer image <img> dans le HTML
+  // Insérer une image (URL)
   const insertImage = useCallback(() => {
     if (mode !== "visual") return;
     const url = window.prompt("URL de l’image");
@@ -136,7 +142,7 @@ export default function RichTextEditor({
     }
   }, [mode, getSelectionInEditor]);
 
-  // Inserer vidéo (iframe ou balise video) via HTML
+  // Insérer une vidéo (URL iframe)
   const insertVideo = useCallback(() => {
     if (mode !== "visual") return;
     const url = window.prompt("URL de la vidéo (YouTube, etc.)");
@@ -157,10 +163,29 @@ export default function RichTextEditor({
     }
   }, [mode, getSelectionInEditor]);
 
+  // Base des boutons
   const btnBase =
-    "inline-flex items-center justify-center rounded-lg border border-slate-200 bg-white px-2.5 py-1 text-xs font-medium text-slate-700 hover:bg-brand-50 hover:border-brand-500 hover:text-brand-700 hover:shadow-sm transition-colors transition-transform duration-150 active:scale-95";
+    "inline-flex items-center justify-center rounded-lg border border-slate-200 px-2.5 py-1 text-xs font-medium transition-colors transition-transform duration-150 hover:shadow-sm active:scale-95";
 
   const isVisual = mode === "visual";
+
+  const visualBtnClass =
+    btnBase +
+    " px-3 py-1 text-[11px] " +
+    (isVisual
+      ? "bg-brand-600 text-white border-brand-600"
+      : "bg-white text-slate-700 hover:bg-brand-50 hover:border-brand-500 hover:text-brand-700");
+
+  const htmlBtnClass =
+    btnBase +
+    " px-3 py-1 text-[11px] " +
+    (!isVisual
+      ? "bg-brand-600 text-white border-brand-600"
+      : "bg-white text-slate-700 hover:bg-brand-50 hover:border-brand-500 hover:text-brand-700");
+
+  const toolbarBtn =
+    btnBase +
+    " bg-white text-slate-700 hover:bg-brand-50 hover:border-brand-500 hover:text-brand-700";
 
   return (
     <div className="space-y-2">
@@ -170,32 +195,32 @@ export default function RichTextEditor({
 
       {/* Barre d’outils */}
       <div className="flex flex-wrap items-center gap-2 rounded-xl border border-slate-200 bg-slate-50 px-3 py-2">
-        {/* Style de texte */}
+        {/* Style inline */}
         <div className="flex flex-wrap gap-1">
           <button
             type="button"
-            className={btnBase}
+            className={toolbarBtn}
             onClick={() => applyInlineCommand("bold")}
           >
             <span className="font-semibold">Gras</span>
           </button>
           <button
             type="button"
-            className={btnBase}
+            className={toolbarBtn}
             onClick={() => applyInlineCommand("italic")}
           >
             <span className="italic">Italique</span>
           </button>
           <button
             type="button"
-            className={btnBase}
+            className={toolbarBtn}
             onClick={() => applyInlineCommand("insertUnorderedList")}
           >
             Puces
           </button>
           <button
             type="button"
-            className={btnBase}
+            className={toolbarBtn}
             onClick={() => applyInlineCommand("insertOrderedList")}
           >
             Liste num.
@@ -208,28 +233,28 @@ export default function RichTextEditor({
         <div className="flex flex-wrap gap-1">
           <button
             type="button"
-            className={btnBase}
+            className={toolbarBtn}
             onClick={() => applyBlock("p")}
           >
             Paragraphe
           </button>
           <button
             type="button"
-            className={btnBase}
+            className={toolbarBtn}
             onClick={() => applyBlock("h2")}
           >
             H2
           </button>
           <button
             type="button"
-            className={btnBase}
+            className={toolbarBtn}
             onClick={() => applyBlock("h3")}
           >
             H3
           </button>
           <button
             type="button"
-            className={btnBase}
+            className={toolbarBtn}
             onClick={() => applyBlock("h4")}
           >
             H4
@@ -238,46 +263,36 @@ export default function RichTextEditor({
 
         <span className="h-6 w-px bg-slate-200" />
 
-        {/* Médias */}
+        {/* Médias (URL pour l’instant) */}
         <div className="flex flex-wrap gap-1">
           <button
             type="button"
-            className={btnBase}
+            className={toolbarBtn}
             onClick={insertImage}
           >
             Image (URL)
           </button>
           <button
             type="button"
-            className={btnBase}
+            className={toolbarBtn}
             onClick={insertVideo}
           >
             Vidéo (URL)
           </button>
         </div>
 
-        <span className="h-6 w-px bg-slate-200" />
-
-        {/* Toggle mode */}
+        {/* Toggle mode à droite */}
         <div className="ml-auto flex gap-1 rounded-lg bg-white p-1">
           <button
             type="button"
-            className={
-              btnBase +
-              " px-3 py-1 text-[11px] " +
-              (isVisual ? "bg-brand-600 text-white hover:bg-brand-600 hover:text-white" : "")
-            }
+            className={visualBtnClass}
             onClick={() => setMode("visual")}
           >
             Éditeur visuel
           </button>
           <button
             type="button"
-            className={
-              btnBase +
-              " px-3 py-1 text-[11px] " +
-              (!isVisual ? "bg-brand-600 text-white hover:bg-brand-600 hover:text-white" : "")
-            }
+            className={htmlBtnClass}
             onClick={() => setMode("html")}
           >
             Mode HTML
