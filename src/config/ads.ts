@@ -2,26 +2,30 @@
 
 /**
  * Configuration d’un emplacement pub.
- * Champs optionnels pour que tu puisses commencer simple,
- * puis brancher un vrai provider plus tard.
+ * Tout est optionnel pour te laisser brancher
+ * soit une créa maison (image + lien + label),
+ * soit un bloc HTML, soit un provider type AdSense/GAM.
  */
 export type AdConfig = {
-  // Pour de la pub “classique” (ex: AdSense, GAM)
+  // Provider externe éventuel
   provider?: "adsense" | "gam" | "custom";
   slotId?: string;
   sizes?: [number, number][];
 
-  // Pour les encarts “maison” (image + lien)
+  // Créa simple maison (image + lien)
   imageUrl?: string;
   linkUrl?: string;
   label?: string;
+
+  // Bloc HTML brut (script / iframe fourni par un régie)
+  html?: string;
 };
 
 /**
  * Dictionnaire des emplacements pubs du site.
  *
  * - null  => aucun affichage (le composant ne rend rien)
- * - objet => l’encart est visible (si les champs nécessaires sont remplis)
+ * - objet => l’encart est potentiellement affichable
  */
 export const AD_CONFIG: Record<string, AdConfig | null> = {
   page_top: null,
