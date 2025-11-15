@@ -16,7 +16,12 @@ type RichTextEditorProps = {
   rows?: number;
 };
 
-type MediaKind = "image" | "video";
+type MediaAsset = {
+  id: number;
+  publicUrl: string;
+  title: string | null;
+  alt: string | null;
+};
 
 export default function RichTextEditor({
   name,
@@ -29,12 +34,14 @@ export default function RichTextEditor({
   const visualRef = useRef<HTMLDivElement | null>(null);
   const textareaRef = useRef<HTMLTextAreaElement | null>(null);
 
-  // Popin média
-  const [showMediaDialog, setShowMediaDialog] = useState(false);
-  const [mediaKind, setMediaKind] = useState<MediaKind>("image");
-  const [mediaUploading, setMediaUploading] = useState(false);
-  const [mediaUrlInput, setMediaUrlInput] = useState("");
-  const fileInputRef = useRef<HTMLInputElement | null>(null);
+  // --- État pour la modale d’image / médiathèque ---
+  const [showImageModal, setShowImageModal] = useState(false);
+  const [imageTab, setImageTab] = useState<"url" | "library">("url");
+  const [imageUrl, setImageUrl] = useState("");
+  const [imageAlt, setImageAlt] = useState("");
+  const [mediaAssets, setMediaAssets] = useState<MediaAsset[]>([]);
+  const [mediaLoading, setMediaLoading] = useState(false);
+  const [selectedMediaId, setSelectedMediaId] = useState<number | null>(null);
 
   // 1) Sync initialValue -> état interne
   useEffect(() => {
@@ -48,12 +55,11 @@ export default function RichTextEditor({
   }, [initialValue]);
 
   // 2) Quand on repasse en mode visuel => injecter le HTML dans le contentEditable
-  // ⚠️ IMPORTANT : on dépend SEULEMENT de `mode` pour ne pas casser la position du curseur
   useEffect(() => {
     if (mode === "visual" && visualRef.current) {
       visualRef.current.innerHTML = html || "";
     }
-  }, [mode]); // <- pas de dépendance `html` ici
+  }, [mode, html]);
 
   // Édition du mode HTML
   const handleHtmlChange = useCallback((e: FormEvent<HTMLTextAreaElement>) => {
@@ -89,26 +95,6 @@ export default function RichTextEditor({
 
     return { sel, range, root };
   }, []);
-
-  // Insérer du HTML à la position du curseur
-  const insertHtmlAtSelection = useCallback(
-    (snippet: string) => {
-      if (mode !== "visual") return;
-      const ctx = getSelectionInEditor();
-      if (!ctx) return;
-
-      document.execCommand("insertHTML", false, snippet);
-
-      if (visualRef.current) {
-        const newHtml = visualRef.current.innerHTML;
-        setHtml(newHtml);
-        if (textareaRef.current) {
-          textareaRef.current.value = newHtml;
-        }
-      }
-    },
-    [mode, getSelectionInEditor]
-  );
 
   // Boutons inline (gras, italique, listes, etc.)
   const applyInlineCommand = useCallback(
@@ -151,92 +137,115 @@ export default function RichTextEditor({
     [mode, getSelectionInEditor]
   );
 
-  // --- Gestion de la popin média ------------------------------------
+  // --- Gestion modale Image + médiathèque ---
 
-  const openMediaDialog = useCallback(
-    (kind: MediaKind) => {
-      if (mode !== "visual") {
-        setMode("visual");
-      }
-      setMediaKind(kind);
-      setMediaUrlInput("");
-      setShowMediaDialog(true);
-    },
-    [mode]
-  );
+  const openImageModal = useCallback(() => {
+    if (mode !== "visual") {
+      setMode("visual");
+    }
+    setImageTab("url");
+    setImageUrl("");
+    setImageAlt("");
+    setSelectedMediaId(null);
+    setShowImageModal(true);
+  }, [mode]);
 
-  const closeMediaDialog = useCallback(() => {
-    setShowMediaDialog(false);
-    setMediaUrlInput("");
-    if (fileInputRef.current) {
-      fileInputRef.current.value = "";
+  const closeImageModal = useCallback(() => {
+    setShowImageModal(false);
+  }, []);
+
+  // Chargement médiathèque dans la modale
+  const loadMediaAssets = useCallback(async () => {
+    try {
+      setMediaLoading(true);
+      const res = await fetch("/api/media/list", { cache: "no-store" });
+      const json = await res.json();
+      setMediaAssets(json.assets || []);
+    } catch (e) {
+      console.error("Erreur chargement médiathèque", e);
+    } finally {
+      setMediaLoading(false);
     }
   }, []);
 
-  const handleMediaUrlInsert = useCallback(() => {
-    if (!mediaUrlInput.trim()) return;
-    if (mediaKind === "image") {
-      insertHtmlAtSelection(`<img src="${mediaUrlInput.trim()}" alt="" />`);
-    } else {
-      insertHtmlAtSelection(
-        `<iframe src="${mediaUrlInput.trim()}" frameborder="0" allowfullscreen></iframe>`
-      );
+  // Passer à l’onglet médiathèque
+  const handleTabLibrary = useCallback(() => {
+    setImageTab("library");
+    if (mediaAssets.length === 0) {
+      void loadMediaAssets();
     }
-    closeMediaDialog();
-  }, [mediaUrlInput, mediaKind, insertHtmlAtSelection, closeMediaDialog]);
+  }, [loadMediaAssets, mediaAssets.length]);
 
-  const handleMediaUpload = useCallback(
-    async (e: React.ChangeEvent<HTMLInputElement>) => {
-      const file = e.target.files?.[0];
-      if (!file) return;
-      setMediaUploading(true);
-      try {
-        const fd = new FormData();
-        fd.append("file", file);
-        fd.append("folder", "pages/content");
-        fd.append(
-          "kind",
-          mediaKind === "image" ? "page-image" : "page-video"
-        );
+  const handleTabUrl = useCallback(() => {
+    setImageTab("url");
+  }, []);
 
-        const res = await fetch("/api/admin/media/upload", {
-          method: "POST",
-          body: fd,
-        });
-        if (!res.ok) {
-          throw new Error("Upload failed");
-        }
-        const json = await res.json();
-        const asset = json.asset as {
-          url: string;
-          publicUrl?: string;
-          alt?: string | null;
-        };
-
-        const url = asset.publicUrl || asset.url;
-        if (mediaKind === "image") {
-          insertHtmlAtSelection(
-            `<img src="${url}" alt="${asset.alt ?? ""}" />`
-          );
-        } else {
-          insertHtmlAtSelection(
-            `<video src="${url}" controls style="max-width:100%;height:auto;"></video>`
-          );
-        }
-
-        closeMediaDialog();
-      } catch (err) {
-        console.error(err);
-        alert("Échec de l’upload");
-      } finally {
-        setMediaUploading(false);
-        if (fileInputRef.current) {
-          fileInputRef.current.value = "";
-        }
-      }
+  const handleSelectMedia = useCallback(
+    (asset: MediaAsset) => {
+      setSelectedMediaId(asset.id);
+      setImageUrl(asset.publicUrl);
+      setImageAlt(asset.alt || asset.title || "");
     },
-    [mediaKind, insertHtmlAtSelection, closeMediaDialog]
+    []
   );
+
+  // Insertion d’une image (depuis modal, URL ou médiathèque)
+  const insertImageFromModal = useCallback(() => {
+    if (!imageUrl) {
+      alert("Merci de choisir une image ou de saisir une URL.");
+      return;
+    }
+
+    if (!visualRef.current) {
+      setShowImageModal(false);
+      return;
+    }
+
+    const altAttr = imageAlt ? ` alt="${imageAlt.replace(/"/g, "&quot;")}"` : ` alt=""`;
+    const imgHtml = `<img src="${imageUrl}"${altAttr} />`;
+
+    // On tente d’insérer à la sélection si possible
+    const ctx = getSelectionInEditor();
+    if (ctx) {
+      document.execCommand("insertHTML", false, imgHtml);
+    } else {
+      // Sinon on append à la fin
+      visualRef.current.innerHTML = (visualRef.current.innerHTML || "") + imgHtml;
+    }
+
+    const newHtml = visualRef.current.innerHTML;
+    setHtml(newHtml);
+    if (textareaRef.current) {
+      textareaRef.current.value = newHtml;
+    }
+
+    setShowImageModal(false);
+  }, [imageUrl, imageAlt, getSelectionInEditor]);
+
+  // Insérer une vidéo (URL iframe simple)
+  const insertVideo = useCallback(() => {
+    if (mode !== "visual") return;
+    const url = window.prompt("URL de la vidéo (YouTube, etc.)");
+    if (!url) return;
+
+    const ctx = getSelectionInEditor();
+    const iframeHtml = `<iframe src="${url}" frameborder="0" allowfullscreen></iframe>`;
+
+    if (ctx) {
+      document.execCommand("insertHTML", false, iframeHtml);
+    } else if (visualRef.current) {
+      visualRef.current.innerHTML =
+        (visualRef.current.innerHTML || "") + iframeHtml;
+    }
+
+    if (visualRef.current) {
+      const newHtml = visualRef.current.innerHTML;
+      setHtml(newHtml);
+      if (textareaRef.current) {
+        textareaRef.current.value = newHtml;
+      }
+    }
+  }, [mode, getSelectionInEditor]);
 
   // Base des boutons
   const btnBase =
@@ -338,21 +347,21 @@ export default function RichTextEditor({
 
         <span className="h-6 w-px bg-slate-200" />
 
-        {/* Médias : ouvrent la popin */}
+        {/* Médias : modale pour Image, prompt pour Vidéo */}
         <div className="flex flex-wrap gap-1">
           <button
             type="button"
             className={toolbarBtn}
-            onClick={() => openMediaDialog("image")}
+            onClick={openImageModal}
           >
             Image
           </button>
           <button
             type="button"
             className={toolbarBtn}
-            onClick={() => openMediaDialog("video")}
+            onClick={insertVideo}
           >
-            Vidéo
+            Vidéo (URL)
           </button>
         </div>
 
@@ -397,84 +406,144 @@ export default function RichTextEditor({
       {/* Champ réel envoyé au serveur */}
       <textarea name={name} value={html} readOnly hidden />
 
-      {/* Popin média */}
-      {showMediaDialog && (
-        <div className="fixed inset-0 z-40 flex items-center justify-center bg-black/40">
-          <div className="w-full max-w-lg rounded-2xl bg-white p-5 shadow-xl">
-            <div className="flex items-center justify-between gap-4">
-              <h3 className="text-sm font-semibold text-slate-800">
-                Insérer un média ({mediaKind === "image" ? "image" : "vidéo"})
-              </h3>
+      {/* Modale Image + Médiathèque */}
+      {showImageModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
+          <div className="w-full max-w-3xl rounded-2xl bg-white shadow-xl border border-slate-200">
+            <div className="flex items-center justify-between px-4 py-3 border-b border-slate-200">
+              <h2 className="text-sm font-semibold text-slate-800">
+                Insérer une image
+              </h2>
               <button
                 type="button"
-                onClick={closeMediaDialog}
-                className="text-xs text-slate-500 hover:text-slate-800"
+                onClick={closeImageModal}
+                className="text-slate-500 hover:text-slate-700 text-sm"
               >
                 Fermer
               </button>
             </div>
 
-            <div className="mt-4 space-y-4">
-              {/* Upload direct */}
-              <div className="space-y-2">
-                <p className="text-xs text-slate-600">
-                  Téléverser un fichier depuis votre ordinateur :
-                </p>
-                <input
-                  ref={fileInputRef}
-                  type="file"
-                  accept={mediaKind === "image" ? "image/*" : "video/*"}
-                  onChange={handleMediaUpload}
-                  disabled={mediaUploading}
-                />
-                {mediaUploading && (
-                  <p className="text-xs text-slate-500">
-                    Upload en cours…
-                  </p>
-                )}
-              </div>
-
-              <div className="h-px w-full bg-slate-200" />
-
-              {/* URL directe */}
-              <div className="space-y-2">
-                <p className="text-xs text-slate-600">
-                  Ou insérer via une URL :
-                </p>
-                <input
-                  className="input text-xs"
-                  placeholder={
-                    mediaKind === "image"
-                      ? "https://…/mon-image.jpg"
-                      : "https://…/ma-video-embed"
-                  }
-                  value={mediaUrlInput}
-                  onChange={(e) => setMediaUrlInput(e.target.value)}
-                />
+            {/* Onglets */}
+            <div className="px-4 pt-3">
+              <div className="inline-flex rounded-full bg-slate-100 p-1 text-xs">
                 <button
                   type="button"
-                  onClick={handleMediaUrlInsert}
-                  className="btn-sm btn"
+                  onClick={handleTabUrl}
+                  className={
+                    "px-3 py-1 rounded-full " +
+                    (imageTab === "url"
+                      ? "bg-white shadow-sm text-brand-700"
+                      : "text-slate-600 hover:text-slate-800")
+                  }
                 >
-                  Insérer ce média
+                  URL directe
+                </button>
+                <button
+                  type="button"
+                  onClick={handleTabLibrary}
+                  className={
+                    "px-3 py-1 rounded-full " +
+                    (imageTab === "library"
+                      ? "bg-white shadow-sm text-brand-700"
+                      : "text-slate-600 hover:text-slate-800")
+                  }
+                >
+                  Médiathèque
                 </button>
               </div>
+            </div>
 
-              <div className="h-px w-full bg-slate-200" />
+            {/* Contenu de la modale */}
+            <div className="px-4 pb-4 pt-3">
+              {imageTab === "url" && (
+                <div className="space-y-3">
+                  <div className="grid gap-2">
+                    <label className="text-xs font-medium text-slate-700">
+                      URL de l&apos;image
+                    </label>
+                    <input
+                      value={imageUrl}
+                      onChange={(e) => setImageUrl(e.target.value)}
+                      className="input text-xs"
+                      placeholder="https://…"
+                    />
+                  </div>
+                  <div className="grid gap-2">
+                    <label className="text-xs font-medium text-slate-700">
+                      Texte alternatif (SEO / accessibilité)
+                    </label>
+                    <input
+                      value={imageAlt}
+                      onChange={(e) => setImageAlt(e.target.value)}
+                      className="input text-xs"
+                      placeholder="Ex: Comparatif chaussures de ski 2025"
+                    />
+                  </div>
+                </div>
+              )}
 
-              {/* Lien vers médiathèque complète */}
-              <div className="flex items-center justify-between gap-3">
-                <p className="text-xs text-slate-600">
-                  Besoin d’un média existant ?
-                </p>
+              {imageTab === "library" && (
+                <div className="space-y-3">
+                  {mediaLoading ? (
+                    <div className="text-xs text-slate-500">
+                      Chargement de la médiathèque…
+                    </div>
+                  ) : mediaAssets.length === 0 ? (
+                    <div className="text-xs text-slate-500">
+                      Aucun média pour l&apos;instant. Téléversez une image
+                      dans l&apos;onglet Médiathèque globale.
+                    </div>
+                  ) : (
+                    <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 gap-2 max-h-72 overflow-auto">
+                      {mediaAssets.map((m) => (
+                        <button
+                          key={m.id}
+                          type="button"
+                          onClick={() => handleSelectMedia(m)}
+                          className={
+                            "group relative rounded-xl border overflow-hidden " +
+                            (selectedMediaId === m.id
+                              ? "border-brand-500 ring-2 ring-brand-400"
+                              : "border-slate-200 hover:border-brand-300")
+                          }
+                        >
+                          {/* eslint-disable-next-line @next/next/no-img-element */}
+                          <img
+                            src={m.publicUrl}
+                            alt={m.alt || m.title || ""}
+                            className="aspect-square w-full object-cover group-hover:scale-[1.02] transition-transform"
+                          />
+                          <div className="absolute inset-x-0 bottom-0 bg-black/40 px-2 py-1 text-[10px] text-white truncate">
+                            {m.title || m.slug}
+                          </div>
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+
+            {/* Pied de modale */}
+            <div className="flex items-center justify-between px-4 py-3 border-t border-slate-200 bg-slate-50 rounded-b-2xl">
+              <div className="text-[11px] text-slate-500">
+                Astuce : utilisez la médiathèque pour réutiliser des visuels
+                optimisés.
+              </div>
+              <div className="flex gap-2">
                 <button
                   type="button"
                   className="btn-outline btn-sm"
-                  onClick={() =>
-                    window.open("/admin/media", "_blank", "noopener,noreferrer")
-                  }
+                  onClick={closeImageModal}
                 >
-                  Ouvrir la médiathèque complète
+                  Annuler
+                </button>
+                <button
+                  type="button"
+                  className="btn btn-sm"
+                  onClick={insertImageFromModal}
+                >
+                  Insérer l&apos;image
                 </button>
               </div>
             </div>
