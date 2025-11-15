@@ -21,6 +21,9 @@ type MediaAsset = {
   publicUrl: string;
   title: string | null;
   alt: string | null;
+  slug?: string;        // ✅ ajouté pour matcher /api/media/list
+  mime?: string;        // optionnel
+  bytes?: number | null; // optionnel
 };
 
 export default function RichTextEditor({
@@ -180,14 +183,11 @@ export default function RichTextEditor({
     setImageTab("url");
   }, []);
 
-  const handleSelectMedia = useCallback(
-    (asset: MediaAsset) => {
-      setSelectedMediaId(asset.id);
-      setImageUrl(asset.publicUrl);
-      setImageAlt(asset.alt || asset.title || "");
-    },
-    []
-  );
+  const handleSelectMedia = useCallback((asset: MediaAsset) => {
+    setSelectedMediaId(asset.id);
+    setImageUrl(asset.publicUrl);
+    setImageAlt(asset.alt || asset.title || "");
+  }, []);
 
   // Insertion d’une image (depuis modal, URL ou médiathèque)
   const insertImageFromModal = useCallback(() => {
@@ -201,7 +201,9 @@ export default function RichTextEditor({
       return;
     }
 
-    const altAttr = imageAlt ? ` alt="${imageAlt.replace(/"/g, "&quot;")}"` : ` alt=""`;
+    const altAttr = imageAlt
+      ? ` alt="${imageAlt.replace(/"/g, "&quot;")}"`
+      : ` alt=""`;
     const imgHtml = `<img src="${imageUrl}"${altAttr} />`;
 
     // On tente d’insérer à la sélection si possible
@@ -210,7 +212,8 @@ export default function RichTextEditor({
       document.execCommand("insertHTML", false, imgHtml);
     } else {
       // Sinon on append à la fin
-      visualRef.current.innerHTML = (visualRef.current.innerHTML || "") + imgHtml;
+      visualRef.current.innerHTML =
+        (visualRef.current.innerHTML || "") + imgHtml;
     }
 
     const newHtml = visualRef.current.innerHTML;
@@ -441,7 +444,7 @@ export default function RichTextEditor({
                 <button
                   type="button"
                   onClick={handleTabLibrary}
-                  className={
+                  className=
                     "px-3 py-1 rounded-full " +
                     (imageTab === "library"
                       ? "bg-white shadow-sm text-brand-700"
@@ -514,7 +517,7 @@ export default function RichTextEditor({
                             className="aspect-square w-full object-cover group-hover:scale-[1.02] transition-transform"
                           />
                           <div className="absolute inset-x-0 bottom-0 bg-black/40 px-2 py-1 text-[10px] text-white truncate">
-                            {m.title || m.slug}
+                            {m.title || m.slug || `Image #${m.id}`}
                           </div>
                         </button>
                       ))}
