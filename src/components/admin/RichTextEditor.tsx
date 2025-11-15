@@ -21,9 +21,9 @@ type MediaAsset = {
   publicUrl: string;
   title: string | null;
   alt: string | null;
-  slug?: string;        // ✅ ajouté pour matcher /api/media/list
-  mime?: string;        // optionnel
-  bytes?: number | null; // optionnel
+  slug?: string;
+  mime?: string;
+  bytes?: number | null;
 };
 
 export default function RichTextEditor({
@@ -171,7 +171,6 @@ export default function RichTextEditor({
     }
   }, []);
 
-  // Passer à l’onglet médiathèque
   const handleTabLibrary = useCallback(() => {
     setImageTab("library");
     if (mediaAssets.length === 0) {
@@ -189,7 +188,6 @@ export default function RichTextEditor({
     setImageAlt(asset.alt || asset.title || "");
   }, []);
 
-  // Insertion d’une image (depuis modal, URL ou médiathèque)
   const insertImageFromModal = useCallback(() => {
     if (!imageUrl) {
       alert("Merci de choisir une image ou de saisir une URL.");
@@ -206,12 +204,10 @@ export default function RichTextEditor({
       : ` alt=""`;
     const imgHtml = `<img src="${imageUrl}"${altAttr} />`;
 
-    // On tente d’insérer à la sélection si possible
     const ctx = getSelectionInEditor();
     if (ctx) {
       document.execCommand("insertHTML", false, imgHtml);
     } else {
-      // Sinon on append à la fin
       visualRef.current.innerHTML =
         (visualRef.current.innerHTML || "") + imgHtml;
     }
@@ -350,7 +346,7 @@ export default function RichTextEditor({
 
         <span className="h-6 w-px bg-slate-200" />
 
-        {/* Médias : modale pour Image, prompt pour Vidéo */}
+        {/* Médias */}
         <div className="flex flex-wrap gap-1">
           <button
             type="button"
@@ -444,7 +440,7 @@ export default function RichTextEditor({
                 <button
                   type="button"
                   onClick={handleTabLibrary}
-                  className=
+                  className={
                     "px-3 py-1 rounded-full " +
                     (imageTab === "library"
                       ? "bg-white shadow-sm text-brand-700"
