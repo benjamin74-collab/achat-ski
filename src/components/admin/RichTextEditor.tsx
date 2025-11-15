@@ -58,11 +58,11 @@ export default function RichTextEditor({
   }, [initialValue]);
 
   // 2) Quand on repasse en mode visuel => injecter le HTML dans le contentEditable
-  useEffect(() => {
-    if (mode === "visual" && visualRef.current) {
-      visualRef.current.innerHTML = html || "";
-    }
-  }, [mode, html]);
+	useEffect(() => {
+	  if (mode === "visual" && visualRef.current) {
+		visualRef.current.innerHTML = html || "";
+	  }
+	}, [mode]);
 
   // Édition du mode HTML
   const handleHtmlChange = useCallback((e: FormEvent<HTMLTextAreaElement>) => {
