@@ -1,7 +1,7 @@
 // src/app/admin/tests/partials/NewTestForm.tsx
 "use client";
 
-import { useState, FormEvent } from "react";
+import { useState, useEffect, FormEvent } from "react";
 import dynamic from "next/dynamic";
 import MediaPicker from "@/components/admin/MediaPicker";
 import { createTest } from "@/app/actions/tests";
@@ -22,10 +22,73 @@ type Props = {
   categories: Category[];
 };
 
+type ProductOption = {
+  id: number;
+  slug: string;
+  label: string;
+};
+
 export default function NewTestForm({ categories }: Props) {
   const [loading, setLoading] = useState(false);
   const [ok, setOk] = useState<string | null>(null);
   const [err, setErr] = useState<string | null>(null);
+
+  // 🔍 Recherche produit
+  const [searchTerm, setSearchTerm] = useState("");
+  const [searchResults, setSearchResults] = useState<ProductOption[]>([]);
+  const [searching, setSearching] = useState(false);
+  const [searchError, setSearchError] = useState<string | null>(null);
+  const [selectedProduct, setSelectedProduct] = useState<ProductOption | null>(null);
+
+  // Auto-complétion produits
+  useEffect(() => {
+    // moins de 2 caractères -> on ne cherche pas
+    if (!searchTerm || searchTerm.trim().length < 2) {
+      setSearchResults([]);
+      setSearching(false);
+      setSearchError(null);
+      return;
+    }
+
+    let cancelled = false;
+    const controller = new AbortController();
+
+    async function run() {
+      try {
+        setSearching(true);
+        setSearchError(null);
+
+        const res = await fetch(
+          `/api/admin/products/search?q=${encodeURIComponent(searchTerm.trim())}`,
+          { signal: controller.signal }
+        );
+        if (!res.ok) {
+          throw new Error("Erreur réseau");
+        }
+
+        const data = (await res.json()) as { items?: ProductOption[] };
+        if (!cancelled) {
+          setSearchResults(data.items ?? []);
+        }
+      } catch (e: any) {
+        if (cancelled) return;
+        if (e?.name === "AbortError") return;
+        setSearchError("Erreur lors de la recherche de produits.");
+        setSearchResults([]);
+      } finally {
+        if (!cancelled) {
+          setSearching(false);
+        }
+      }
+    }
+
+    run();
+
+    return () => {
+      cancelled = true;
+      controller.abort();
+    };
+  }, [searchTerm]);
 
   async function onSubmit(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -33,11 +96,14 @@ export default function NewTestForm({ categories }: Props) {
     setErr(null);
     setLoading(true);
 
-    // ✅ IMPORTANT : garder une référence au <form> AVANT l'await
     const form = e.currentTarget as HTMLFormElement;
     const fd = new FormData(form);
 
     try {
+      if (!selectedProduct) {
+        throw new Error("Merci de sélectionner un produit pour ce test.");
+      }
+
       const scoreRaw = fd.get("score");
       const score =
         scoreRaw != null && String(scoreRaw).trim() !== ""
@@ -70,7 +136,10 @@ export default function NewTestForm({ categories }: Props) {
       }
 
       await createTest({
-        productSlugOrId: String(fd.get("product") ?? ""),
+        // ✅ liaison forte au produit via son ID
+        productId: selectedProduct.id,
+        // on envoie aussi le slug en secours (utile pour JSON-LD, etc.)
+        productSlugOrId: selectedProduct.slug,
         title: String(fd.get("title") ?? ""),
         excerpt: fd.get("excerpt")
           ? String(fd.get("excerpt"))
@@ -97,8 +166,11 @@ export default function NewTestForm({ categories }: Props) {
         ratings,
       });
 
-      // ✅ on utilise la ref 'form', pas e.currentTarget après l'await
+      // ✅ reset propre
       form.reset();
+      setSelectedProduct(null);
+      setSearchTerm("");
+      setSearchResults([]);
       setOk("Test créé !");
     } catch (error: unknown) {
       setErr(error instanceof Error ? error.message : "Erreur inconnue");
@@ -109,19 +181,61 @@ export default function NewTestForm({ categories }: Props) {
 
   return (
     <form onSubmit={onSubmit} className="grid gap-4">
-      {/* Produit lié */}
-      <div className="grid gap-1">
+      {/* Produit lié (recherche + sélection obligatoire) */}
+      <div className="grid gap-1 relative">
         <label className="text-sm font-medium">
-          Produit (slug ou ID) *
+          Produit testé *
         </label>
         <input
-          name="product"
-          required
+          type="text"
           className="input"
-          placeholder="ex: salomon-qst-98-2025-26 ou 123"
+          placeholder="Rechercher par marque, modèle, saison…"
+          value={selectedProduct ? selectedProduct.label : searchTerm}
+          onChange={(e) => {
+            setSelectedProduct(null);
+            setSearchTerm(e.target.value);
+          }}
         />
+        {searching && (
+          <p className="mt-1 text-xs text-neutral-500">
+            Recherche en cours…
+          </p>
+        )}
+        {searchError && (
+          <p className="mt-1 text-xs text-red-600">
+            {searchError}
+          </p>
+        )}
+        {!selectedProduct && searchTerm.trim().length >= 2 && searchResults.length > 0 && (
+          <ul className="absolute z-20 mt-1 max-h-56 w-full overflow-auto rounded-xl border bg-white text-sm shadow-lg">
+            {searchResults.map((p) => (
+              <li key={p.id}>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setSelectedProduct(p);
+                    setSearchResults([]);
+                  }}
+                  className="flex w-full items-center justify-between px-3 py-2 text-left hover:bg-muted"
+                >
+                  <span>{p.label}</span>
+                  <span className="text-xs text-neutral-500">
+                    #{p.id} · {p.slug}
+                  </span>
+                </button>
+              </li>
+            ))}
+          </ul>
+        )}
+        {selectedProduct && (
+          <p className="mt-1 text-xs text-neutral-600">
+            Produit sélectionné :{" "}
+            <strong>{selectedProduct.label}</strong>{" "}
+            (id {selectedProduct.id}, slug {selectedProduct.slug})
+          </p>
+        )}
         <p className="text-xs text-neutral-500">
-          Le test ne peut être créé que si le produit existe déjà.
+          Tape au moins 2 caractères puis clique sur un produit dans la liste pour le lier au test.
         </p>
       </div>
 
