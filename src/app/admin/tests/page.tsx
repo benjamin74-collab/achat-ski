@@ -1,16 +1,19 @@
 // src/app/admin/tests/page.tsx
 import { prisma } from "@/lib/prisma";
 import { approveTest, rejectTest, deleteTest } from "@/app/actions/tests";
+import NewTestForm from "./partials/NewTestForm";
 
 export const revalidate = 0;
 
 export default async function TestsAdminPage() {
-  const [pending, approved, rejected] = await Promise.all([
+  const [pending, approved, rejected, categories] = await Promise.all([
     prisma.editorialTest.findMany({
       where: { status: "PENDING" },
       orderBy: { publishedAt: "desc" },
       include: {
-        product: { select: { slug: true, brand: true, model: true, season: true } },
+        product: {
+          select: { slug: true, brand: true, model: true, season: true },
+        },
       },
       take: 50,
     }),
@@ -18,7 +21,9 @@ export default async function TestsAdminPage() {
       where: { status: "APPROVED" },
       orderBy: { publishedAt: "desc" },
       include: {
-        product: { select: { slug: true, brand: true, model: true, season: true } },
+        product: {
+          select: { slug: true, brand: true, model: true, season: true },
+        },
       },
       take: 50,
     }),
@@ -26,17 +31,24 @@ export default async function TestsAdminPage() {
       where: { status: "REJECTED" },
       orderBy: { publishedAt: "desc" },
       include: {
-        product: { select: { slug: true, brand: true, model: true, season: true } },
+        product: {
+          select: { slug: true, brand: true, model: true, season: true },
+        },
       },
       take: 50,
     }),
+    prisma.testRatingCategory.findMany({
+      orderBy: [{ order: "asc" }, { label: "asc" }],
+    }),
   ]);
 
-  type RowTest = typeof pending[number];
+  type RowTest = (typeof pending)[number];
 
   const Row = ({ t }: { t: RowTest }) => {
     const productLabel = t.product
-      ? [t.product.brand, t.product.model, t.product.season].filter(Boolean).join(" ")
+      ? [t.product.brand, t.product.model, t.product.season]
+          .filter(Boolean)
+          .join(" ")
       : "—";
 
     return (
@@ -64,7 +76,9 @@ export default async function TestsAdminPage() {
           )}
           {" · "}
           {t.sourceName}
-          {t.publishedAt ? ` · ${t.publishedAt.toISOString().slice(0, 10)}` : ""}
+          {t.publishedAt
+            ? ` · ${t.publishedAt.toISOString().slice(0, 10)}`
+            : ""}
           {" · "}
           <span
             className={
@@ -79,7 +93,9 @@ export default async function TestsAdminPage() {
           </span>
         </div>
 
-        {t.excerpt ? <div className="text-sm text-slate-700">{t.excerpt}</div> : null}
+        {t.excerpt ? (
+          <div className="text-sm text-slate-700">{t.excerpt}</div>
+        ) : null}
 
         {t.sourceUrl ? (
           <a
@@ -115,16 +131,25 @@ export default async function TestsAdminPage() {
 
   return (
     <div className="grid gap-8">
-      {/* Note UX : création par les administrateurs */}
+      {/* Intro */}
       <section className="rounded-xl border border-dashed p-4 bg-surface/50">
         <p className="text-sm text-slate-600">
-          Les tests de matériel sont désormais créés uniquement par les administrateurs
-          depuis le backoffice (un éditeur dédié permettra de gérer la bannière, le texte
-          complet et les notes par catégorie). Cette page sert à la modération et à la gestion
-          des tests existants.
+          Les tests de matériel sont créés uniquement par les administrateurs
+          depuis cette page. Chaque test est lié à un produit existant, contient
+          une bannière, une introduction, un contenu complet (éditeur WYSIWYG)
+          et des notes par catégorie (Design, Prix, Confort…).
         </p>
       </section>
 
+      {/* Création d'un nouveau test */}
+      <section className="rounded-xl border bg-surface/70 p-4">
+        <h2 className="text-lg font-semibold mb-3">
+          Créer un nouveau test
+        </h2>
+        <NewTestForm categories={categories} />
+      </section>
+
+      {/* En attente */}
       <section>
         <h2 className="text-lg font-semibold">En attente ({pending.length})</h2>
         <ul className="mt-3 grid gap-3">
@@ -137,6 +162,7 @@ export default async function TestsAdminPage() {
         </ul>
       </section>
 
+      {/* Approuvés */}
       <section>
         <h2 className="text-lg font-semibold">Approuvés ({approved.length})</h2>
         <ul className="mt-3 grid gap-3">
@@ -149,6 +175,7 @@ export default async function TestsAdminPage() {
         </ul>
       </section>
 
+      {/* Rejetés */}
       <section>
         <h2 className="text-lg font-semibold">Rejetés ({rejected.length})</h2>
         <ul className="mt-3 grid gap-3">
