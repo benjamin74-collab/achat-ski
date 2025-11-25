@@ -1,7 +1,14 @@
 "use client";
 
 import { useState } from "react";
+import dynamic from "next/dynamic";
 import MediaPicker from "@/components/admin/MediaPicker";
+
+// Éditeur WYSIWYG utilisé aussi pour les Pages
+const RichTextEditor = dynamic(
+  () => import("@/components/admin/RichTextEditor"),
+  { ssr: false }
+);
 
 type BrandFormProps = {
   initial?: {
@@ -35,22 +42,37 @@ export default function BrandForm({ initial, onSubmit, onDelete }: BrandFormProp
     <form onSubmit={handleSubmit} className="grid gap-4">
       <div className="grid gap-1">
         <label className="text-sm">Nom *</label>
-        <input name="name" required defaultValue={initial?.name ?? ""} className="input" />
+        <input
+          name="name"
+          required
+          defaultValue={initial?.name ?? ""}
+          className="input"
+        />
       </div>
 
       <div className="grid gap-1">
         <label className="text-sm">Slug (optionnel)</label>
-        <input name="slug" defaultValue={initial?.slug ?? ""} className="input" />
-        <p className="text-xs text-neutral-500">Laisser vide pour générer automatiquement.</p>
+        <input
+          name="slug"
+          defaultValue={initial?.slug ?? ""}
+          className="input"
+        />
+        <p className="text-xs text-neutral-500">
+          Laisser vide pour générer automatiquement.
+        </p>
       </div>
 
       <div className="grid md:grid-cols-2 gap-3">
         <div className="grid gap-1">
           <label className="text-sm">Site web</label>
-          <input name="websiteUrl" defaultValue={initial?.websiteUrl ?? ""} className="input" />
+          <input
+            name="websiteUrl"
+            defaultValue={initial?.websiteUrl ?? ""}
+            className="input"
+          />
         </div>
 
-        {/* ── Nouveau : sélecteur/Upload via médiathèque ─────────────────────── */}
+        {/* ── Sélecteur/Upload via médiathèque ─────────────────────── */}
         <div className="grid gap-1">
           <MediaPicker
             label="Logo (médiathèque)"
@@ -69,26 +91,49 @@ export default function BrandForm({ initial, onSubmit, onDelete }: BrandFormProp
       {/* Fallback URL logo (compat ascendante) */}
       <div className="grid gap-1">
         <label className="text-sm">Logo URL (optionnel)</label>
-        <input name="logoUrl" defaultValue={initial?.logoUrl ?? ""} className="input" />
+        <input
+          name="logoUrl"
+          defaultValue={initial?.logoUrl ?? ""}
+          className="input"
+        />
       </div>
 
+      {/* Description en WYSIWYG (HTML stocké en base) */}
       <div className="grid gap-1">
-        <label className="text-sm">Description (HTML autorisé)</label>
-        <textarea name="description" rows={6} defaultValue={initial?.description ?? ""} className="input font-mono" />
+        <label className="text-sm">Description</label>
+        <RichTextEditor
+          /** Le champ "name" DOIT être "description" pour matcher actions.ts */
+          name="description"
+          /** Valeur initiale venant de la base (HTML déjà sanitisé) */
+          initialValue={initial?.description ?? ""}
+          /** Optionnel : label interne si ton composant en gère un */
+          label="Description de la marque"
+        />
+        <p className="text-xs text-neutral-500">
+          Le contenu est enregistré en HTML et automatiquement nettoyé côté serveur.
+        </p>
       </div>
 
       <label className="inline-flex items-center gap-2 text-sm">
-        <input type="checkbox" name="active" defaultChecked={initial?.active ?? true} />
+        <input
+          type="checkbox"
+          name="active"
+          defaultChecked={initial?.active ?? true}
+        />
         Actif
       </label>
 
       <div className="flex items-center gap-2">
-        <button className="btn" disabled={pending}>{pending ? "Enregistrement…" : "Enregistrer"}</button>
+        <button className="btn" disabled={pending}>
+          {pending ? "Enregistrement…" : "Enregistrer"}
+        </button>
         {onDelete && (
           <button
             type="button"
             className="btn btn-danger"
-            onClick={async () => { if (confirm("Supprimer cette marque ?")) await onDelete(); }}
+            onClick={async () => {
+              if (confirm("Supprimer cette marque ?")) await onDelete();
+            }}
           >
             Supprimer
           </button>
