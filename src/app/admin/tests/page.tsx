@@ -115,11 +115,13 @@ export default async function TestsAdminPage() {
 
   return (
     <div className="grid gap-8">
-      {/* Note UX : création côté front (fiche produit) */}
+      {/* Note UX : création par les administrateurs */}
       <section className="rounded-xl border border-dashed p-4 bg-surface/50">
         <p className="text-sm text-slate-600">
-          La création de tests se fait depuis chaque fiche produit (lien « Je veux ajouter un test à ce produit »).
-          Cette page sert uniquement à la modération et à la gestion.
+          Les tests de matériel sont désormais créés uniquement par les administrateurs
+          depuis le backoffice (un éditeur dédié permettra de gérer la bannière, le texte
+          complet et les notes par catégorie). Cette page sert à la modération et à la gestion
+          des tests existants.
         </p>
       </section>
 

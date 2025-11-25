@@ -75,6 +75,7 @@ export default async function ProductPage({ params }: PageProps) {
         take: 10,
       },
       tests: {
+        where: { status: "APPROVED" },
         select: {
           id: true,
           title: true,
@@ -83,6 +84,19 @@ export default async function ProductPage({ params }: PageProps) {
           sourceName: true,
           sourceUrl: true,
           publishedAt: true,
+          ratings: {
+            select: {
+              score: true,
+              category: {
+                select: {
+                  id: true,
+                  label: true,
+                  slug: true,
+                  order: true,
+                },
+              },
+            },
+          },
         },
         orderBy: { publishedAt: "desc" },
         take: 10,
@@ -126,8 +140,7 @@ export default async function ProductPage({ params }: PageProps) {
     ["Catégorie", product.category?.name ?? "—"],
   ];
 
-  // ✅ Filtre type-safe pour "produits similaires" :
-  //    si on a une FK (Brand.id), on filtre sur brandId ; sinon fallback sur la chaîne brand
+  // ✅ Filtre type-safe pour "produits similaires"
   const brandWhere: Prisma.ProductWhereInput =
     typeof product.Brand?.id === "number"
       ? { brandId: product.Brand.id }
@@ -156,6 +169,43 @@ export default async function ProductPage({ params }: PageProps) {
   // ---- Tests
   const tests = product.tests;
 
+  // Agrégation des notes par catégorie (pour le résumé colonne de droite)
+  type CategoryAgg = {
+    id: number;
+    slug: string;
+    label: string;
+    order: number;
+    sum: number;
+    count: number;
+  };
+
+  const categoryMap = new Map<number, CategoryAgg>();
+
+  for (const t of tests) {
+    for (const r of t.ratings ?? []) {
+      const c = r.category;
+      if (!c) continue;
+      const existing = categoryMap.get(c.id) ?? {
+        id: c.id,
+        slug: c.slug,
+        label: c.label,
+        order: c.order ?? 0,
+        sum: 0,
+        count: 0,
+      };
+      existing.sum += r.score;
+      existing.count += 1;
+      categoryMap.set(c.id, existing);
+    }
+  }
+
+  const categoryRatings = Array.from(categoryMap.values())
+    .map((c) => ({
+      ...c,
+      avg: c.count > 0 ? c.sum / c.count : 0,
+    }))
+    .sort((a, b) => a.order - b.order || a.label.localeCompare(b.label));
+
   // ---- JSON-LD
   const inStockOffers = offersFlat.filter((o) => o.inStock);
   const hasStock = inStockOffers.length > 0;
@@ -163,13 +213,17 @@ export default async function ProductPage({ params }: PageProps) {
   const minPriceOffer =
     inStockOffers.length > 0
       ? [...inStockOffers].sort(
-          (a, b) => a.priceCents + (a.shippingCents ?? 0) - (b.priceCents + (b.shippingCents ?? 0))
+          (a, b) =>
+            a.priceCents + (a.shippingCents ?? 0) -
+            (b.priceCents + (b.shippingCents ?? 0))
         )[0]
       : undefined;
 
   const currency = minPriceOffer?.currency ?? "EUR";
   const minPriceEuro =
-    minPriceOffer != null ? (minPriceOffer.priceCents + (minPriceOffer.shippingCents ?? 0)) / 100 : undefined;
+    minPriceOffer != null
+      ? (minPriceOffer.priceCents + (minPriceOffer.shippingCents ?? 0)) / 100
+      : undefined;
 
   const maxPriceEuro = offersFlat.length
     ? Math.max(...offersFlat.map((o) => (o.priceCents + (o.shippingCents ?? 0)) / 100))
@@ -210,17 +264,31 @@ export default async function ProductPage({ params }: PageProps) {
               ? {
                   "@type": "AggregateOffer",
                   priceCurrency: currency,
-                  lowPrice: typeof minPriceEuro === "number" ? minPriceEuro.toFixed(2) : undefined,
-                  highPrice: typeof maxPriceEuro === "number" ? maxPriceEuro.toFixed(2) : undefined,
+                  lowPrice:
+                    typeof minPriceEuro === "number"
+                      ? minPriceEuro.toFixed(2)
+                      : undefined,
+                  highPrice:
+                    typeof maxPriceEuro === "number"
+                      ? maxPriceEuro.toFixed(2)
+                      : undefined,
                   offerCount: offersFlat.length,
-                  availability: hasStock ? "https://schema.org/InStock" : "https://schema.org/OutOfStock",
+                  availability: hasStock
+                    ? "https://schema.org/InStock"
+                    : "https://schema.org/OutOfStock",
                   url: canonicalUrl,
                 }
               : {
                   "@type": "Offer",
                   priceCurrency: offersFlat[0].currency,
-                  price: ((offersFlat[0].priceCents + (offersFlat[0].shippingCents ?? 0)) / 100).toFixed(2),
-                  availability: offersFlat[0].inStock ? "https://schema.org/InStock" : "https://schema.org/OutOfStock",
+                  price: (
+                    (offersFlat[0].priceCents +
+                      (offersFlat[0].shippingCents ?? 0)) /
+                    100
+                  ).toFixed(2),
+                  availability: offersFlat[0].inStock
+                    ? "https://schema.org/InStock"
+                    : "https://schema.org/OutOfStock",
                   url: canonicalUrl,
                 },
         }
@@ -250,7 +318,10 @@ export default async function ProductPage({ params }: PageProps) {
   return (
     <main className="container mx-auto max-w-6xl px-4 py-6">
       <link rel="canonical" href={canonicalUrl} />
-      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(productJsonLd) }} />
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(productJsonLd) }}
+      />
 
       <Breadcrumbs
         items={[
@@ -263,19 +334,21 @@ export default async function ProductPage({ params }: PageProps) {
         ]}
       />
 
-      {/* En-tête + CTA avis/test */}
+      {/* En-tête + CTA avis */}
       <section className="mt-4 grid grid-cols-1 gap-6 lg:grid-cols-12">
         <div className="lg:col-span-5">
           <div className="aspect-[4/3] w-full overflow-hidden rounded-2xl border bg-muted" />
-          <p className="mt-2 text-xs text-neutral-500">Photo à venir (marque / feed partenaire).</p>
+          <p className="mt-2 text-xs text-neutral-500">
+            Photo à venir (marque / feed partenaire).
+          </p>
 
-          {/* CTA latéraux */}
+          {/* CTA latéral : avis uniquement */}
           <div className="mt-4 space-y-2">
-            <a href={`/me/reviews/new?slug=${encodeURIComponent(product.slug)}`} className="btn">
+            <a
+              href={`/me/reviews/new?slug=${encodeURIComponent(product.slug)}`}
+              className="btn"
+            >
               ✍️ Je souhaite donner un avis sur ce produit
-            </a>
-            <a href={`/me/tests/new?slug=${encodeURIComponent(product.slug)}`} className="btn-outline">
-              🧪 Je veux ajouter un test à ce produit
             </a>
           </div>
         </div>
@@ -305,14 +378,43 @@ export default async function ProductPage({ params }: PageProps) {
 
           <div className="mt-3 rounded-xl border p-4">
             <div className="text-sm text-neutral-500">à partir de</div>
-            <div className="text-3xl font-bold">{minPriceCents != null ? money(minPriceCents, "EUR") : "—"}</div>
-            <div className="mt-1 text-sm text-neutral-500">chez nos marchands partenaires</div>
+            <div className="text-3xl font-bold">
+              {minPriceCents != null ? money(minPriceCents, "EUR") : "—"}
+            </div>
+            <div className="mt-1 text-sm text-neutral-500">
+              chez nos marchands partenaires
+            </div>
           </div>
+
+          {/* Résumé des notes des tests par catégorie */}
+          {categoryRatings.length > 0 && (
+            <section className="mt-4 rounded-xl border p-4 bg-surface/60">
+              <h2 className="text-sm font-semibold">Notes des tests</h2>
+              <ul className="mt-2 space-y-1 text-sm">
+                {categoryRatings.map((cat) => (
+                  <li
+                    key={cat.id}
+                    className="flex items-center justify-between"
+                  >
+                    <span>{cat.label}</span>
+                    <span className="flex items-center gap-2">
+                      <StarRating value={(cat.avg / 10) * 5} />
+                      <span className="text-xs text-neutral-600">
+                        {cat.avg.toFixed(1)} / 10
+                      </span>
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            </section>
+          )}
 
           <dl className="mt-4 grid grid-cols-1 gap-2 sm:grid-cols-2">
             {specs.map(([k, v]) => (
               <div key={k} className="rounded-xl border p-3">
-                <dt className="text-xs uppercase tracking-wide text-neutral-500">{k}</dt>
+                <dt className="text-xs uppercase tracking-wide text-neutral-500">
+                  {k}
+                </dt>
                 <dd className="text-sm">{v}</dd>
               </div>
             ))}
@@ -345,11 +447,15 @@ export default async function ProductPage({ params }: PageProps) {
                         </span>
                       </div>
                       <div className="text-xs text-neutral-500">
-                        {r.sourceName ? r.sourceName : r.authorName || "Utilisateur"} ·{" "}
-                        {r.createdAt.toISOString().slice(0, 10)}
+                        {r.sourceName
+                          ? r.sourceName
+                          : r.authorName || "Utilisateur"}{" "}
+                        · {r.createdAt.toISOString().slice(0, 10)}
                       </div>
                     </div>
-                    {r.body ? <p className="mt-2 text-sm text-neutral-700">{r.body}</p> : null}
+                    {r.body ? (
+                      <p className="mt-2 text-sm text-neutral-700">{r.body}</p>
+                    ) : null}
                     {r.sourceUrl ? (
                       <a
                         href={r.sourceUrl}
@@ -376,14 +482,39 @@ export default async function ProductPage({ params }: PageProps) {
                     <div className="flex items-center justify-between">
                       <div className="font-medium">{t.title}</div>
                       <div className="text-xs text-neutral-500">
-                        {t.sourceName} · {t.publishedAt.toISOString().slice(0, 10)}
+                        {t.sourceName} ·{" "}
+                        {t.publishedAt.toISOString().slice(0, 10)}
                       </div>
                     </div>
-                    {t.excerpt ? <p className="mt-2 text-sm text-neutral-700">{t.excerpt}</p> : null}
+
+                    {t.excerpt ? (
+                      <p className="mt-2 text-sm text-neutral-700">
+                        {t.excerpt}
+                      </p>
+                    ) : null}
+
+                    {/* Notes par catégorie pour ce test */}
+                    {t.ratings && t.ratings.length > 0 && (
+                      <div className="mt-3 space-y-1 text-xs text-neutral-700">
+                        {t.ratings.map((r, idx) => (
+                          <div
+                            key={`${r.category.slug}-${idx}`}
+                            className="flex items-center justify-between"
+                          >
+                            <span>{r.category.label}</span>
+                            <span className="flex items-center gap-2">
+                              <StarRating value={(r.score / 10) * 5} />
+                              <span>{r.score} / 10</span>
+                            </span>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+
                     <div className="mt-2 flex items-center justify-between">
                       {typeof t.score === "number" ? (
                         <span className="inline-flex items-center text-xs text-neutral-700">
-                          Note: <b className="ml-1">{t.score}</b>
+                          Note globale : <b className="ml-1">{t.score}</b>
                         </span>
                       ) : (
                         <span />
@@ -419,7 +550,10 @@ export default async function ProductPage({ params }: PageProps) {
           <h2 className="text-lg font-semibold">Produits similaires</h2>
           <ul className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
             {related.map((r) => (
-              <li key={r.id} className="rounded-2xl border p-4 hover:shadow-sm transition">
+              <li
+                key={r.id}
+                className="rounded-2xl border p-4 hover:shadow-sm transition"
+              >
                 <a href={`/p/${r.slug}`} className="block">
                   <div className="aspect-[4/3] w-full rounded-xl bg-muted border" />
                   <div className="mt-2 text-sm font-medium">
