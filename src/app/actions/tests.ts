@@ -59,7 +59,7 @@ type RatingInput = {
   score: number; // 0..10
 };
 
-// ✅ hybride : nouveau flux (productId) + compat ancien (productSlugOrId)
+// ✅ sourceUrl devient optionnelle
 type CreateTestInput = {
   productId?: number;          // utilisé par le backoffice admin
   productSlugOrId?: string;    // compatibilité avec /me/tests/new
@@ -69,7 +69,7 @@ type CreateTestInput = {
   content?: string; // HTML WYSIWYG
   score?: number | null;
   sourceName: string;
-  sourceUrl: string;
+  sourceUrl?: string;
   status?: keyof typeof ModerationStatus;
 
   // Bannière
@@ -135,12 +135,12 @@ export async function createTest(input: CreateTestInput) {
       content: input.content ? sanitizeHtml(input.content) : null,
       score: typeof input.score === "number" ? input.score : null,
       sourceName: input.sourceName,
-      sourceUrl: input.sourceUrl,
+      // ✅ facultatif : on stocke une chaîne vide si non fourni
+      sourceUrl: input.sourceUrl ?? "",
       status,
       bannerUrl: input.bannerUrl ?? null,
       ...(bannerId ? { bannerId } : {}),
 
-      // Notes par catégorie (0..10)
       ...(ratings.length > 0
         ? {
             ratings: {
@@ -154,10 +154,8 @@ export async function createTest(input: CreateTestInput) {
     },
   });
 
-  // Revalidation contextuelle (admin + fiche produit)
   await revalidateTestContexts(created.id);
 
-  // Pour sécurité, si jamais productSlug n’était pas encore défini mais connu, on revalide
   if (productSlug) {
     revalidatePath(`/p/${productSlug}`);
   }
