@@ -59,9 +59,11 @@ type RatingInput = {
   score: number; // 0..10
 };
 
-// ✅ Nouveau : on passe un productId déjà résolu côté client
+// ✅ hybride : nouveau flux (productId) + compat ancien (productSlugOrId)
 type CreateTestInput = {
-  productId: number;
+  productId?: number;          // utilisé par le backoffice admin
+  productSlugOrId?: string;    // compatibilité avec /me/tests/new
+
   title: string;
   excerpt?: string;
   content?: string; // HTML WYSIWYG
@@ -79,18 +81,42 @@ type CreateTestInput = {
 };
 
 export async function createTest(input: CreateTestInput) {
-  if (!input.productId || !Number.isFinite(input.productId)) {
-    throw new Error("Produit invalide : aucun produit sélectionné.");
+  let productId: number | null = null;
+  let productSlug: string | null = null;
+
+  // 1️⃣ Cas privilégié : productId fourni (backoffice)
+  if (typeof input.productId === "number" && Number.isFinite(input.productId)) {
+    const p = await prisma.product.findUnique({
+      where: { id: input.productId },
+      select: { id: true, slug: true },
+    });
+    if (!p) {
+      throw new Error("Produit introuvable.");
+    }
+    productId = p.id;
+    productSlug = p.slug;
+  } else if (input.productSlugOrId && input.productSlugOrId.trim()) {
+    // 2️⃣ Compat : ancien flux slug/ID
+    const raw = input.productSlugOrId.trim();
+    if (/^\d+$/.test(raw)) {
+      const p = await prisma.product.findUnique({
+        where: { id: Number(raw) },
+        select: { id: true, slug: true },
+      });
+      productId = p?.id ?? null;
+      productSlug = p?.slug ?? null;
+    } else {
+      const p = await prisma.product.findUnique({
+        where: { slug: raw },
+        select: { id: true, slug: true },
+      });
+      productId = p?.id ?? null;
+      productSlug = p?.slug ?? null;
+    }
   }
 
-  // On vérifie que le produit existe bien et on récupère son slug pour revalidation
-  const product = await prisma.product.findUnique({
-    where: { id: input.productId },
-    select: { id: true, slug: true },
-  });
-
-  if (!product) {
-    throw new Error("Produit introuvable.");
+  if (!productId) {
+    throw new Error("Produit introuvable (aucun produit valide fourni).");
   }
 
   const status: ModerationStatus = (input.status ?? "PENDING") as ModerationStatus;
@@ -103,7 +129,7 @@ export async function createTest(input: CreateTestInput) {
 
   const created = await prisma.editorialTest.create({
     data: {
-      productId: product.id,
+      productId,
       title: input.title,
       excerpt: input.excerpt ?? "",
       content: input.content ? sanitizeHtml(input.content) : null,
@@ -130,4 +156,9 @@ export async function createTest(input: CreateTestInput) {
 
   // Revalidation contextuelle (admin + fiche produit)
   await revalidateTestContexts(created.id);
+
+  // Pour sécurité, si jamais productSlug n’était pas encore défini mais connu, on revalide
+  if (productSlug) {
+    revalidatePath(`/p/${productSlug}`);
+  }
 }
