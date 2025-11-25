@@ -1,133 +1,13 @@
 // src/app/admin/tests/page.tsx
 import { prisma } from "@/lib/prisma";
-import { approveTest, rejectTest, deleteTest } from "@/app/actions/tests";
 import NewTestForm from "./partials/NewTestForm";
 
 export const revalidate = 0;
 
 export default async function TestsAdminPage() {
-  const [pending, approved, rejected, categories] = await Promise.all([
-    prisma.editorialTest.findMany({
-      where: { status: "PENDING" },
-      orderBy: { publishedAt: "desc" },
-      include: {
-        product: {
-          select: { slug: true, brand: true, model: true, season: true },
-        },
-      },
-      take: 50,
-    }),
-    prisma.editorialTest.findMany({
-      where: { status: "APPROVED" },
-      orderBy: { publishedAt: "desc" },
-      include: {
-        product: {
-          select: { slug: true, brand: true, model: true, season: true },
-        },
-      },
-      take: 50,
-    }),
-    prisma.editorialTest.findMany({
-      where: { status: "REJECTED" },
-      orderBy: { publishedAt: "desc" },
-      include: {
-        product: {
-          select: { slug: true, brand: true, model: true, season: true },
-        },
-      },
-      take: 50,
-    }),
-    prisma.testRatingCategory.findMany({
-      orderBy: [{ order: "asc" }, { label: "asc" }],
-    }),
-  ]);
-
-  type RowTest = (typeof pending)[number];
-
-  const Row = ({ t }: { t: RowTest }) => {
-    const productLabel = t.product
-      ? [t.product.brand, t.product.model, t.product.season]
-          .filter(Boolean)
-          .join(" ")
-      : "—";
-
-    return (
-      <li className="rounded-xl border p-3 grid gap-2 bg-white">
-        <div className="text-sm font-medium">
-          {t.title}
-          {typeof t.score === "number" ? (
-            <span className="ml-2 text-slate-600">· note {t.score}</span>
-          ) : null}
-        </div>
-
-        <div className="text-xs text-slate-500">
-          Produit : {productLabel} ·{" "}
-          {t.product?.slug ? (
-            <a
-              className="underline"
-              href={`/p/${t.product.slug}`}
-              target="_blank"
-              rel="noreferrer"
-            >
-              voir
-            </a>
-          ) : (
-            "—"
-          )}
-          {" · "}
-          {t.sourceName}
-          {t.publishedAt
-            ? ` · ${t.publishedAt.toISOString().slice(0, 10)}`
-            : ""}
-          {" · "}
-          <span
-            className={
-              t.status === "APPROVED"
-                ? "text-green-600"
-                : t.status === "REJECTED"
-                ? "text-red-600"
-                : "text-slate-600"
-            }
-          >
-            {t.status.toLowerCase()}
-          </span>
-        </div>
-
-        {t.excerpt ? (
-          <div className="text-sm text-slate-700">{t.excerpt}</div>
-        ) : null}
-
-        {t.sourceUrl ? (
-          <a
-            href={t.sourceUrl}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="text-xs underline text-slate-600"
-          >
-            Lire la source
-          </a>
-        ) : null}
-
-        <div className="flex flex-wrap gap-2">
-          <form action={approveTest.bind(null, t.id)}>
-            <button className="btn" type="submit">
-              Approuver
-            </button>
-          </form>
-          <form action={rejectTest.bind(null, t.id)}>
-            <button className="btn-secondary" type="submit">
-              Rejeter
-            </button>
-          </form>
-          <form action={deleteTest.bind(null, t.id)}>
-            <button className="btn-outline" type="submit">
-              Supprimer
-            </button>
-          </form>
-        </div>
-      </li>
-    );
-  };
+  const categories = await prisma.testRatingCategory.findMany({
+    orderBy: [{ order: "asc" }, { label: "asc" }],
+  });
 
   return (
     <div className="grid gap-8">
@@ -135,57 +15,16 @@ export default async function TestsAdminPage() {
       <section className="rounded-xl border border-dashed p-4 bg-surface/50">
         <p className="text-sm text-slate-600">
           Les tests de matériel sont créés uniquement par les administrateurs
-          depuis cette page. Chaque test est lié à un produit existant, contient
-          une bannière, une introduction, un contenu complet (éditeur WYSIWYG)
-          et des notes par catégorie (Design, Prix, Confort…).
+          depuis cette page. Chaque test doit être lié à un produit existant,
+          contenir une bannière, une introduction, un contenu complet (éditeur WYSIWYG)
+          et des notes pour une ou plusieurs catégories (Design, Prix, Confort, etc.).
         </p>
       </section>
 
       {/* Création d'un nouveau test */}
       <section className="rounded-xl border bg-surface/70 p-4">
-        <h2 className="text-lg font-semibold mb-3">
-          Créer un nouveau test
-        </h2>
+        <h2 className="text-lg font-semibold mb-3">Créer un nouveau test</h2>
         <NewTestForm categories={categories} />
-      </section>
-
-      {/* En attente */}
-      <section>
-        <h2 className="text-lg font-semibold">En attente ({pending.length})</h2>
-        <ul className="mt-3 grid gap-3">
-          {pending.map((t) => (
-            <Row key={t.id} t={t} />
-          ))}
-          {pending.length === 0 && (
-            <p className="text-sm text-slate-500">Aucun test en attente.</p>
-          )}
-        </ul>
-      </section>
-
-      {/* Approuvés */}
-      <section>
-        <h2 className="text-lg font-semibold">Approuvés ({approved.length})</h2>
-        <ul className="mt-3 grid gap-3">
-          {approved.map((t) => (
-            <Row key={t.id} t={t} />
-          ))}
-          {approved.length === 0 && (
-            <p className="text-sm text-slate-500">Aucun test approuvé.</p>
-          )}
-        </ul>
-      </section>
-
-      {/* Rejetés */}
-      <section>
-        <h2 className="text-lg font-semibold">Rejetés ({rejected.length})</h2>
-        <ul className="mt-3 grid gap-3">
-          {rejected.map((t) => (
-            <Row key={t.id} t={t} />
-          ))}
-          {rejected.length === 0 && (
-            <p className="text-sm text-slate-500">Aucun test rejeté.</p>
-          )}
-        </ul>
       </section>
     </div>
   );
