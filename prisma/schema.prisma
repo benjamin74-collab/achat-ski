@@ -276,22 +276,65 @@ model Review {
 model EditorialTest {
   id          Int              @id @default(autoincrement())
   productId   Int
-  userId      String? // auteur connecté (facultatif)
+  userId      String? // auteur connecté (facultatif, mais dans ton nouveau modèle ce sera surtout l'admin)
   title       String
+
+  // Intro courte du test (ancien "excerpt")
   excerpt     String
+
+  // Contenu complet du test (HTML WYSIWYG)
+  content     String?      @db.Text
+
+  // Bannière du test (optionnelle)
+  bannerUrl   String?
+  bannerId    Int?
+  banner      MediaAsset?  @relation("TestBanner", fields: [bannerId], references: [id])
+
+  // Note globale (optionnelle, si tu veux garder un score global)
   score       Float? // 0..10 ou 0..5 (optionnel)
+
+  // Infos source (tu peux les utiliser pour "Meilleur-Ski", ou des partenaires)
   sourceName  String // “Skipass”, “Backcountry Magazine”, etc.
   sourceUrl   String
+
   status      ModerationStatus @default(PENDING)
   publishedAt DateTime         @default(now())
 
+  // Relations
   product Product @relation(fields: [productId], references: [id])
   user    User?   @relation(fields: [userId], references: [id])
+
+  // Catégories de notation + notes par catégorie
+  ratings EditorialTestScore[]
 
   @@index([productId])
   @@index([publishedAt])
   @@index([status])
 }
+
+model TestRatingCategory {
+  id        Int     @id @default(autoincrement())
+  slug      String  @unique
+  label     String
+  order     Int     @default(0)
+  active    Boolean @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  scores EditorialTestScore[]
+}
+
+model EditorialTestScore {
+  testId     Int
+  categoryId Int
+  score      Int  // 0..10
+
+  test     EditorialTest    @relation(fields: [testId], references: [id])
+  category TestRatingCategory @relation(fields: [categoryId], references: [id])
+
+  @@id([testId, categoryId])
+}
+
 
 /**
  * -----------------------------
@@ -382,6 +425,7 @@ model MediaAsset {
   pagesThumbnail Page[]  @relation("PageThumbnail")
   pagesBanner    Page[]  @relation("PageBanner")
   usersAvatar    User[]  @relation("UserAvatar")
+  testsBanner    EditorialTest[] @relation("TestBanner")
 }
 
 enum MediaKind {
