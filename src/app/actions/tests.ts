@@ -59,8 +59,9 @@ type RatingInput = {
   score: number; // 0..10
 };
 
+// ✅ Nouveau : on passe un productId déjà résolu côté client
 type CreateTestInput = {
-  productSlugOrId: string;
+  productId: number;
   title: string;
   excerpt?: string;
   content?: string; // HTML WYSIWYG
@@ -78,28 +79,18 @@ type CreateTestInput = {
 };
 
 export async function createTest(input: CreateTestInput) {
-  // Résoudre productId + slug à partir d’un slug ou id
-  let productId: number | null = null;
-  let productSlug: string | null = null;
-
-  if (/^\d+$/.test(input.productSlugOrId)) {
-    const p = await prisma.product.findUnique({
-      where: { id: Number(input.productSlugOrId) },
-      select: { id: true, slug: true },
-    });
-    productId = p?.id ?? null;
-    productSlug = p?.slug ?? null;
-  } else {
-    const p = await prisma.product.findUnique({
-      where: { slug: input.productSlugOrId },
-      select: { id: true, slug: true },
-    });
-    productId = p?.id ?? null;
-    productSlug = p?.slug ?? null;
+  if (!input.productId || !Number.isFinite(input.productId)) {
+    throw new Error("Produit invalide : aucun produit sélectionné.");
   }
 
-  if (!productId) {
-    throw new Error("Produit introuvable (slug ou id incorrect).");
+  // On vérifie que le produit existe bien et on récupère son slug pour revalidation
+  const product = await prisma.product.findUnique({
+    where: { id: input.productId },
+    select: { id: true, slug: true },
+  });
+
+  if (!product) {
+    throw new Error("Produit introuvable.");
   }
 
   const status: ModerationStatus = (input.status ?? "PENDING") as ModerationStatus;
@@ -110,9 +101,9 @@ export async function createTest(input: CreateTestInput) {
 
   const ratings = input.ratings ?? [];
 
-  await prisma.editorialTest.create({
+  const created = await prisma.editorialTest.create({
     data: {
-      productId,
+      productId: product.id,
       title: input.title,
       excerpt: input.excerpt ?? "",
       content: input.content ? sanitizeHtml(input.content) : null,
@@ -137,9 +128,6 @@ export async function createTest(input: CreateTestInput) {
     },
   });
 
-  revalidatePath("/admin/tests");
-
-  if (productSlug) {
-    revalidatePath(`/p/${productSlug}`);
-  }
+  // Revalidation contextuelle (admin + fiche produit)
+  await revalidateTestContexts(created.id);
 }

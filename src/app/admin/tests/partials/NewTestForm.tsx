@@ -1,7 +1,7 @@
 // src/app/admin/tests/partials/NewTestForm.tsx
 "use client";
 
-import { useState, FormEvent } from "react";
+import { useState, FormEvent, useEffect } from "react";
 import dynamic from "next/dynamic";
 import MediaPicker from "@/components/admin/MediaPicker";
 import { createTest } from "@/app/actions/tests";
@@ -22,15 +22,69 @@ type Props = {
   categories: Category[];
 };
 
+type ProductSearchItem = {
+  id: number;
+  slug: string;
+  label: string;
+};
+
 export default function NewTestForm({ categories }: Props) {
   const [loading, setLoading] = useState(false);
   const [ok, setOk] = useState<string | null>(null);
   const [err, setErr] = useState<string | null>(null);
 
+  // 🔎 Recherche de produit
+  const [query, setQuery] = useState("");
+  const [results, setResults] = useState<ProductSearchItem[]>([]);
+  const [searchLoading, setSearchLoading] = useState(false);
+  const [selectedProduct, setSelectedProduct] = useState<ProductSearchItem | null>(null);
+
+  // Debounced search
+  useEffect(() => {
+    let abort = false;
+
+    async function run() {
+      const q = query.trim();
+      if (!q || q.length < 2 || selectedProduct) {
+        if (!selectedProduct) setResults([]);
+        return;
+      }
+
+      setSearchLoading(true);
+      try {
+        const res = await fetch(`/api/admin/product-search?q=${encodeURIComponent(q)}`);
+        if (!res.ok) throw new Error("Erreur de recherche produit.");
+        const data = (await res.json()) as { items: ProductSearchItem[] };
+        if (!abort) {
+          setResults(data.items ?? []);
+        }
+      } catch (e) {
+        if (!abort) {
+          console.error(e);
+          setResults([]);
+        }
+      } finally {
+        if (!abort) setSearchLoading(false);
+      }
+    }
+
+    const timeout = setTimeout(run, 250);
+    return () => {
+      abort = true;
+      clearTimeout(timeout);
+    };
+  }, [query, selectedProduct]);
+
   async function onSubmit(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
     setOk(null);
     setErr(null);
+
+    if (!selectedProduct) {
+      setErr("Veuillez sélectionner un produit dans la liste.");
+      return;
+    }
+
     setLoading(true);
 
     const fd = new FormData(e.currentTarget);
@@ -53,15 +107,15 @@ export default function NewTestForm({ categories }: Props) {
       for (const cat of categories) {
         const enabled = fd.get(`rating_enabled_${cat.id}`);
         if (!enabled) continue;
-        const scoreRaw = fd.get(`rating_${cat.id}`);
-        if (!scoreRaw) continue;
-        const s = Number(scoreRaw);
+        const scoreRawCat = fd.get(`rating_${cat.id}`);
+        if (!scoreRawCat) continue;
+        const s = Number(scoreRawCat);
         if (!Number.isFinite(s)) continue;
         ratings.push({ categoryId: cat.id, score: s });
       }
 
       await createTest({
-        productSlugOrId: String(fd.get("product") ?? ""),
+        productId: selectedProduct.id,
         title: String(fd.get("title") ?? ""),
         excerpt: fd.get("excerpt")
           ? String(fd.get("excerpt"))
@@ -89,6 +143,9 @@ export default function NewTestForm({ categories }: Props) {
       });
 
       (e.currentTarget as HTMLFormElement).reset();
+      setSelectedProduct(null);
+      setQuery("");
+      setResults([]);
       setOk("Test créé !");
     } catch (error: unknown) {
       setErr(error instanceof Error ? error.message : "Erreur inconnue");
@@ -99,19 +156,53 @@ export default function NewTestForm({ categories }: Props) {
 
   return (
     <form onSubmit={onSubmit} className="grid gap-4">
-      {/* Produit lié */}
+      {/* Produit lié : recherche + sélection */}
       <div className="grid gap-1">
         <label className="text-sm font-medium">
-          Produit (slug ou ID) *
+          Produit lié *
         </label>
         <input
-          name="product"
-          required
+          type="text"
           className="input"
-          placeholder="ex: salomon-qst-98-2025-26 ou 123"
+          placeholder="Tape le nom du produit, la marque, la saison ou un ID…"
+          value={query}
+          onChange={(e) => {
+            setQuery(e.target.value);
+            setSelectedProduct(null);
+            setOk(null);
+            setErr(null);
+          }}
         />
+        {searchLoading && (
+          <p className="text-xs text-neutral-500 mt-1">Recherche en cours…</p>
+        )}
+        {!searchLoading && results.length > 0 && !selectedProduct && (
+          <ul className="mt-1 max-h-56 overflow-auto rounded-xl border bg-white shadow-lg text-sm">
+            {results.map((p) => (
+              <li
+                key={p.id}
+                className="px-3 py-2 cursor-pointer hover:bg-muted"
+                onClick={() => {
+                  setSelectedProduct(p);
+                  setQuery(`${p.label} (ID ${p.id})`);
+                  setResults([]);
+                }}
+              >
+                <div className="font-medium">{p.label}</div>
+                <div className="text-xs text-neutral-500">
+                  ID {p.id} · {p.slug}
+                </div>
+              </li>
+            ))}
+          </ul>
+        )}
+        {selectedProduct && (
+          <p className="text-xs text-green-700 mt-1">
+            Produit sélectionné : {selectedProduct.label} (ID {selectedProduct.id})
+          </p>
+        )}
         <p className="text-xs text-neutral-500">
-          Le test ne peut être créé que si le produit existe déjà.
+          Le test sera lié précisément à ce produit. La sélection est obligatoire.
         </p>
       </div>
 
