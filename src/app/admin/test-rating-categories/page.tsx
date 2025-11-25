@@ -153,31 +153,13 @@ export default async function TestRatingCategoriesAdminPage() {
                         Enregistrer
                       </button>
 
-                      <form
-                        action={deleteCategory}
-                        className="inline"
-                        onSubmit={(e) => {
-                          if (
-                            !confirm(
-                              "Supprimer cette catégorie ? Les notes associées peuvent être affectées."
-                            )
-                          ) {
-                            e.preventDefault();
-                          }
-                        }}
+                      <button
+                        type="submit"
+                        formAction={deleteCategory}
+                        className="btn btn-sm btn-danger"
                       >
-                        <input
-                          type="hidden"
-                          name="id"
-                          value={cat.id}
-                        />
-                        <button
-                          type="submit"
-                          className="btn btn-sm btn-danger"
-                        >
-                          Supprimer
-                        </button>
-                      </form>
+                        Supprimer
+                      </button>
                     </div>
                   </form>
                 </li>
