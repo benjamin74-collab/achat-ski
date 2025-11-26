@@ -1,13 +1,21 @@
 // src/app/auth/signup/page.tsx
 "use client";
 
-import { Suspense, useState, FormEvent } from "react";
-import { useSearchParams } from "next/navigation";
+import { useState, useEffect, FormEvent } from "react";
 import Link from "next/link";
 
-function SignupInner() {
-  const searchParams = useSearchParams();
-  const callbackUrl = searchParams.get("callbackUrl") || "/me";
+function getCallbackFromLocation(): string {
+  if (typeof window === "undefined") return "/me";
+  try {
+    const sp = new URLSearchParams(window.location.search);
+    return sp.get("callbackUrl") || "/me";
+  } catch {
+    return "/me";
+  }
+}
+
+export default function SignupPage() {
+  const [callbackUrl, setCallbackUrl] = useState("/me");
 
   const [pseudo, setPseudo] = useState("");
   const [firstName, setFirstName] = useState("");
@@ -19,6 +27,10 @@ function SignupInner() {
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
+
+  useEffect(() => {
+    setCallbackUrl(getCallbackFromLocation());
+  }, []);
 
   async function onSubmit(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -51,7 +63,7 @@ function SignupInner() {
       }
 
       setSuccess(true);
-      // Optionnel : redirection automatique vers la connexion
+      // Redirection vers la connexion après inscription
       window.location.href = `/auth/signin?callbackUrl=${encodeURIComponent(
         callbackUrl
       )}&registered=1`;
@@ -62,7 +74,6 @@ function SignupInner() {
           ? err.message
           : "Erreur inattendue lors de l’inscription."
       );
-    } finally {
       setSubmitting(false);
     }
   }
@@ -189,21 +200,5 @@ function SignupInner() {
         </p>
       </div>
     </main>
-  );
-}
-
-export default function SignupPage() {
-  return (
-    <Suspense
-      fallback={
-        <main className="min-h-[70vh] flex items-center justify-center px-4">
-          <div className="w-full max-w-md rounded-2xl border border-ring bg-white p-6 shadow-card text-center text-sm text-neutral-600">
-            Chargement de la page d’inscription…
-          </div>
-        </main>
-      }
-    >
-      <SignupInner />
-    </Suspense>
   );
 }
