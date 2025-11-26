@@ -23,6 +23,12 @@ model User {
   avatar        MediaAsset?  @relation("UserAvatar", fields: [avatarId], references: [id])
   mediaCreated  MediaAsset[] @relation("MediaCreatedBy")
 
+  pseudo         String?
+  firstName      String?
+  lastName       String?
+  marketingOptIn Boolean     @default(false)
+  passwordHash   String?
+
   // Relations NextAuth
   accounts Account[]
   sessions Session[]

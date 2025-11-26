@@ -6,7 +6,11 @@ import { prisma } from "@/lib/prisma";
 
 export default async function MePage() {
   const session = await getServerSession(authOptions);
-  if (!session) redirect("/api/auth/signin?callbackUrl=/me");
+
+  // 🔐 Nouvelle redirection vers la page de connexion française
+  if (!session) {
+    redirect("/auth/signin?callbackUrl=/me");
+  }
 
   const userId = session.user.id;
 
@@ -14,12 +18,24 @@ export default async function MePage() {
     prisma.review.findMany({
       where: { userId },
       orderBy: { createdAt: "desc" },
-      select: { id: true, title: true, rating: true, productId: true, createdAt: true },
+      select: {
+        id: true,
+        title: true,
+        rating: true,
+        productId: true,
+        createdAt: true,
+      },
     }),
     prisma.editorialTest.findMany({
       where: { userId },
       orderBy: { publishedAt: "desc" },
-      select: { id: true, title: true, productId: true, publishedAt: true, status: true },
+      select: {
+        id: true,
+        title: true,
+        productId: true,
+        publishedAt: true,
+        status: true,
+      },
     }),
   ]);
 
@@ -27,10 +43,14 @@ export default async function MePage() {
     <div className="mx-auto max-w-4xl px-4 py-6 space-y-6">
       <h1 className="text-2xl font-semibold">Mon espace</h1>
 
+      {/* 📝 MES AVIS */}
       <section className="rounded-xl border p-4">
         <h2 className="font-semibold">Mes avis</h2>
+
         {reviews.length === 0 ? (
-          <p className="mt-2 text-sm text-neutral-600">Aucun avis pour le moment.</p>
+          <p className="mt-2 text-sm text-neutral-600">
+            Aucun avis pour le moment.
+          </p>
         ) : (
           <ul className="mt-3 space-y-2 text-sm">
             {reviews.map((r) => (
@@ -47,10 +67,14 @@ export default async function MePage() {
         )}
       </section>
 
+      {/* 🧪 MES TESTS */}
       <section className="rounded-xl border p-4">
         <h2 className="font-semibold">Mes tests</h2>
+
         {tests.length === 0 ? (
-          <p className="mt-2 text-sm text-neutral-600">Aucun test pour le moment.</p>
+          <p className="mt-2 text-sm text-neutral-600">
+            Aucun test pour le moment.
+          </p>
         ) : (
           <ul className="mt-3 space-y-2 text-sm">
             {tests.map((t) => (
@@ -58,7 +82,7 @@ export default async function MePage() {
                 <div className="flex items-center justify-between">
                   <div className="font-medium">{t.title}</div>
                   <div className="text-xs text-neutral-500">
-                    {t.status} · {t.publishedAt.toISOString().slice(0, 10)}
+                    {t.status} · {t.publishedAt?.toISOString().slice(0, 10) ?? "—"}
                   </div>
                 </div>
               </li>
