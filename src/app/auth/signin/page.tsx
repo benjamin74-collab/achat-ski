@@ -1,45 +1,68 @@
-// src/app/auth/signin/page.tsx
+// src/app/auth/signup/page.tsx
 "use client";
 
-import { Suspense, FormEvent, useState } from "react";
-import { signIn } from "next-auth/react";
+import { Suspense, useState, FormEvent } from "react";
 import { useSearchParams } from "next/navigation";
 import Link from "next/link";
 
-function SignInInner() {
+function SignupInner() {
   const searchParams = useSearchParams();
   const callbackUrl = searchParams.get("callbackUrl") || "/me";
-  const urlError = searchParams.get("error");
 
+  const [pseudo, setPseudo] = useState("");
+  const [firstName, setFirstName] = useState("");
+  const [lastName, setLastName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [submitting, setSubmitting] = useState(false);
-  const [localError, setLocalError] = useState<string | null>(null);
+  const [newsletterOptIn, setNewsletterOptIn] = useState(true);
 
-  const errorMessage =
-    localError ||
-    (urlError === "CredentialsSignin"
-      ? "Email ou mot de passe incorrect."
-      : urlError
-      ? "Impossible de vous connecter."
-      : null);
+  const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [success, setSuccess] = useState(false);
 
   async function onSubmit(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
-    setLocalError(null);
+    setError(null);
+    setSuccess(false);
     setSubmitting(true);
 
     try {
-      await signIn("credentials", {
-        redirect: true,
-        email,
-        password,
-        callbackUrl,
+      const res = await fetch("/api/auth/signup", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          pseudo,
+          firstName,
+          lastName,
+          email,
+          password,
+          newsletterOptIn,
+          callbackUrl,
+        }),
       });
-      // Avec redirect: true, NextAuth gère la redirection.
+
+      if (!res.ok) {
+        const data = await res.json().catch(() => null);
+        const msg =
+          data?.error ||
+          data?.message ||
+          "Inscription impossible. Vérifie les champs et réessaie.";
+        throw new Error(msg);
+      }
+
+      setSuccess(true);
+      // Optionnel : redirection automatique vers la connexion
+      window.location.href = `/auth/signin?callbackUrl=${encodeURIComponent(
+        callbackUrl
+      )}&registered=1`;
     } catch (err) {
       console.error(err);
-      setLocalError("Erreur inattendue lors de la connexion.");
+      setError(
+        err instanceof Error
+          ? err.message
+          : "Erreur inattendue lors de l’inscription."
+      );
+    } finally {
       setSubmitting(false);
     }
   }
@@ -47,20 +70,65 @@ function SignInInner() {
   return (
     <main className="min-h-[70vh] flex items-center justify-center px-4">
       <div className="w-full max-w-md rounded-2xl border border-ring bg-white p-6 shadow-card">
-        <h1 className="text-xl font-semibold text-center mb-1">Connexion</h1>
+        <h1 className="text-xl font-semibold text-center mb-1">
+          Créer un compte
+        </h1>
         <p className="text-xs text-neutral-600 text-center mb-4">
-          Connecte-toi pour accéder à ton espace (avis, tests, favoris…)
+          Crée ton compte pour laisser des avis, proposer des tests, suivre tes
+          contenus…
         </p>
 
-        {errorMessage && (
+        {error && (
           <p className="mb-3 rounded-lg bg-red-50 px-3 py-2 text-xs text-red-700">
-            {errorMessage}
+            {error}
+          </p>
+        )}
+
+        {success && (
+          <p className="mb-3 rounded-lg bg-green-50 px-3 py-2 text-xs text-green-700">
+            Compte créé avec succès. Redirection vers la page de connexion…
           </p>
         )}
 
         <form onSubmit={onSubmit} className="grid gap-3">
           <div className="grid gap-1">
-            <label className="text-sm font-medium">Email</label>
+            <label className="text-sm font-medium">Pseudo *</label>
+            <input
+              type="text"
+              required
+              className="input"
+              value={pseudo}
+              onChange={(e) => setPseudo(e.target.value)}
+              autoComplete="nickname"
+            />
+          </div>
+
+          <div className="grid gap-1">
+            <label className="text-sm font-medium">Prénom *</label>
+            <input
+              type="text"
+              required
+              className="input"
+              value={firstName}
+              onChange={(e) => setFirstName(e.target.value)}
+              autoComplete="given-name"
+            />
+          </div>
+
+          <div className="grid gap-1">
+            <label className="text-sm font-medium">Nom *</label>
+            <input
+              type="text"
+              required
+              className="input"
+              value={lastName}
+              onChange={(e) => setLastName(e.target.value)}
+              autoComplete="family-name"
+            />
+          </div>
+
+          <div className="grid gap-1">
+            <label className="text-sm font-medium">Email *</label>
             <input
               type="email"
               required
@@ -72,33 +140,51 @@ function SignInInner() {
           </div>
 
           <div className="grid gap-1">
-            <label className="text-sm font-medium">Mot de passe</label>
+            <label className="text-sm font-medium">Mot de passe *</label>
             <input
               type="password"
               required
               className="input"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              autoComplete="current-password"
+              autoComplete="new-password"
             />
+            <p className="text-xs text-neutral-500">
+              Utilise un mot de passe robuste, différent de ceux d’autres
+              sites.
+            </p>
           </div>
+
+          <label className="mt-2 flex items-start gap-2 text-xs text-neutral-700">
+            <input
+              type="checkbox"
+              className="mt-[2px]"
+              checked={newsletterOptIn}
+              onChange={(e) => setNewsletterOptIn(e.target.checked)}
+            />
+            <span>
+              J’accepte de recevoir des emails occasionnels de Meilleur-Ski
+              (tests, bons plans, nouveautés). Tu pourras te désinscrire à tout
+              moment.
+            </span>
+          </label>
 
           <button
             type="submit"
-            className="btn mt-2"
+            className="btn mt-3"
             disabled={submitting}
           >
-            {submitting ? "Connexion..." : "Se connecter"}
+            {submitting ? "Création du compte..." : "Créer mon compte"}
           </button>
         </form>
 
         <p className="mt-4 text-xs text-neutral-600 text-center">
-          Pas encore de compte ?{" "}
+          Tu as déjà un compte ?{" "}
           <Link
-            href={`/auth/signup?callbackUrl=${encodeURIComponent(callbackUrl)}`}
+            href={`/auth/signin?callbackUrl=${encodeURIComponent(callbackUrl)}`}
             className="underline"
           >
-            Créer un compte
+            Se connecter
           </Link>
         </p>
       </div>
@@ -106,18 +192,18 @@ function SignInInner() {
   );
 }
 
-export default function SignInPage() {
+export default function SignupPage() {
   return (
     <Suspense
       fallback={
         <main className="min-h-[70vh] flex items-center justify-center px-4">
           <div className="w-full max-w-md rounded-2xl border border-ring bg-white p-6 shadow-card text-center text-sm text-neutral-600">
-            Chargement de la page de connexion…
+            Chargement de la page d’inscription…
           </div>
         </main>
       }
     >
-      <SignInInner />
+      <SignupInner />
     </Suspense>
   );
 }
