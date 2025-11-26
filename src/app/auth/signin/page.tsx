@@ -1,12 +1,12 @@
 // src/app/auth/signin/page.tsx
 "use client";
 
-import { FormEvent, useState } from "react";
+import { Suspense, FormEvent, useState } from "react";
 import { signIn } from "next-auth/react";
 import { useSearchParams } from "next/navigation";
 import Link from "next/link";
 
-export default function SignInPage() {
+function SignInInner() {
   const searchParams = useSearchParams();
   const callbackUrl = searchParams.get("callbackUrl") || "/me";
   const urlError = searchParams.get("error");
@@ -30,15 +30,13 @@ export default function SignInPage() {
     setSubmitting(true);
 
     try {
-      const res = await signIn("credentials", {
+      await signIn("credentials", {
         redirect: true,
         email,
         password,
         callbackUrl,
       });
-
-      // Si redirect: true, NextAuth gère la redirection.
-      // Si jamais redirect: false était utilisé, on pourrait inspecter res?.error.
+      // Avec redirect: true, NextAuth gère la redirection.
     } catch (err) {
       console.error(err);
       setLocalError("Erreur inattendue lors de la connexion.");
@@ -105,5 +103,21 @@ export default function SignInPage() {
         </p>
       </div>
     </main>
+  );
+}
+
+export default function SignInPage() {
+  return (
+    <Suspense
+      fallback={
+        <main className="min-h-[70vh] flex items-center justify-center px-4">
+          <div className="w-full max-w-md rounded-2xl border border-ring bg-white p-6 shadow-card text-center text-sm text-neutral-600">
+            Chargement de la page de connexion…
+          </div>
+        </main>
+      }
+    >
+      <SignInInner />
+    </Suspense>
   );
 }
