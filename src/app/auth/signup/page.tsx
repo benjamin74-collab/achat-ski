@@ -2,15 +2,11 @@
 "use client";
 
 import { FormEvent, useState } from "react";
-import { useSearchParams } from "next/navigation";
-//import { useRouter, useSearchParams } from "next/navigation";
-import { signIn } from "next-auth/react";
+import { useRouter } from "next/navigation";
 import Link from "next/link";
 
 export default function SignUpPage() {
-//  const router = useRouter();
-  const searchParams = useSearchParams();
-  const callbackUrl = searchParams.get("callbackUrl") || "/me";
+  const router = useRouter();
 
   const [pseudo, setPseudo] = useState("");
   const [firstName, setFirstName] = useState("");
@@ -27,6 +23,17 @@ export default function SignUpPage() {
   async function onSubmit(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
     setError(null);
+
+    // petite validation client en plus
+    if (password.length < 8) {
+      setError("Le mot de passe doit contenir au moins 8 caractères.");
+      return;
+    }
+    if (password !== passwordConfirm) {
+      setError("La confirmation du mot de passe ne correspond pas.");
+      return;
+    }
+
     setSubmitting(true);
 
     try {
@@ -40,7 +47,7 @@ export default function SignUpPage() {
           email,
           password,
           passwordConfirm,
-          marketingOptIn,
+          optIn: marketingOptIn,
         }),
       });
 
@@ -52,13 +59,14 @@ export default function SignUpPage() {
         return;
       }
 
-      // ✅ Auto-connexion après inscription
-      await signIn("credentials", {
-        redirect: true,
-        email,
-        password,
-        callbackUrl,
-      });
+      // ✅ AUCUNE connexion ici
+      // On envoie juste l’utilisateur vers la page "check email"
+      const redirectTo: string =
+        typeof data?.redirectTo === "string"
+          ? data.redirectTo
+          : `/auth/check-email?email=${encodeURIComponent(email)}`;
+
+      router.push(redirectTo);
     } catch (err) {
       console.error(err);
       setError("Erreur inattendue lors de la création du compte.");
@@ -177,10 +185,7 @@ export default function SignUpPage() {
 
         <p className="mt-4 text-xs text-neutral-600 text-center">
           Déjà un compte ?{" "}
-          <Link
-            href={`/auth/signin?callbackUrl=${encodeURIComponent(callbackUrl)}`}
-            className="underline"
-          >
+          <Link href="/auth/signin" className="underline">
             Se connecter
           </Link>
         </p>
