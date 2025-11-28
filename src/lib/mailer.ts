@@ -1,10 +1,14 @@
 // src/lib/mailer.ts
+
+// On force TS à ignorer le typage de nodemailer dans ce fichier,
+// même si @types/nodemailer est installé.
+// @ts-ignore
 import nodemailer from "nodemailer";
 
 const smtpHost = process.env.SMTP_HOST;
 const smtpPort = process.env.SMTP_PORT ? Number(process.env.SMTP_PORT) : 587;
 
-// OVH → port 465 = secure = true
+// OVH : souvent 465 = secure: true
 const smtpSecure =
   process.env.SMTP_SECURE !== undefined
     ? process.env.SMTP_SECURE === "true"
@@ -16,11 +20,10 @@ const smtpFrom =
   process.env.SMTP_FROM ||
   `"Meilleur-Ski" <no-reply@${process.env.MAIL_FROM_DOMAIN || "meilleur-ski.com"}>`;
 
-// Vérification basique en dev
+// Petit check pour éviter les surprises en dev
 if (!smtpHost || !smtpUser || !smtpPass) {
   console.warn(
-    "[mailer] SMTP variables manquantes (SMTP_HOST / SMTP_USER / SMTP_PASS). " +
-      "Les emails ne seront pas envoyés."
+    "[mailer] SMTP_HOST / SMTP_USER / SMTP_PASS manquants. Les emails ne seront pas envoyés."
   );
 }
 
@@ -43,7 +46,7 @@ type SendMailArgs = {
 
 export async function sendMail({ to, subject, html, text }: SendMailArgs) {
   if (!smtpHost || !smtpUser || !smtpPass) {
-    console.error("[mailer] Configuration SMTP manquante. Email non envoyé.");
+    console.error("[mailer] Config SMTP manquante. Email non envoyé.");
     return;
   }
 
@@ -52,6 +55,6 @@ export async function sendMail({ to, subject, html, text }: SendMailArgs) {
     to,
     subject,
     html,
-    text: text || html.replace(/<[^>]+>/g, ""), // fallback texte brut
+    text: text || html.replace(/<[^>]+>/g, ""), // fallback texte brut si besoin
   });
 }
