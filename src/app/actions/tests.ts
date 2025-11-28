@@ -135,7 +135,6 @@ export async function createTest(input: CreateTestInput) {
       content: input.content ? sanitizeHtml(input.content) : null,
       score: typeof input.score === "number" ? input.score : null,
       sourceName: input.sourceName,
-      // ✅ facultatif : on stocke une chaîne vide si non fourni
       sourceUrl: input.sourceUrl ?? "",
       status,
       bannerUrl: input.bannerUrl ?? null,
