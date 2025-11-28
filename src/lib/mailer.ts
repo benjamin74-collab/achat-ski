@@ -3,21 +3,31 @@ import nodemailer from "nodemailer";
 
 const smtpHost = process.env.SMTP_HOST;
 const smtpPort = process.env.SMTP_PORT ? Number(process.env.SMTP_PORT) : 587;
+
+// OVH → port 465 = secure = true
+const smtpSecure =
+  process.env.SMTP_SECURE !== undefined
+    ? process.env.SMTP_SECURE === "true"
+    : smtpPort === 465;
+
 const smtpUser = process.env.SMTP_USER;
 const smtpPass = process.env.SMTP_PASS;
-const smtpFrom = process.env.SMTP_FROM || "no-reply@meilleur-ski.com";
+const smtpFrom =
+  process.env.SMTP_FROM ||
+  `"Meilleur-Ski" <no-reply@${process.env.MAIL_FROM_DOMAIN || "meilleur-ski.com"}>`;
 
+// Vérification basique en dev
 if (!smtpHost || !smtpUser || !smtpPass) {
-  // En prod il faudra les variables, en dev on peut loguer un warning
   console.warn(
-    "[mailer] SMTP environment variables are missing. Emails will fail if you try to send."
+    "[mailer] SMTP variables manquantes (SMTP_HOST / SMTP_USER / SMTP_PASS). " +
+      "Les emails ne seront pas envoyés."
   );
 }
 
 export const mailer = nodemailer.createTransport({
   host: smtpHost,
   port: smtpPort,
-  secure: smtpPort === 465,
+  secure: smtpSecure,
   auth: {
     user: smtpUser,
     pass: smtpPass,
@@ -33,7 +43,7 @@ type SendMailArgs = {
 
 export async function sendMail({ to, subject, html, text }: SendMailArgs) {
   if (!smtpHost || !smtpUser || !smtpPass) {
-    console.error("[mailer] Missing SMTP config, not sending email.");
+    console.error("[mailer] Configuration SMTP manquante. Email non envoyé.");
     return;
   }
 
@@ -42,6 +52,6 @@ export async function sendMail({ to, subject, html, text }: SendMailArgs) {
     to,
     subject,
     html,
-    text,
+    text: text || html.replace(/<[^>]+>/g, ""), // fallback texte brut
   });
 }
