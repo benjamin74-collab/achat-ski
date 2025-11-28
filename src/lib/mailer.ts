@@ -1,8 +1,4 @@
 // src/lib/mailer.ts
-
-// On force TS à ignorer le typage de nodemailer dans ce fichier,
-// même si @types/nodemailer est installé.
-// @ts-ignore
 import nodemailer from "nodemailer";
 
 const smtpHost = process.env.SMTP_HOST;
@@ -20,7 +16,6 @@ const smtpFrom =
   process.env.SMTP_FROM ||
   `"Meilleur-Ski" <no-reply@${process.env.MAIL_FROM_DOMAIN || "meilleur-ski.com"}>`;
 
-// Petit check pour éviter les surprises en dev
 if (!smtpHost || !smtpUser || !smtpPass) {
   console.warn(
     "[mailer] SMTP_HOST / SMTP_USER / SMTP_PASS manquants. Les emails ne seront pas envoyés."
