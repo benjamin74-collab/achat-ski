@@ -8,7 +8,178 @@ datasource db {
   shadowDatabaseUrl = env("SHADOW_DATABASE_URL") // garde une base NEON "shadow" non poolée
 }
 
+/**
+ * -----------------------------
+ * AUTH (NextAuth / PrismaAdapter)
+ * ------------------------------
+ */
+model User {
+  id                      String                   @id @default(cuid())
+  name                    String?
+  email                   String?                  @unique
+  emailVerified           DateTime?
+  image                   String?
+  role                    Role                     @default(USER)
+  avatarId                Int?
+  avatar                  MediaAsset?              @relation("UserAvatar", fields: [avatarId], references: [id])
+  mediaCreated            MediaAsset[]             @relation("MediaCreatedBy")
+  emailVerificationTokens EmailVerificationToken[]
+
+  pseudo         String?
+  firstName      String?
+  lastName       String?
+  marketingOptIn Boolean @default(false)
+  passwordHash   String?
+
+  // Relations NextAuth
+  accounts Account[]
+  sessions Session[]
+
+  // Relations existantes
+  reviews Review[]
+  tests   EditorialTest[]
+
+  // Relations inverses ajoutées
+  pages        Page[]
+  pageComments PageComment[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model EmailVerificationToken {
+  id        Int      @id @default(autoincrement())
+  token     String   @unique
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  expiresAt DateTime
+
+  createdAt DateTime @default(now())
+}
+
+model Account {
+  id                String  @id @default(cuid())
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String?
+  access_token      String?
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String?
+  session_state     String?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model VerificationToken {
+  identifier String
+  token      String   @unique
+  expires    DateTime
+
+  @@unique([identifier, token])
+}
+
+enum Role {
+  ADMIN
+  USER
+}
+
+model Brand {
+  id          Int         @id @default(autoincrement())
+  name        String      @unique
+  slug        String      @unique
+  description String? // HTML sanitisé
+  websiteUrl  String?     @db.VarChar(512)
+  logoUrl     String?     @db.VarChar(512)
+  active      Boolean     @default(true)
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+  logoId      Int?
+  logo        MediaAsset? @relation("BrandLogo", fields: [logoId], references: [id])
+
+  products Product[] // relation inverse
+}
+
+model Page {
+  id           Int         @id @default(autoincrement())
+  slug         String      @unique
+  title        String
+  content      String      @db.Text
+  intro        String?
+  thumbnailUrl String?
+  thumbnailId  Int?
+  thumbnail    MediaAsset? @relation("PageThumbnail", fields: [thumbnailId], references: [id])
+  bannerUrl    String?
+  bannerId     Int?
+  banner       MediaAsset? @relation("PageBanner", fields: [bannerId], references: [id])
+
+  // typage de l’article (Guide / Comparatif / Article)
+  kind PageKind @default(ARTICLE)
+
+  // relation (facultative) à Category
+  categoryId Int?
+  category   Category? @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+
+  // String pour matcher User.id (cuid), et relation vers User
+  authorId String?
+  author   User?   @relation(fields: [authorId], references: [id])
+
+  published Boolean  @default(false)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // SEO
+  metaTitle       String?
+  metaDescription String?
+
+  // Postgres: tableau de strings sans annotation de colonne
+  tags String[]
+
+  comments PageComment[]
+}
+
+enum PageKind {
+  GUIDE
+  COMPARATIF
+  ARTICLE
+}
+
+model PageComment {
+  id     Int  @id @default(autoincrement())
+  pageId Int
+  page   Page @relation(fields: [pageId], references: [id])
+
+  // String pour matcher User.id (cuid)
+  userId String
+  user   User   @relation(fields: [userId], references: [id])
+
+  body      String   @db.Text
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  published Boolean  @default(true)
+}
+
+/**
+ * -----------------------------
+ * CATALOGUE / OFFRES
+ * ------------------------------
+ */
 model Product {
+<<<<<<< HEAD
   id          Int      @id @default(autoincrement())
   brand       String
   model       String
@@ -23,6 +194,36 @@ model Product {
   clicks      Click[]
   reviews     Review[]
   tests       EditorialTest[]
+=======
+  id      Int     @id @default(autoincrement())
+  brand   String?
+  brandId Int?
+  Brand   Brand?  @relation(fields: [brandId], references: [id])
+  model   String
+  season  String? // ex: "2025/26"
+
+  // ⚠️ Migration en douceur : on introduit la vraie relation vers Category.
+  // Ancien champ libre (texte) mis en commentaire si tu veux couper plus tard :
+  // category    String?      // all-mountain, rando, freeride... (deprecated)
+
+  // Nouvelle relation (principale) vers Category
+  categoryId Int?
+  category   Category? @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+
+  gtin        String?         @unique
+  slug        String          @unique
+  attributes  Json?
+  createdAt   DateTime        @default(now())
+  description String?
+  skus        Sku[]
+  clicks      Click[] // back-relation pour Click.product
+  reviews     Review[]
+  tests       EditorialTest[]
+
+  // index utile pour filtres
+  @@index([brandId])
+  @@index([categoryId])
+>>>>>>> feat/brand-ui
 }
 
 model Sku {
@@ -74,6 +275,7 @@ model Click {
   referrer          String?
 }
 
+<<<<<<< HEAD
 model Review {
   id         Int      @id @default(autoincrement())
   productId  Int
@@ -103,4 +305,194 @@ model EditorialTest {
 
   @@index([productId])
   @@index([publishedAt])
+=======
+/**
+ * -----------------------------
+ * AVIS & TESTS (avec modération)
+ * ------------------------------
+ */
+enum ModerationStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+model Review {
+  id         Int              @id @default(autoincrement())
+  productId  Int
+  userId     String? // auteur connecté (facultatif)
+  rating     Int // 1..5
+  title      String
+  body       String
+  authorName String?
+  sourceName String? // “Ekosport”, “Snowleader”, etc.
+  sourceUrl  String?
+  status     ModerationStatus @default(PENDING)
+  createdAt  DateTime         @default(now())
+
+  product Product @relation(fields: [productId], references: [id])
+  user    User?   @relation(fields: [userId], references: [id])
+
+  @@index([productId])
+  @@index([rating])
+  @@index([status])
+}
+
+model EditorialTest {
+  id        Int     @id @default(autoincrement())
+  productId Int
+  userId    String? // auteur connecté (facultatif, mais dans ton nouveau modèle ce sera surtout l'admin)
+  title     String
+
+  // Intro courte du test (ancien "excerpt")
+  excerpt String
+
+  // Contenu complet du test (HTML WYSIWYG)
+  content String? @db.Text
+
+  // Bannière du test (optionnelle)
+  bannerUrl String?
+  bannerId  Int?
+  banner    MediaAsset? @relation("TestBanner", fields: [bannerId], references: [id])
+
+  // Note globale (optionnelle, si tu veux garder un score global)
+  score Float? // 0..10 ou 0..5 (optionnel)
+
+  // Infos source (tu peux les utiliser pour "Meilleur-Ski", ou des partenaires)
+  sourceName String // “Skipass”, “Backcountry Magazine”, etc.
+  sourceUrl  String
+
+  status      ModerationStatus @default(PENDING)
+  publishedAt DateTime         @default(now())
+
+  // Relations
+  product Product @relation(fields: [productId], references: [id])
+  user    User?   @relation(fields: [userId], references: [id])
+
+  // Catégories de notation + notes par catégorie
+  ratings EditorialTestScore[]
+
+  @@index([productId])
+  @@index([publishedAt])
+  @@index([status])
+}
+
+model TestRatingCategory {
+  id        Int      @id @default(autoincrement())
+  slug      String   @unique
+  label     String
+  order     Int      @default(0)
+  active    Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  scores EditorialTestScore[]
+}
+
+model EditorialTestScore {
+  testId     Int
+  categoryId Int
+  score      Int // 0..10
+
+  test     EditorialTest      @relation(fields: [testId], references: [id])
+  category TestRatingCategory @relation(fields: [categoryId], references: [id])
+
+  @@id([testId, categoryId])
+}
+
+/**
+ * -----------------------------
+ * Catégories HIÉRARCHIQUES + SEO + MAPPINGS AFFILIÉS
+ * ------------------------------
+ */
+model Category {
+  id   Int    @id @default(autoincrement())
+  slug String @unique
+  name String
+
+  // Hiérarchie
+  parentId Int?
+  parent   Category?  @relation("CategoryHierarchy", fields: [parentId], references: [id], onDelete: SetNull)
+  children Category[] @relation("CategoryHierarchy")
+
+  // Contenu & SEO
+  intro           String?
+  content         String? // Markdown ou texte
+  metaTitle       String?
+  metaDescription String?
+
+  // Navigation & tri (aligne avec ton BO : Menu, Ordre, Publié)
+  isInMenu  Boolean @default(true) // afficher dans le menu
+  order     Int     @default(0) // ordre dans le menu / sous-menu
+  published Boolean @default(true)
+
+  // Mappings affiliés (chaînes exactes depuis les flux)
+  mapKwanko     String[] // ex: ["Ski > All-Mountain", "Skis polyvalents"]
+  mapEkosport   String[]
+  mapSnowleader String[]
+  mapGlisshop   String[]
+
+  // Aliases / slugs secondaires (utile pour 301, recherche, variations)
+  aliases String[]
+
+  // Relation inverse depuis Product (si tu veux requêter depuis la catégorie)
+  products Product[]
+  pages    Page[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([parentId, order])
+  @@index([slug])
+  @@index([published])
+}
+
+/**
+ * -----------------------------
+ * Journal d’import (Kwanko, etc.)
+ * ------------------------------
+ */
+model ImportRun {
+  id             Int       @id @default(autoincrement())
+  source         String // "kwanko"
+  startedAt      DateTime  @default(now())
+  finishedAt     DateTime?
+  offersUpserted Int       @default(0)
+  offersDisabled Int       @default(0)
+  notes          String?
+}
+
+/**
+ * -----------------------------
+ * MEDIA
+ * ------------------------------
+ */
+model MediaAsset {
+  id          Int       @id @default(autoincrement())
+  slug        String    @unique
+  title       String?
+  alt         String?
+  kind        MediaKind @default(IMAGE) // extension future: VIDEO, DOC, etc.
+  mime        String
+  width       Int?
+  height      Int?
+  bytes       Int?
+  // chemin objet dans le storage (Vercel Blob ou S3)
+  storageKey  String    @unique
+  publicUrl   String    @db.VarChar(1024)
+  createdAt   DateTime  @default(now())
+  createdById String?
+  createdBy   User?     @relation(name: "MediaCreatedBy", fields: [createdById], references: [id])
+
+  // back-relations (facultatives)
+  brandsLogo     Brand[]         @relation("BrandLogo")
+  pagesThumbnail Page[]          @relation("PageThumbnail")
+  pagesBanner    Page[]          @relation("PageBanner")
+  usersAvatar    User[]          @relation("UserAvatar")
+  testsBanner    EditorialTest[] @relation("TestBanner")
+}
+
+enum MediaKind {
+  IMAGE
+>>>>>>> feat/brand-ui
 }

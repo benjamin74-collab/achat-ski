@@ -1,0 +1,399 @@
+// src/app/admin/tests/partials/NewTestForm.tsx
+"use client";
+
+import { useState, FormEvent, useEffect } from "react";
+import dynamic from "next/dynamic";
+import MediaPicker from "@/components/admin/MediaPicker";
+import { createTest } from "@/app/actions/tests";
+
+const RichTextEditor = dynamic(
+  () => import("@/components/admin/RichTextEditor"),
+  { ssr: false }
+);
+
+type Category = {
+  id: number;
+  label: string;
+  slug: string;
+  order: number;
+};
+
+type Props = {
+  categories: Category[];
+};
+
+type ProductSearchItem = {
+  id: number;
+  slug: string;
+  label: string;
+};
+
+export default function NewTestForm({ categories }: Props) {
+  const [loading, setLoading] = useState(false);
+  const [ok, setOk] = useState<string | null>(null);
+  const [err, setErr] = useState<string | null>(null);
+
+  // 🔎 Recherche de produit
+  const [query, setQuery] = useState("");
+  const [results, setResults] = useState<ProductSearchItem[]>([]);
+  const [searchLoading, setSearchLoading] = useState(false);
+  const [selectedProduct, setSelectedProduct] = useState<ProductSearchItem | null>(null);
+
+  // Debounced search
+  useEffect(() => {
+    let abort = false;
+
+    async function run() {
+      const q = query.trim();
+      if (!q || q.length < 2 || selectedProduct) {
+        if (!selectedProduct) setResults([]);
+        return;
+      }
+
+      setSearchLoading(true);
+      try {
+        const res = await fetch(`/api/admin/product-search?q=${encodeURIComponent(q)}`);
+        if (!res.ok) throw new Error("Erreur de recherche produit.");
+        const data = (await res.json()) as { items: ProductSearchItem[] };
+        if (!abort) {
+          setResults(data.items ?? []);
+        }
+      } catch (e) {
+        if (!abort) {
+          console.error(e);
+          setResults([]);
+        }
+      } finally {
+        if (!abort) setSearchLoading(false);
+      }
+    }
+
+    const timeout = setTimeout(run, 250);
+    return () => {
+      abort = true;
+      clearTimeout(timeout);
+    };
+  }, [query, selectedProduct]);
+
+  async function onSubmit(e: FormEvent<HTMLFormElement>) {
+    e.preventDefault();
+    setOk(null);
+    setErr(null);
+
+    if (!selectedProduct) {
+      setErr("Veuillez sélectionner un produit dans la liste.");
+      return;
+    }
+
+    setLoading(true);
+
+    const form = e.currentTarget as HTMLFormElement;
+    const fd = new FormData(form);
+
+    try {
+      const scoreRaw = fd.get("score");
+      const score =
+        scoreRaw != null && String(scoreRaw).trim() !== ""
+          ? Number(scoreRaw)
+          : null;
+
+      const bannerAssetIdRaw = fd.get("bannerAssetId");
+      const bannerAssetId =
+        bannerAssetIdRaw && String(bannerAssetIdRaw).trim() !== ""
+          ? Number(bannerAssetIdRaw)
+          : null;
+
+      // URL de source facultative
+      const rawSourceUrl = fd.get("sourceUrl");
+      const sourceUrl =
+        rawSourceUrl && String(rawSourceUrl).trim() !== ""
+          ? String(rawSourceUrl).trim()
+          : undefined;
+
+      // Notes par catégorie (0..10)
+      const ratings: { categoryId: number; score: number }[] = [];
+      for (const cat of categories) {
+        const enabled = fd.get(`rating_enabled_${cat.id}`);
+        if (!enabled) continue;
+        const scoreRawCat = fd.get(`rating_${cat.id}`);
+        if (!scoreRawCat) continue;
+        const s = Number(scoreRawCat);
+        if (!Number.isFinite(s)) continue;
+        ratings.push({ categoryId: cat.id, score: s });
+      }
+
+      await createTest({
+        // ✅ IMPORTANT : on envoie ce que le serveur attend
+        productSlugOrId: String(selectedProduct.id), // l’ID en string, géré comme ID dans createTest
+        title: String(fd.get("title") ?? ""),
+        excerpt: fd.get("excerpt")
+          ? String(fd.get("excerpt"))
+          : undefined,
+        content: fd.get("content")
+          ? String(fd.get("content"))
+          : undefined,
+        score,
+        sourceName: String(fd.get("sourceName") ?? ""),
+        sourceUrl,
+        status:
+          (fd.get("status") as
+            | "PENDING"
+            | "APPROVED"
+            | "REJECTED"
+            | null) ?? "PENDING",
+        bannerUrl: fd.get("bannerUrl")
+          ? String(fd.get("bannerUrl"))
+          : undefined,
+        bannerAssetId:
+          bannerAssetId && Number.isFinite(bannerAssetId)
+            ? bannerAssetId
+            : null,
+        ratings,
+      });
+
+      form.reset();
+      setSelectedProduct(null);
+      setQuery("");
+      setResults([]);
+      setOk("Test créé !");
+    } catch (error: unknown) {
+      setErr(error instanceof Error ? error.message : "Erreur inconnue");
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  return (
+    <form onSubmit={onSubmit} className="grid gap-4">
+      {/* Produit lié : recherche + sélection */}
+      <div className="grid gap-1">
+        <label className="text-sm font-medium">
+          Produit lié *
+        </label>
+        <input
+          type="text"
+          className="input"
+          placeholder="Tape le nom du produit, la marque, la saison ou un ID…"
+          value={query}
+          onChange={(e) => {
+            setQuery(e.target.value);
+            setSelectedProduct(null);
+            setOk(null);
+            setErr(null);
+          }}
+        />
+        {searchLoading && (
+          <p className="text-xs text-neutral-500 mt-1">Recherche en cours…</p>
+        )}
+        {!searchLoading && results.length > 0 && !selectedProduct && (
+          <ul className="mt-1 max-h-56 overflow-auto rounded-xl border bg-white shadow-lg text-sm">
+            {results.map((p) => (
+              <li
+                key={p.id}
+                className="px-3 py-2 cursor-pointer hover:bg-muted"
+                onClick={() => {
+                  setSelectedProduct(p);
+                  setQuery(`${p.label} (ID ${p.id})`);
+                  setResults([]);
+                }}
+              >
+                <div className="font-medium">{p.label}</div>
+                <div className="text-xs text-neutral-500">
+                  ID {p.id} · {p.slug}
+                </div>
+              </li>
+            ))}
+          </ul>
+        )}
+        {selectedProduct && (
+          <p className="text-xs text-green-700 mt-1">
+            Produit sélectionné : {selectedProduct.label} (ID {selectedProduct.id})
+          </p>
+        )}
+        <p className="text-xs text-neutral-500">
+          Le test sera lié précisément à ce produit. La sélection est obligatoire.
+        </p>
+      </div>
+
+      {/* Titre + extrait */}
+      <div className="grid gap-1">
+        <label className="text-sm font-medium">Titre *</label>
+        <input name="title" required className="input" />
+      </div>
+
+      <div className="grid gap-1">
+        <label className="text-sm font-medium">Introduction</label>
+        <textarea
+          name="excerpt"
+          rows={3}
+          className="input"
+          placeholder="Court paragraphe d’introduction du test…"
+        />
+      </div>
+
+      {/* Bannière */}
+      <div className="grid md:grid-cols-2 gap-3">
+        <div className="grid gap-1">
+          <MediaPicker
+            label="Bannière (médiathèque)"
+            nameId="bannerAssetId"
+            kind="test-banner"
+            folder="tests"
+            accept="image/*"
+            initial={null}
+          />
+          <p className="text-xs text-neutral-500">
+            Image d’en-tête du test (optionnelle).
+          </p>
+        </div>
+
+        <div className="grid gap-1">
+          <label className="text-sm font-medium">
+            Bannière URL (optionnel)
+          </label>
+          <input
+            name="bannerUrl"
+            className="input"
+            placeholder="https://…"
+          />
+          <p className="text-xs text-neutral-500">
+            Fallback si la bannière ne vient pas de la médiathèque.
+          </p>
+        </div>
+      </div>
+
+      {/* Contenu WYSIWYG */}
+      <div className="grid gap-1">
+        <label className="text-sm font-medium">Contenu complet</label>
+        <RichTextEditor
+          name="content"
+          initialValue=""
+          label="Contenu du test"
+        />
+        <p className="text-xs text-neutral-500">
+          Contenu HTML enregistré et nettoyé côté serveur.
+        </p>
+      </div>
+
+      {/* Score global + statut */}
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+        <div className="grid gap-1">
+          <label className="text-sm font-medium">
+            Note globale (optionnel)
+          </label>
+          <input
+            type="number"
+            step={0.1}
+            min={0}
+            max={10}
+            name="score"
+            className="input"
+            placeholder="ex: 8.5"
+          />
+          <p className="text-xs text-neutral-500">
+            Note globale sur 10 (facultative).
+          </p>
+        </div>
+        <div className="grid gap-1">
+          <label className="text-sm font-medium">Statut</label>
+          <select
+            name="status"
+            className="input"
+            defaultValue="PENDING"
+          >
+            <option value="PENDING">PENDING</option>
+            <option value="APPROVED">APPROVED</option>
+            <option value="REJECTED">REJECTED</option>
+          </select>
+        </div>
+      </div>
+
+      {/* Source */}
+      <div className="grid md:grid-cols-2 gap-3">
+        <div className="grid gap-1">
+          <label className="text-sm font-medium">
+            Source (nom) *
+          </label>
+          <input
+            name="sourceName"
+            required
+            className="input"
+            placeholder="Meilleur-Ski, Skipass…"
+          />
+        </div>
+        <div className="grid gap-1">
+          <label className="text-sm font-medium">
+            Source (URL)
+          </label>
+          <input
+            type="url"
+            name="sourceUrl"
+            className="input"
+            placeholder="https://…"
+          />
+          <p className="text-xs text-neutral-500">
+            Facultatif pour les tests internes (Meilleur-Ski).
+          </p>
+        </div>
+      </div>
+
+      {/* Notes par catégorie */}
+      <div className="grid gap-2 rounded-2xl border p-4 bg-surface/60">
+        <div className="flex items-center justify-between">
+          <h3 className="text-sm font-semibold">
+            Notes par catégorie (sur 10)
+          </h3>
+          <p className="text-xs text-neutral-500">
+            Coche les catégories que tu veux utiliser pour ce test.
+          </p>
+        </div>
+        {categories.length === 0 ? (
+          <p className="text-xs text-neutral-500">
+            Aucune catégorie de notation définie. Tu pourras en créer
+            depuis le backoffice dédié.
+          </p>
+        ) : (
+          <div className="grid gap-2">
+            {categories.map((cat) => (
+              <div
+                key={cat.id}
+                className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 rounded-xl border px-3 py-2"
+              >
+                <label className="flex items-center gap-2 text-sm">
+                  <input
+                    type="checkbox"
+                    name={`rating_enabled_${cat.id}`}
+                  />
+                  <span>{cat.label}</span>
+                </label>
+                <div className="flex items-center gap-2">
+                  <input
+                    type="number"
+                    name={`rating_${cat.id}`}
+                    min={0}
+                    max={10}
+                    step={0.5}
+                    className="w-24 rounded border px-2 py-1 text-sm"
+                    placeholder="0–10"
+                  />
+                  <span className="text-xs text-neutral-500">
+                    / 10
+                  </span>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+
+      {/* Actions */}
+      <div className="flex items-center gap-3">
+        <button className="btn" type="submit" disabled={loading}>
+          {loading ? "Envoi..." : "Créer le test"}
+        </button>
+        {ok && <span className="text-sm text-green-600">{ok}</span>}
+        {err && <span className="text-sm text-red-600">{err}</span>}
+      </div>
+    </form>
+  );
+}
