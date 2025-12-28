@@ -19,8 +19,8 @@ type SessionUser = {
   name?: string | null;
   email?: string | null;
   role?: Role;
-  image?: string | null;
-  avatarUrl?: string | null;
+  image?: string | null; // NextAuth
+  avatarUrl?: string | null; // custom éventuel
 };
 
 function IconMenu(props: React.SVGProps<SVGSVGElement>) {
@@ -106,21 +106,21 @@ export default function Header() {
   }, [mobileOpen]);
 
   const navLinkClass = (active: boolean) =>
-    `px-3 py-2 text-sm rounded-lg border transition ${
+    `px-3 py-2 text-sm rounded-lg transition ${
       active
-        ? "bg-brand-500/15 text-slate-900 border-brand-200"
-        : "bg-white text-slate-900 border-transparent hover:bg-slate-50"
+        ? "bg-brand-500/20 text-ink border border-brand-200"
+        : "text-ink/80 hover:text-ink hover:bg-brand-500/10"
     }`;
 
   return (
-    <header className="header-clean-links sticky top-0 z-50 bg-white/95 backdrop-blur border-b border-ring">
+    <header className="sticky top-0 z-50 border-b border-ring">
       {/* Barre colorée */}
       <div className="h-1 w-full brand-gradient" />
 
-      {/* Fond blanc pour toute la zone header */}
-      <div className="bg-white/95 supports-[backdrop-filter]:backdrop-blur">
+      {/* ✅ LIGNE HAUTE : on remet le fond précédent */}
+      <div className="bg-bg/80 supports-[backdrop-filter]:backdrop-blur">
         <div className="mx-auto max-w-6xl px-4 py-3">
-          {/* TOP BAR */}
+          {/* TOP BAR (logo / search / account) */}
           <div className="flex items-center gap-3">
             {/* Logo */}
             <Link href="/" className="shrink-0" aria-label="Accueil">
@@ -135,7 +135,7 @@ export default function Header() {
                   <input
                     name="q"
                     placeholder="Rechercher un ski, modèle ou marque…"
-                    className="w-full rounded-xl bg-white text-slate-900 border border-ring pl-10 pr-28 py-2 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-brand-500"
+                    className="w-full rounded-xl bg-white/95 text-ink border border-ring pl-10 pr-28 py-2 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-brand-500"
                   />
                   <button
                     aria-label="Rechercher"
@@ -154,7 +154,7 @@ export default function Header() {
               ) : session ? (
                 <Link
                   href={profileHref}
-                  className="inline-flex items-center gap-2 rounded-lg border border-ring bg-white px-3 py-2 text-sm text-slate-900 hover:bg-slate-50"
+                  className="inline-flex items-center gap-2 rounded-lg border border-ring bg-white px-3 py-2 text-sm text-ink hover:bg-muted"
                 >
                   {avatarUrl ? (
                     // eslint-disable-next-line @next/next/no-img-element
@@ -181,7 +181,7 @@ export default function Header() {
               {/* Hamburger - mobile only */}
               <button
                 type="button"
-                className="lg:hidden inline-flex items-center justify-center h-10 w-10 rounded-xl border border-ring bg-white hover:bg-slate-50"
+                className="lg:hidden inline-flex items-center justify-center h-10 w-10 rounded-xl border border-ring bg-white hover:bg-muted"
                 aria-label="Ouvrir le menu"
                 onClick={() => setMobileOpen(true)}
               >
@@ -190,7 +190,7 @@ export default function Header() {
             </div>
           </div>
 
-          {/* Search - Mobile only */}
+          {/* Search - Mobile only (pleine largeur, sous top bar) */}
           <div className="mt-3 lg:hidden">
             <form action="/search">
               <div className="relative">
@@ -198,7 +198,7 @@ export default function Header() {
                 <input
                   name="q"
                   placeholder="Rechercher un ski, modèle ou marque…"
-                  className="w-full rounded-xl bg-white text-slate-900 border border-ring pl-10 pr-28 py-2 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-brand-500"
+                  className="w-full rounded-xl bg-white/95 text-ink border border-ring pl-10 pr-28 py-2 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-brand-500"
                 />
                 <button
                   aria-label="Rechercher"
@@ -209,9 +209,14 @@ export default function Header() {
               </div>
             </form>
           </div>
+        </div>
+      </div>
 
-          {/* NAV desktop */}
-          <nav className="mt-3 hidden lg:block">
+      {/* ✅ LIGNE BASSE : menu fond blanc */}
+      <div className="bg-white border-t border-ring">
+        <div className="mx-auto max-w-6xl px-4 py-2">
+          {/* Desktop menu */}
+          <nav className="hidden lg:block">
             <div className="flex items-center gap-1">
               <Link href="/pages" className={navLinkClass(Boolean(pathname?.startsWith("/pages")))}>
                 Guides
@@ -227,78 +232,80 @@ export default function Header() {
               })}
             </div>
           </nav>
-        </div>
 
-        {/* MOBILE DRAWER */}
-        {mobileOpen ? (
-          <div className="lg:hidden">
-            <div className="fixed inset-0 bg-black/40 z-50" onClick={() => setMobileOpen(false)} />
-            <div className="fixed top-0 right-0 h-full w-[86%] max-w-sm bg-white z-50 border-l border-ring shadow-card">
-              <div className="flex items-center justify-between px-4 py-3 border-b border-ring">
-                <span className="text-sm font-semibold text-slate-800">Menu</span>
-                <button
-                  type="button"
-                  className="inline-flex items-center justify-center h-10 w-10 rounded-xl border border-ring bg-white hover:bg-slate-50"
-                  aria-label="Fermer le menu"
-                  onClick={() => setMobileOpen(false)}
-                >
-                  <IconClose className="h-5 w-5 text-slate-800" />
-                </button>
+          {/* Mobile hint (optional): small row, drawer handles real nav */}
+          <div className="lg:hidden text-xs text-slate-500">
+            Menu : utilisez le bouton ☰
+          </div>
+        </div>
+      </div>
+
+      {/* MOBILE DRAWER */}
+      {mobileOpen ? (
+        <div className="lg:hidden">
+          {/* overlay */}
+          <div className="fixed inset-0 bg-black/40 z-50" onClick={() => setMobileOpen(false)} />
+          {/* panel */}
+          <div className="fixed top-0 right-0 h-full w-[86%] max-w-sm bg-white z-50 border-l border-ring shadow-card">
+            <div className="flex items-center justify-between px-4 py-3 border-b border-ring">
+              <span className="text-sm font-semibold text-slate-800">Menu</span>
+              <button
+                type="button"
+                className="inline-flex items-center justify-center h-10 w-10 rounded-xl border border-ring bg-white hover:bg-muted"
+                aria-label="Fermer le menu"
+                onClick={() => setMobileOpen(false)}
+              >
+                <IconClose className="h-5 w-5 text-slate-800" />
+              </button>
+            </div>
+
+            <div className="p-4 space-y-4">
+              <div className="rounded-2xl border border-ring bg-muted p-3">
+                {status === "loading" ? (
+                  <div className="h-9 w-24 rounded-lg bg-white animate-pulse" />
+                ) : session ? (
+                  <Link href={profileHref} className="inline-flex items-center gap-2 text-sm text-ink">
+                    {avatarUrl ? (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img
+                        src={avatarUrl}
+                        alt={user?.name ?? "Avatar"}
+                        className="h-7 w-7 rounded-full object-cover"
+                        loading="lazy"
+                        decoding="async"
+                      />
+                    ) : (
+                      <span className="inline-flex h-7 w-7 items-center justify-center rounded-full bg-brand-500 text-white text-xs font-semibold">
+                        {initials || "ME"}
+                      </span>
+                    )}
+                    <span className="font-medium">{profileLabel}</span>
+                  </Link>
+                ) : (
+                  <button onClick={() => signIn(undefined, { callbackUrl: "/admin" })} className="btn w-full">
+                    Se connecter
+                  </button>
+                )}
               </div>
 
-              <div className="p-4 space-y-4">
-                {/* Compte */}
-                <div className="rounded-2xl border border-ring bg-muted p-3">
-                  {status === "loading" ? (
-                    <div className="h-9 w-24 rounded-lg bg-white animate-pulse" />
-                  ) : session ? (
-                    <Link href={profileHref} className="inline-flex items-center gap-2 text-sm text-slate-900">
-                      {avatarUrl ? (
-                        // eslint-disable-next-line @next/next/no-img-element
-                        <img
-                          src={avatarUrl}
-                          alt={user?.name ?? "Avatar"}
-                          className="h-7 w-7 rounded-full object-cover"
-                          loading="lazy"
-                          decoding="async"
-                        />
-                      ) : (
-                        <span className="inline-flex h-7 w-7 items-center justify-center rounded-full bg-brand-500 text-white text-xs font-semibold">
-                          {initials || "ME"}
-                        </span>
-                      )}
-                      <span className="font-medium">{profileLabel}</span>
+              <div className="space-y-1">
+                <Link href="/pages" className={`block ${navLinkClass(Boolean(pathname?.startsWith("/pages")))}`}>
+                  Guides
+                </Link>
+                {topLevel.map((n) => {
+                  const href = `/c/${n.slug}`;
+                  const active = Boolean(pathname?.startsWith(href));
+                  return (
+                    <Link key={n.id} href={href} className={`block ${navLinkClass(active)}`}>
+                      {n.name}
                     </Link>
-                  ) : (
-                    <button onClick={() => signIn(undefined, { callbackUrl: "/admin" })} className="btn w-full">
-                      Se connecter
-                    </button>
-                  )}
-                </div>
-
-                {/* Menu */}
-                <div className="space-y-1">
-                  <Link
-                    href="/pages"
-                    className={`block ${navLinkClass(Boolean(pathname?.startsWith("/pages")))}`}
-                  >
-                    Guides
-                  </Link>
-                  {topLevel.map((n) => {
-                    const href = `/c/${n.slug}`;
-                    const active = Boolean(pathname?.startsWith(href));
-                    return (
-                      <Link key={n.id} href={href} className={`block ${navLinkClass(active)}`}>
-                        {n.name}
-                      </Link>
-                    );
-                  })}
-                </div>
+                  );
+                })}
               </div>
             </div>
           </div>
-        ) : null}
-      </div>
+        </div>
+      ) : null}
     </header>
   );
 }
