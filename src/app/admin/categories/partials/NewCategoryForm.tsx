@@ -3,7 +3,7 @@
 
 import { useState, FormEvent } from "react";
 import { upsertCategory } from "@/app/actions/categories";
-import HtmlEditor from "./HtmlEditor";
+import RichTextEditor from "@/components/admin/RichTextEditor";
 
 export type ParentOption = { id: number; name: string };
 
@@ -65,11 +65,21 @@ export default function NewCategoryForm({ parents = [] }: Props) {
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
         <div className="grid gap-1">
           <label className="text-sm">Slug</label>
-          <input name="slug" required className="rounded-xl border border-ring px-3 py-2" placeholder="skis-all-mountain" />
+          <input
+            name="slug"
+            required
+            className="rounded-xl border border-ring px-3 py-2"
+            placeholder="skis-all-mountain"
+          />
         </div>
         <div className="grid gap-1">
           <label className="text-sm">Nom</label>
-          <input name="name" required className="rounded-xl border border-ring px-3 py-2" placeholder="Skis All-Mountain" />
+          <input
+            name="name"
+            required
+            className="rounded-xl border border-ring px-3 py-2"
+            placeholder="Skis All-Mountain"
+          />
         </div>
       </div>
 
@@ -113,8 +123,13 @@ export default function NewCategoryForm({ parents = [] }: Props) {
         <input name="intro" className="rounded-xl border border-ring px-3 py-2" />
       </div>
 
-      {/* Contenu HTML + aperçu */}
-      <HtmlEditor name="content" label="Contenu (HTML)" rows={12} />
+      {/* ✅ Contenu WYSIWYG (comme Marque & Page) */}
+      <RichTextEditor
+        name="content"
+        label="Contenu (WYSIWYG)"
+        initialValue=""
+        rows={12}
+      />
 
       {/* SEO */}
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -131,7 +146,12 @@ export default function NewCategoryForm({ parents = [] }: Props) {
       {/* Mappings affiliés */}
       <div className="grid gap-1">
         <label className="text-sm">Mappings Kwanko (1 par ligne)</label>
-        <textarea name="mapKwanko" rows={3} className="rounded-xl border border-ring px-3 py-2" placeholder={"Ski > All-Mountain\nSkis polyvalents"} />
+        <textarea
+          name="mapKwanko"
+          rows={3}
+          className="rounded-xl border border-ring px-3 py-2"
+          placeholder={"Ski > All-Mountain\nSkis polyvalents"}
+        />
       </div>
       <div className="grid gap-1">
         <label className="text-sm">Mappings Ekosport (1 par ligne)</label>
@@ -149,7 +169,12 @@ export default function NewCategoryForm({ parents = [] }: Props) {
       {/* Aliases */}
       <div className="grid gap-1">
         <label className="text-sm">Aliases / Slugs secondaires (1 par ligne)</label>
-        <textarea name="aliases" rows={2} className="rounded-xl border border-ring px-3 py-2" placeholder={"allmountain\npolyvalent"} />
+        <textarea
+          name="aliases"
+          rows={2}
+          className="rounded-xl border border-ring px-3 py-2"
+          placeholder={"allmountain\npolyvalent"}
+        />
       </div>
 
       <div className="flex items-center gap-3">

@@ -3,7 +3,7 @@
 
 import { useState, FormEvent } from "react";
 import { upsertCategory } from "@/app/actions/categories";
-import HtmlEditor from "./HtmlEditor";
+import RichTextEditor from "@/components/admin/RichTextEditor";
 
 export type ParentOption = { id: number; name: string };
 
@@ -48,7 +48,7 @@ export default function EditCategoryForm({
     const fd = new FormData(e.currentTarget);
     try {
       await upsertCategory({
-        slug: String(fd.get("slug") ?? "").trim(), // on autorise le changement si besoin
+        slug: String(fd.get("slug") ?? "").trim(),
         name: String(fd.get("name") ?? "").trim(),
 
         intro: fd.get("intro") ? String(fd.get("intro")) : undefined,
@@ -130,8 +130,13 @@ export default function EditCategoryForm({
         <input name="intro" defaultValue={initial.intro ?? ""} className="rounded-xl border border-ring px-3 py-2" />
       </div>
 
-      {/* Contenu HTML + aperçu */}
-      <HtmlEditor name="content" label="Contenu (HTML)" rows={12} initialValue={initial.content ?? ""} />
+      {/* ✅ Contenu WYSIWYG */}
+      <RichTextEditor
+        name="content"
+        label="Contenu (WYSIWYG)"
+        initialValue={initial.content ?? ""}
+        rows={12}
+      />
 
       {/* SEO */}
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -166,7 +171,7 @@ export default function EditCategoryForm({
       {/* Aliases */}
       <div className="grid gap-1">
         <label className="text-sm">Aliases / Slugs secondaires (1 par ligne)</label>
-        <textarea name="aliases" rows={2} defaultValue={arrToLines(initial.aliases)} className="rounded-xl border border-ring px-3 py-2" />
+        <textarea name="aliases" rows={2} defaultValue={arrToLines(initial.aliases)} className="rounded-xl border border-ring px-3 py-2" placeholder={"allmountain\npolyvalent"} />
       </div>
 
       <div className="flex items-center gap-3">
