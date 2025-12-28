@@ -193,3 +193,13 @@
 .editor-prose ol {
   @apply text-sm;
 }
+/* ---------------------------------
+   Header : liens sans soulignement
+   (ne touche pas aux liens du reste du site)
+---------------------------------- */
+.header-clean-links a {
+  text-decoration: none !important;
+}
+.header-clean-links a:hover {
+  text-decoration: none !important;
+}
