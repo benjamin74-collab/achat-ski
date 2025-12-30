@@ -148,16 +148,15 @@ export default async function HomePage() {
                 <div className="relative aspect-[16/9] w-full bg-muted">
                   {/* Image : à placer dans /public/categories/... (sinon fond neutre) */}
                   <img
-                    src={c.img}
-                    alt={c.title}
-                    className="h-full w-full object-cover"
-                    loading="lazy"
-                    onError={(e) => {
-                      // fallback simple : si l'image n'existe pas, on cache l'img et on garde le fond
-                      (e.currentTarget as HTMLImageElement).style.display = "none";
-                    }}
-                  />
-                  <div className="absolute inset-0 bg-gradient-to-t from-black/35 via-black/0 to-black/0" />
+					src={c.img}
+					alt={c.title}
+					className="h-full w-full object-cover"
+					loading="lazy"
+				  />
+				) : (
+				  <div className="h-full w-full bg-gradient-to-br from-muted to-white" />
+				)}
+				<div className="absolute inset-0 bg-gradient-to-t from-black/35 via-black/0 to-black/0" />
                 </div>
 
                 <div className="p-5">
