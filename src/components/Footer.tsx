@@ -6,7 +6,7 @@ const year = new Date().getFullYear();
 
 export default function Footer() {
   return (
-    <footer className="mt-12 border-t border-ring bg-surface/60">
+    <footer className="mt-12 border-t border-ring bg-surface/60 clean-links">
       {/* Bandeau haut coloré */}
       <div className="brand-gradient h-1 w-full" />
 
@@ -27,27 +27,27 @@ export default function Footer() {
             <h3 className="text-sm font-semibold text-ink">Catégories</h3>
             <ul className="mt-3 space-y-2 text-sm">
               <li>
-                <Link className="hover:underline" href="/c/skis-all-mountain">
+                <Link className="hover:text-brand-600" href="/c/skis-all-mountain">
                   Skis All-Mountain
                 </Link>
               </li>
               <li>
-                <Link className="hover:underline" href="/c/skis-freeride">
+                <Link className="hover:text-brand-600" href="/c/skis-freeride">
                   Skis Freeride
                 </Link>
               </li>
               <li>
-                <Link className="hover:underline" href="/c/skis-rando">
+                <Link className="hover:text-brand-600" href="/c/skis-rando">
                   Skis de rando
                 </Link>
               </li>
               <li>
-                <Link className="hover:underline" href="/c/fixations">
+                <Link className="hover:text-brand-600" href="/c/fixations">
                   Fixations
                 </Link>
               </li>
               <li>
-                <Link className="hover:underline" href="/c/chaussures">
+                <Link className="hover:text-brand-600" href="/c/chaussures">
                   Chaussures
                 </Link>
               </li>
@@ -59,22 +59,22 @@ export default function Footer() {
             <h3 className="text-sm font-semibold text-ink">À propos</h3>
             <ul className="mt-3 space-y-2 text-sm">
               <li>
-                <Link className="hover:underline" href="/a-propos">
+                <Link className="hover:text-brand-600" href="/a-propos">
                   Qui sommes-nous ?
                 </Link>
               </li>
               <li>
-                <Link className="hover:underline" href="/partenaires">
+                <Link className="hover:text-brand-600" href="/partenaires">
                   Marchands & partenaires
                 </Link>
               </li>
               <li>
-                <Link className="hover:underline" href="/faq">
+                <Link className="hover:text-brand-600" href="/faq">
                   FAQ
                 </Link>
               </li>
               <li>
-                <Link className="hover:underline" href="/contact">
+                <Link className="hover:text-brand-600" href="/contact">
                   Contact
                 </Link>
               </li>
@@ -119,22 +119,22 @@ export default function Footer() {
           </p>
           <ul className="flex flex-wrap items-center gap-3 text-xs">
             <li>
-              <Link className="hover:underline" href="/mentions-legales">
+              <Link className="hover:text-brand-600" href="/mentions-legales">
                 Mentions légales
               </Link>
             </li>
             <li>
-              <Link className="hover:underline" href="/confidentialite">
+              <Link className="hover:text-brand-600" href="/confidentialite">
                 Confidentialité
               </Link>
             </li>
             <li>
-              <Link className="hover:underline" href="/cookies">
+              <Link className="hover:text-brand-600" href="/cookies">
                 Cookies
               </Link>
             </li>
             <li>
-              <Link className="hover:underline" href="/cgu">
+              <Link className="hover:text-brand-600" href="/cgu">
                 CGU
               </Link>
             </li>

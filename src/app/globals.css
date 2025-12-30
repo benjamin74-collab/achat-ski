@@ -194,12 +194,14 @@
   @apply text-sm;
 }
 /* ---------------------------------
-   Header : liens sans soulignement
-   (ne touche pas aux liens du reste du site)
+   Liens sans soulignement (zones UI)
+   - Header, menu, footer, listes de marques...
+   - Ne touche pas aux liens du contenu (prose)
 ---------------------------------- */
-.header-clean-links a {
+.clean-links a {
   text-decoration: none !important;
 }
-.header-clean-links a:hover {
+.clean-links a:hover,
+.clean-links a:focus-visible {
   text-decoration: none !important;
 }

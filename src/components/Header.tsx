@@ -106,14 +106,14 @@ export default function Header() {
   }, [mobileOpen]);
 
   const navLinkClass = (active: boolean) =>
-    `px-3 py-2 text-sm rounded-lg transition ${
-      active
-        ? "bg-brand-500/20 text-ink border border-brand-200"
-        : "text-ink/80 hover:text-ink hover:bg-brand-500/10"
-    }`;
+  `px-3 py-2 text-sm rounded-lg transition no-underline hover:no-underline ${
+    active
+      ? "bg-brand-500/20 text-ink border border-brand-200"
+      : "text-ink/80 hover:text-ink hover:bg-brand-500/10"
+  }`;
 
   return (
-    <header className="sticky top-0 z-50 border-b border-ring">
+    <header className="sticky top-0 z-50 border-b border-ring clean-links">
       {/* Barre colorée */}
       <div className="h-1 w-full brand-gradient" />
 

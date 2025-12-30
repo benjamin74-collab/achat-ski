@@ -13,7 +13,7 @@ export default function Logo({ asLink = true }: { asLink?: boolean }) {
   );
   if (!asLink) return Mark;
   return (
-    <Link href="/" className="hover:opacity-90" aria-label="Meilleur Ski — Accueil">
+    <Link href="/" className="hover:opacity-90 no-underline hover:no-underline" aria-label="Meilleur Ski — Accueil">
       {Mark}
     </Link>
   );
