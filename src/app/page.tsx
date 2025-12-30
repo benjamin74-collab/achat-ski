@@ -1,15 +1,74 @@
+// src/app/page.tsx
+/* eslint-disable @next/next/no-img-element */
 import Link from "next/link";
-import { Search } from "lucide-react";
+import { ArrowRight } from "lucide-react";
+import { prisma } from "@/lib/prisma";
 
-export default function HomePage() {
-  const cats = [
-    { href: "/c/skis-all-mountain", label: "Skis All-Mountain" },
-    { href: "/c/skis-freeride", label: "Skis Freeride" },
-    { href: "/c/skis-rando", label: "Skis Rando" },
-    { href: "/c/fixations", label: "Fixations" },
-    { href: "/c/chaussures", label: "Chaussures" },
-  ];
+export const revalidate = 300;
 
+type CategoryTile = {
+  slug: string;
+  title: string;
+  desc: string;
+  cta: string;
+  img: string; // chemin dans /public
+};
+
+const categoryTiles: CategoryTile[] = [
+  {
+    slug: "skis-all-mountain",
+    title: "Skis All-Mountain",
+    desc: "Le meilleur compromis piste / hors-piste pour 80% des skieurs.",
+    cta: "Comparer les All-Mountain",
+    img: "/categories/skis-all-mountain.jpg",
+  },
+  {
+    slug: "skis-freeride",
+    title: "Skis Freeride",
+    desc: "Flottaison et stabilité : l’outil parfait quand il a neigé.",
+    cta: "Voir les Freeride",
+    img: "/categories/skis-freeride.jpg",
+  },
+  {
+    slug: "skis-rando",
+    title: "Skis de rando",
+    desc: "Léger à la montée, sûr à la descente : optimise ton set-up.",
+    cta: "Explorer la rando",
+    img: "/categories/skis-rando.jpg",
+  },
+  {
+    slug: "fixations",
+    title: "Fixations",
+    desc: "Alpine, rando, hybrides : compare les offres et la compatibilité.",
+    cta: "Comparer les fixations",
+    img: "/categories/fixations.jpg",
+  },
+  {
+    slug: "chaussures",
+    title: "Chaussures",
+    desc: "Confort et précision : le choix n°1 pour progresser.",
+    cta: "Trouver ses chaussures",
+    img: "/categories/chaussures.jpg",
+  },
+];
+
+export default async function HomePage() {
+  // Derniers guides (SEO + perf : rendu server-side)
+  const latestGuides = await prisma.page.findMany({
+    where: { published: true, kind: "GUIDE" },
+    orderBy: { createdAt: "desc" },
+    take: 6,
+    select: {
+      id: true,
+      slug: true,
+      title: true,
+      intro: true,
+      thumbnailUrl: true,
+      createdAt: true,
+    },
+  });
+
+  // Bloc marques (on le laisse tel quel, déplacé en bas)
   const topBrands = [
     {
       name: "Rossignol",
@@ -40,74 +99,83 @@ export default function HomePage() {
 
   return (
     <main className="pb-20">
-      {/* ---------------- HERO (mobile-friendly) ---------------- */}
+      {/* ---------------- HERO (sans search) ---------------- */}
       <section className="relative overflow-hidden py-14 md:py-20 text-center bg-gradient-to-b from-white to-muted/60">
         <div className="container-page relative z-10">
           <h1 className="text-3xl sm:text-4xl md:text-5xl font-bold leading-tight text-ink tracking-tight">
-            Le{" "}
-            <span className="text-brand-600">comparateur</span>{" "}
-            des passionnés de ski
+            Le <span className="text-brand-600">comparateur</span> des passionnés de ski
           </h1>
 
           <p className="mt-3 sm:mt-4 text-base sm:text-lg text-slate-600 max-w-[28rem] sm:max-w-2xl mx-auto px-2">
             Comparez les prix, consultez les tests et les avis pour trouver le matériel parfait.
           </p>
 
-          {/* Barre de recherche — plus compacte sur mobile */}
-          <form action="/search" className="mt-6 sm:mt-8 max-w-xl mx-auto px-3 sm:px-0">
-            <div className="relative shadow-sm sm:shadow-md">
-              <input
-                name="q"
-                placeholder="Ex : Salomon QST 98, Atomic Maverick 88…"
-                className="w-full rounded-xl bg-white border border-ring px-4 sm:px-5 py-2.5 sm:py-3 pr-12 sm:pr-14 text-ink placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-brand-500 text-sm sm:text-base"
-              />
-              <button
-                type="submit"
-                className="absolute right-1.5 top-1.5 sm:right-2 sm:top-1.5 flex items-center gap-1 rounded-lg px-3 sm:px-4 py-1.5 sm:py-2 bg-brand-500 hover:bg-brand-600 text-white text-xs sm:text-sm font-semibold"
-              >
-                <Search className="h-4 w-4" />
-                <span className="hidden sm:inline">Rechercher</span>
-              </button>
-            </div>
-          </form>
-
-          {/* Catégories rapides — chips scrollables en mobile */}
-          <div className="mt-5 sm:mt-6">
-            <div className="no-scrollbar mx-auto flex max-w-full gap-2 overflow-x-auto px-3 sm:px-0 sm:flex-wrap sm:justify-center snap-x snap-mandatory">
-              {cats.map((c) => (
-                <Link
-                  key={c.href}
-                  href={c.href}
-                  className="snap-start text-xs md:text-sm rounded-full border border-ring bg-white hover:bg-muted text-ink px-3 py-2 transition shadow-sm hover:shadow-md whitespace-nowrap"
-                >
-                  {c.label}
-                </Link>
-              ))}
-
-              {/* ✅ Chip vers l'annuaire des marques */}
-              <Link
-                href="/marques"
-                className="snap-start text-xs md:text-sm rounded-full border border-brand-500 bg-white hover:bg-brand-50 text-brand-600 px-3 py-2 transition shadow-sm hover:shadow-md whitespace-nowrap"
-                aria-label="Accéder à l’annuaire des marques"
-              >
-                🧭 Annuaire des marques
-              </Link>
-            </div>
-
-            {/* ✅ Bouton central (CTA secondaire) */}
-            <div className="mt-4 sm:mt-5 flex justify-center">
-              <Link
-                href="/marques"
-                className="inline-flex items-center gap-2 rounded-xl border border-ring bg-white hover:bg-muted text-ink px-4 py-2 text-sm shadow-sm hover:shadow-md"
-              >
-                🧭 Explorer l’annuaire des marques
-              </Link>
-            </div>
+          {/* CTA hero : SEO + UX (évite le doublon search) */}
+          <div className="mt-7 sm:mt-9 flex flex-col sm:flex-row items-center justify-center gap-3 px-3 sm:px-0">
+            <Link href="/search" className="btn w-full sm:w-auto">
+              Rechercher un modèle
+              <ArrowRight className="h-4 w-4" />
+            </Link>
+            <Link href="#categories" className="btn-outline w-full sm:w-auto">
+              Explorer les catégories
+            </Link>
+            <Link href="/pages" className="btn-outline w-full sm:w-auto">
+              Lire nos guides
+            </Link>
           </div>
         </div>
       </section>
 
-      {/* ---------------- VALEURS ---------------- */}
+      {/* ---------------- CATEGORIES (vignettes) ---------------- */}
+      <section id="categories" className="mt-12 md:mt-16 container-page">
+        <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-2">
+          <h2 className="text-xl sm:text-2xl font-bold text-ink">
+            Catégories populaires
+          </h2>
+          <p className="text-sm text-slate-600 max-w-2xl">
+            Des pages catégories pensées pour la performance : prix à jour, filtres utiles et contenu d’aide au choix.
+          </p>
+        </div>
+
+        <ul className="mt-6 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
+          {categoryTiles.map((c) => (
+            <li key={c.slug} className="group">
+              <Link
+                href={`/c/${c.slug}`}
+                className="block card overflow-hidden hover:shadow-card transition"
+                aria-label={`Voir la catégorie ${c.title}`}
+              >
+                <div className="relative aspect-[16/9] w-full bg-muted">
+                  {/* Image : à placer dans /public/categories/... (sinon fond neutre) */}
+                  <img
+                    src={c.img}
+                    alt={c.title}
+                    className="h-full w-full object-cover"
+                    loading="lazy"
+                    onError={(e) => {
+                      // fallback simple : si l'image n'existe pas, on cache l'img et on garde le fond
+                      (e.currentTarget as HTMLImageElement).style.display = "none";
+                    }}
+                  />
+                  <div className="absolute inset-0 bg-gradient-to-t from-black/35 via-black/0 to-black/0" />
+                </div>
+
+                <div className="p-5">
+                  <h3 className="text-base font-semibold text-ink">{c.title}</h3>
+                  <p className="mt-1 text-sm text-slate-600 line-clamp-2">{c.desc}</p>
+
+                  <div className="mt-3 inline-flex items-center gap-2 text-sm font-semibold text-brand-600">
+                    {c.cta}
+                    <ArrowRight className="h-4 w-4 transition group-hover:translate-x-0.5" />
+                  </div>
+                </div>
+              </Link>
+            </li>
+          ))}
+        </ul>
+      </section>
+
+      {/* ---------------- VALEURS (inchangé) ---------------- */}
       <section className="mt-12 md:mt-16 container-page text-center">
         <h2 className="text-xl sm:text-2xl font-bold text-ink mb-6 sm:mb-8">
           Pourquoi choisir <span className="text-brand-600">Meilleur-ski</span> ?
@@ -140,7 +208,63 @@ export default function HomePage() {
         </div>
       </section>
 
-      {/* ---------------- TOP MARQUES ---------------- */}
+      {/* ---------------- DERNIERS GUIDES ---------------- */}
+      <section className="mt-14 md:mt-18 container-page">
+        <div className="flex items-center justify-between gap-3">
+          <h2 className="text-xl sm:text-2xl font-bold text-ink">Derniers guides</h2>
+          <Link href="/pages" className="text-sm underline text-brand-600 hover:text-brand-700">
+            Voir tous les guides
+          </Link>
+        </div>
+
+        <ul className="mt-5 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+          {latestGuides.map((p) => (
+            <li key={p.id} className="rounded-2xl border border-ring bg-white hover:shadow-card transition">
+              <Link href={`/pages/${p.slug}`} className="block">
+                <div className="aspect-[16/9] w-full overflow-hidden rounded-t-2xl bg-muted">
+                  {p.thumbnailUrl ? (
+                    <img
+                      src={p.thumbnailUrl}
+                      alt={p.title}
+                      className="h-full w-full object-cover"
+                      loading="lazy"
+                    />
+                  ) : (
+                    <div className="h-full w-full bg-gradient-to-br from-muted to-white" />
+                  )}
+                </div>
+                <div className="p-4">
+                  <h3 className="text-base font-semibold text-ink line-clamp-2">{p.title}</h3>
+                  {p.intro ? (
+                    <p className="text-sm text-slate-600 mt-1 line-clamp-2">{p.intro}</p>
+                  ) : null}
+                  <div className="mt-2 text-xs text-slate-500">
+                    Publié le {p.createdAt.toISOString().slice(0, 10)}
+                  </div>
+                </div>
+              </Link>
+            </li>
+          ))}
+
+          {latestGuides.length === 0 ? (
+            <li className="sm:col-span-2 lg:col-span-3">
+              <div className="card p-6 text-center">
+                <h3 className="font-semibold text-ink">Aucun guide publié pour l’instant</h3>
+                <p className="text-sm text-slate-600 mt-1">
+                  Publie un premier guide depuis le backoffice, il apparaîtra automatiquement ici.
+                </p>
+                <div className="mt-4">
+                  <Link href="/pages" className="btn-outline">
+                    Aller aux guides
+                  </Link>
+                </div>
+              </div>
+            </li>
+          ) : null}
+        </ul>
+      </section>
+
+      {/* ---------------- TOP MARQUES (inchangé, en bas) ---------------- */}
       <section className="mt-14 md:mt-18 container-page">
         <div className="flex items-center justify-between gap-3">
           <h2 className="text-xl sm:text-2xl font-bold text-ink">Top marques</h2>

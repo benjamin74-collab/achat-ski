@@ -241,10 +241,10 @@ export async function generateMetadata({ params }: { params: Promise<PageParams>
   });
 
   if (!cat || !cat.published) {
-    return { title: "Catégorie introuvable — Achat-Ski", description: "Cette catégorie n'existe pas ou n'est pas publiée." };
+    return { title: "Catégorie introuvable — Meilleur-Ski", description: "Cette catégorie n'existe pas ou n'est pas publiée." };
   }
 
-  const title = cat.metaTitle || `${cat.name} — Achat-Ski`;
+  const title = cat.metaTitle || `${cat.name} — Meilleur-Ski`;
   const description = cat.metaDescription || cat.intro || `Guide d'achat et comparatif ${cat.name}.`;
 
   return { title, description };
