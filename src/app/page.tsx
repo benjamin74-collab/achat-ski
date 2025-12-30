@@ -137,41 +137,44 @@ export default async function HomePage() {
           </p>
         </div>
 
-        <ul className="mt-6 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
-          {categoryTiles.map((c) => (
-            <li key={c.slug} className="group">
-              <Link
-                href={`/c/${c.slug}`}
-                className="block card overflow-hidden hover:shadow-card transition"
-                aria-label={`Voir la catégorie ${c.title}`}
-              >
-                <div className="relative aspect-[16/9] w-full bg-muted">
-                  {/* Image : à placer dans /public/categories/... (sinon fond neutre) */}
-                  <img
-					src={c.img}
-					alt={c.title}
-					className="h-full w-full object-cover"
-					loading="lazy"
-				  />
-				) : (
-				  <div className="h-full w-full bg-gradient-to-br from-muted to-white" />
-				)}
-				<div className="absolute inset-0 bg-gradient-to-t from-black/35 via-black/0 to-black/0" />
-                </div>
+		<ul className="mt-6 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
+		  {categoryTiles.map((c) => (
+			<li key={c.slug} className="group">
+			  <Link
+				href={`/c/${c.slug}`}
+				className="block card overflow-hidden hover:shadow-card transition"
+				aria-label={`Voir la catégorie ${c.title}`}
+			  >
+				<div className="relative aspect-[16/9] w-full bg-muted">
+				  {/* Image : à placer dans /public/categories/... (sinon fond neutre) */}
+				  {c.img ? (
+					<img
+					  src={c.img}
+					  alt={c.title}
+					  className="h-full w-full object-cover"
+					  loading="lazy"
+					/>
+				  ) : (
+					<div className="h-full w-full bg-gradient-to-br from-muted to-white" />
+				  )}
 
-                <div className="p-5">
-                  <h3 className="text-base font-semibold text-ink">{c.title}</h3>
-                  <p className="mt-1 text-sm text-slate-600 line-clamp-2">{c.desc}</p>
+				  <div className="absolute inset-0 bg-gradient-to-t from-black/35 via-black/0 to-black/0" />
+				</div>
 
-                  <div className="mt-3 inline-flex items-center gap-2 text-sm font-semibold text-brand-600">
-                    {c.cta}
-                    <ArrowRight className="h-4 w-4 transition group-hover:translate-x-0.5" />
-                  </div>
-                </div>
-              </Link>
-            </li>
-          ))}
-        </ul>
+				<div className="p-5">
+				  <h3 className="text-base font-semibold text-ink">{c.title}</h3>
+				  <p className="mt-1 text-sm text-slate-600 line-clamp-2">{c.desc}</p>
+
+				  <div className="mt-3 inline-flex items-center gap-2 text-sm font-semibold text-brand-600">
+					{c.cta}
+					<ArrowRight className="h-4 w-4 transition group-hover:translate-x-0.5" />
+				  </div>
+				</div>
+			  </Link>
+			</li>
+		  ))}
+		</ul>
+
       </section>
 
       {/* ---------------- VALEURS (inchangé) ---------------- */}
