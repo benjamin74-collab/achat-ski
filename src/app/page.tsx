@@ -53,6 +53,34 @@ const categoryTiles: CategoryTile[] = [
 ];
 
 export default async function HomePage() {
+	const site =
+    process.env.NEXT_PUBLIC_SITE_URL?.replace(/\/+$/, "") ??
+    (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : "https://meilleur-ski.com");
+
+  const homeJsonLd = {
+    "@context": "https://schema.org",
+    "@graph": [
+      {
+        "@type": "Organization",
+        "@id": `${site}/#organization`,
+        name: "Meilleur-ski",
+        url: site,
+      },
+      {
+        "@type": "WebSite",
+        "@id": `${site}/#website`,
+        url: site,
+        name: "Meilleur-ski",
+        publisher: { "@id": `${site}/#organization` },
+        potentialAction: {
+          "@type": "SearchAction",
+          target: `${site}/search?q={search_term_string}`,
+          "query-input": "required name=search_term_string",
+        },
+      },
+    ],
+  };
+
   // Derniers guides (SEO + perf : rendu server-side)
   const latestGuides = await prisma.page.findMany({
     where: { published: true, kind: "GUIDE" },
@@ -99,6 +127,8 @@ export default async function HomePage() {
 
   return (
     <main className="pb-20">
+	<link rel="canonical" href={`${site}/`} />
+    <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(homeJsonLd) }} />
       {/* ---------------- HERO (sans search) ---------------- */}
       <section className="relative overflow-hidden py-14 md:py-20 text-center bg-gradient-to-b from-white to-muted/60">
         <div className="container-page relative z-10">

@@ -14,6 +14,14 @@ export const revalidate = 120;
 type PageParams = { category: string };
 type SortKey = "newest" | "price-asc" | "price-desc";
 
+function getSiteUrl() {
+  const env = process.env.NEXT_PUBLIC_SITE_URL;
+  if (env) return env.replace(/\/+$/, "");
+  const vercel = process.env.VERCEL_URL;
+  if (vercel) return `https://${vercel}`.replace(/\/+$/, "");
+  return "https://meilleur-ski.com";
+}
+
 function parseSearchParams(input?: { [key: string]: string | string[] | undefined }) {
   const get = (k: string): string | null => {
     const v = input?.[k];
@@ -50,6 +58,8 @@ export default async function CategoryPage({
   params: Promise<PageParams>;
   searchParams?: { [key: string]: string | string[] | undefined };
 }) {
+  const site = getSiteUrl();
+
   const { category } = await params;
   const parsed = parseSearchParams(searchParams);
   const { page, sort, brands, season } = parsed;
@@ -64,6 +74,7 @@ export default async function CategoryPage({
       },
     },
   });
+
   if (!cat || !cat.published) {
     return (
       <div className="container-page py-8">
@@ -91,7 +102,6 @@ export default async function CategoryPage({
     }),
   ]);
 
-  // ✅ Type guards -> string[]
   const allBrands: string[] = brandRows
     .map((b) => b.brand)
     .filter((v): v is string => typeof v === "string" && v.length > 0);
@@ -140,11 +150,73 @@ export default async function CategoryPage({
       : products;
 
   const pages = Math.max(1, Math.ceil(total / pageSize));
-
   const safeHtml = cat.content ? sanitizeHtml(cat.content) : "";
+
+  // Canonical (sans query -> canonical clean, mais on garde les pages paginées indexables via contenu)
+  const canonicalUrl = `${site}/c/${cat.slug}`;
+
+  // JSON-LD: BreadcrumbList + ItemList (page courante) + CollectionPage
+  const breadcrumbJsonLd = {
+    "@context": "https://schema.org",
+    "@type": "BreadcrumbList",
+    itemListElement: [
+      { "@type": "ListItem", position: 1, name: "Accueil", item: `${site}/` },
+      { "@type": "ListItem", position: 2, name: "Catégories", item: `${site}/#categories` },
+      { "@type": "ListItem", position: 3, name: cat.name, item: canonicalUrl },
+    ],
+  };
+
+  const itemListJsonLd = {
+    "@context": "https://schema.org",
+    "@type": "ItemList",
+    name: `Produits — ${cat.name}`,
+    itemListOrder:
+      sort === "price-asc" ? "http://schema.org/ItemListOrderAscending" :
+      sort === "price-desc" ? "http://schema.org/ItemListOrderDescending" :
+      "http://schema.org/ItemListUnordered",
+    numberOfItems: sorted.length,
+    itemListElement: sorted.map((p, idx) => {
+      const title = [p.brand, p.model, p.season].filter(Boolean).join(" ");
+      const url = `${site}/p/${p.slug}`;
+      const lowPrice = typeof p.minTotal === "number" ? (p.minTotal / 100).toFixed(2) : undefined;
+
+      return {
+        "@type": "ListItem",
+        position: idx + 1,
+        url,
+        item: {
+          "@type": "Product",
+          name: title,
+          url,
+          ...(lowPrice
+            ? {
+                offers: {
+                  "@type": "AggregateOffer",
+                  priceCurrency: "EUR",
+                  lowPrice,
+                },
+              }
+            : {}),
+        },
+      };
+    }),
+  };
+
+  const collectionJsonLd = {
+    "@context": "https://schema.org",
+    "@type": "CollectionPage",
+    name: cat.name,
+    description: cat.metaDescription ?? cat.intro ?? `Comparatif et prix pour ${cat.name}.`,
+    url: canonicalUrl,
+  };
 
   return (
     <div className="container-page py-8">
+      <link rel="canonical" href={canonicalUrl} />
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbJsonLd) }} />
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(collectionJsonLd) }} />
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(itemListJsonLd) }} />
+
       <div className="flex flex-col gap-4 md:grid md:grid-cols-12">
         <aside className="md:col-span-3">
           <FiltersBar brands={allBrands} seasons={allSeasons} />
@@ -237,15 +309,26 @@ export async function generateMetadata({ params }: { params: Promise<PageParams>
   const { category } = await params;
   const cat = await prisma.category.findUnique({
     where: { slug: category },
-    select: { name: true, metaTitle: true, metaDescription: true, intro: true, published: true },
+    select: { name: true, metaTitle: true, metaDescription: true, intro: true, published: true, slug: true },
   });
 
   if (!cat || !cat.published) {
-    return { title: "Catégorie introuvable — Meilleur-Ski", description: "Cette catégorie n'existe pas ou n'est pas publiée." };
+    return {
+      title: "Catégorie introuvable — Meilleur-Ski",
+      description: "Cette catégorie n'existe pas ou n'est pas publiée.",
+    };
   }
+
+  const site = getSiteUrl();
+  const url = `${site}/c/${cat.slug}`;
 
   const title = cat.metaTitle || `${cat.name} — Meilleur-Ski`;
   const description = cat.metaDescription || cat.intro || `Guide d'achat et comparatif ${cat.name}.`;
 
-  return { title, description };
+  return {
+    title,
+    description,
+    alternates: { canonical: url },
+    openGraph: { title, description, url },
+  };
 }

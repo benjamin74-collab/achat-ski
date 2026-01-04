@@ -5,7 +5,12 @@ import Header from "@/components/Header";
 import Footer from "@/components/Footer";
 import Providers from "@/components/Providers";
 
+const site =
+  process.env.NEXT_PUBLIC_SITE_URL?.replace(/\/+$/, "") ??
+  (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : "https://meilleur-ski.com");
+
 export const metadata: Metadata = {
+  metadataBase: new URL(site),
   title: "Meilleur-ski — Comparez les prix du matos de ski",
   description: "Comparez les prix des skis, fixations et chaussures chez nos marchands partenaires.",
 };
@@ -20,7 +25,6 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <meta charSet="utf-8" />
       </head>
       <body className="min-h-screen bg-white text-ink antialiased">
-        {/* ✅ Fournit le SessionProvider à tout l’arbre (Header incl.) */}
         <Providers>
           <Header />
           <main className="container-page py-6">{children}</main>
