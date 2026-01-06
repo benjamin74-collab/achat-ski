@@ -106,18 +106,28 @@ export default function Header() {
   }, [mobileOpen]);
 
   const navLinkClass = (active: boolean) =>
-  `px-3 py-2 text-sm rounded-lg transition no-underline hover:no-underline ${
-    active
-      ? "bg-brand-500/20 text-ink border border-brand-200"
-      : "text-ink/80 hover:text-ink hover:bg-brand-500/10"
-  }`;
+    `px-3 py-2 text-sm rounded-lg transition no-underline hover:no-underline ${
+      active
+        ? "bg-brand-500/20 text-ink border border-brand-200"
+        : "text-ink/80 hover:text-ink hover:bg-brand-500/10"
+    }`;
+
+  // Accordéon mobile (parents ouverts)
+  const [openIds, setOpenIds] = useState<Record<number, boolean>>({});
+  useEffect(() => {
+    if (!mobileOpen) setOpenIds({});
+  }, [mobileOpen]);
+
+  const toggleOpen = (id: number) => setOpenIds((s) => ({ ...s, [id]: !s[id] }));
+
+  const isActivePath = (slug: string) => Boolean(pathname?.startsWith(`/c/${slug}`));
 
   return (
     <header className="sticky top-0 z-50 border-b border-ring clean-links">
       {/* Barre colorée */}
       <div className="h-1 w-full brand-gradient" />
 
-      {/* ✅ LIGNE HAUTE : on remet le fond précédent */}
+      {/* LIGNE HAUTE */}
       <div className="bg-bg/80 supports-[backdrop-filter]:backdrop-blur">
         <div className="mx-auto max-w-6xl px-4 py-3">
           {/* TOP BAR (logo / search / account) */}
@@ -127,7 +137,7 @@ export default function Header() {
               <Logo />
             </Link>
 
-            {/* Search - Desktop only (centré) */}
+            {/* Search - Desktop only */}
             <div className="hidden lg:flex flex-1 justify-center">
               <form action="/search" className="w-full max-w-[640px]">
                 <div className="relative">
@@ -190,7 +200,7 @@ export default function Header() {
             </div>
           </div>
 
-          {/* Search - Mobile only (pleine largeur, sous top bar) */}
+          {/* Search - Mobile only */}
           <div className="mt-3 lg:hidden">
             <form action="/search">
               <div className="relative">
@@ -212,7 +222,7 @@ export default function Header() {
         </div>
       </div>
 
-      {/* ✅ LIGNE BASSE : menu fond blanc */}
+      {/* LIGNE BASSE : menu */}
       <div className="bg-white border-t border-ring">
         <div className="mx-auto max-w-6xl px-4 py-2">
           {/* Desktop menu */}
@@ -221,22 +231,66 @@ export default function Header() {
               <Link href="/pages" className={navLinkClass(Boolean(pathname?.startsWith("/pages")))}>
                 Guides
               </Link>
+
               {topLevel.map((n) => {
                 const href = `/c/${n.slug}`;
                 const active = Boolean(pathname?.startsWith(href));
+                const hasChildren = (n.children?.length ?? 0) > 0;
+
+                if (!hasChildren) {
+                  return (
+                    <Link key={n.id} href={href} className={navLinkClass(active)}>
+                      {n.name}
+                    </Link>
+                  );
+                }
+
+                // Dropdown (hover) pour enfants + petits-enfants
                 return (
-                  <Link key={n.id} href={href} className={navLinkClass(active)}>
-                    {n.name}
-                  </Link>
+                  <div key={n.id} className="relative group">
+                    <Link href={href} className={navLinkClass(active)} aria-haspopup="menu">
+                      {n.name}
+                    </Link>
+
+                    <div className="absolute left-0 top-full pt-2 opacity-0 pointer-events-none group-hover:opacity-100 group-hover:pointer-events-auto transition">
+                      <div className="w-[520px] rounded-2xl border border-ring bg-white shadow-card p-3">
+                        <div className="grid grid-cols-2 gap-2">
+                          {n.children.map((c) => (
+                            <div key={c.id} className="rounded-xl border border-ring/60 p-3 hover:bg-muted/40">
+                              <Link href={`/c/${c.slug}`} className="font-semibold text-sm text-ink hover:underline">
+                                {c.name}
+                              </Link>
+
+                              {(c.children?.length ?? 0) > 0 ? (
+                                <ul className="mt-2 space-y-1">
+                                  {c.children.slice(0, 6).map((g) => (
+                                    <li key={g.id}>
+                                      <Link
+                                        href={`/c/${g.slug}`}
+                                        className="text-sm text-slate-600 hover:text-ink hover:underline"
+                                      >
+                                        {g.name}
+                                      </Link>
+                                    </li>
+                                  ))}
+                                  {c.children.length > 6 ? (
+                                    <li className="text-xs text-slate-500">+ {c.children.length - 6} autres…</li>
+                                  ) : null}
+                                </ul>
+                              ) : null}
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
                 );
               })}
             </div>
           </nav>
 
-          {/* Mobile hint (optional): small row, drawer handles real nav */}
-          <div className="lg:hidden text-xs text-slate-500">
-            Menu : utilisez le bouton ☰
-          </div>
+          {/* Mobile hint */}
+          <div className="lg:hidden text-xs text-slate-500">Menu : utilisez le bouton ☰</div>
         </div>
       </div>
 
@@ -292,13 +346,71 @@ export default function Header() {
                 <Link href="/pages" className={`block ${navLinkClass(Boolean(pathname?.startsWith("/pages")))}`}>
                   Guides
                 </Link>
+
                 {topLevel.map((n) => {
-                  const href = `/c/${n.slug}`;
-                  const active = Boolean(pathname?.startsWith(href));
+                  const hasChildren = (n.children?.length ?? 0) > 0;
+                  const active = isActivePath(n.slug);
+
+                  if (!hasChildren) {
+                    return (
+                      <Link key={n.id} href={`/c/${n.slug}`} className={`block ${navLinkClass(active)}`}>
+                        {n.name}
+                      </Link>
+                    );
+                  }
+
+                  const opened = Boolean(openIds[n.id]);
                   return (
-                    <Link key={n.id} href={href} className={`block ${navLinkClass(active)}`}>
-                      {n.name}
-                    </Link>
+                    <div key={n.id} className="rounded-xl border border-ring/70 overflow-hidden">
+                      <div className="flex items-center">
+                        <Link
+                          href={`/c/${n.slug}`}
+                          className={`flex-1 px-3 py-2 text-sm font-medium ${
+                            active ? "bg-brand-500/15" : "bg-white"
+                          }`}
+                        >
+                          {n.name}
+                        </Link>
+                        <button
+                          type="button"
+                          onClick={() => toggleOpen(n.id)}
+                          className="px-3 py-2 text-sm text-slate-600 hover:bg-muted"
+                          aria-expanded={opened}
+                          aria-label={opened ? `Fermer ${n.name}` : `Ouvrir ${n.name}`}
+                        >
+                          {opened ? "–" : "+"}
+                        </button>
+                      </div>
+
+                      {opened ? (
+                        <div className="px-3 pb-2 pt-1 bg-muted/30">
+                          <ul className="space-y-1">
+                            {n.children.map((c) => (
+                              <li key={c.id}>
+                                <Link href={`/c/${c.slug}`} className="block py-1 text-sm text-ink hover:underline">
+                                  {c.name}
+                                </Link>
+
+                                {(c.children?.length ?? 0) > 0 ? (
+                                  <ul className="mt-1 ml-3 border-l border-ring/60 pl-3 space-y-1">
+                                    {c.children.map((g) => (
+                                      <li key={g.id}>
+                                        <Link
+                                          href={`/c/${g.slug}`}
+                                          className="block py-0.5 text-sm text-slate-600 hover:text-ink hover:underline"
+                                        >
+                                          {g.name}
+                                        </Link>
+                                      </li>
+                                    ))}
+                                  </ul>
+                                ) : null}
+                              </li>
+                            ))}
+                          </ul>
+                        </div>
+                      ) : null}
+                    </div>
                   );
                 })}
               </div>

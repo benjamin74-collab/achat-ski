@@ -13,6 +13,11 @@ type NavItem = {
 
 export const runtime = "nodejs";
 
+function sortTree(items: NavItem[]) {
+  items.sort((a, b) => (a.order - b.order) || a.name.localeCompare(b.name, "fr"));
+  for (const it of items) sortTree(it.children);
+}
+
 export async function GET() {
   const rows = await prisma.category.findMany({
     where: { isInMenu: true, published: true },
@@ -27,12 +32,15 @@ export async function GET() {
   // relier parents/enfants
   const roots: NavItem[] = [];
   byId.forEach((node) => {
-    if (node.parentId && byId.has(node.parentId)) {
+    if (node.parentId !== null && byId.has(node.parentId)) {
       byId.get(node.parentId)!.children.push(node);
     } else {
       roots.push(node);
     }
   });
+
+  // trie récursif (parents + enfants + petits-enfants)
+  sortTree(roots);
 
   return NextResponse.json(roots);
 }
