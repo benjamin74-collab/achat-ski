@@ -120,24 +120,19 @@ export default function Header() {
 
   const toggleOpen = (id: number) => setOpenIds((s) => ({ ...s, [id]: !s[id] }));
 
-  const isActivePath = (slug: string) => Boolean(pathname?.startsWith(`/c/${slug}`));
+  const isActivePath = (slug: string) => Boolean(pathname?.startsWith(`/${slug}`));
 
   return (
     <header className="sticky top-0 z-50 border-b border-ring clean-links">
-      {/* Barre colorée */}
       <div className="h-1 w-full brand-gradient" />
 
-      {/* LIGNE HAUTE */}
       <div className="bg-bg/80 supports-[backdrop-filter]:backdrop-blur">
         <div className="mx-auto max-w-6xl px-4 py-3">
-          {/* TOP BAR (logo / search / account) */}
           <div className="flex items-center gap-3">
-            {/* Logo */}
             <Link href="/" className="shrink-0" aria-label="Accueil">
               <Logo />
             </Link>
 
-            {/* Search - Desktop only */}
             <div className="hidden lg:flex flex-1 justify-center">
               <form action="/search" className="w-full max-w-[640px]">
                 <div className="relative">
@@ -157,7 +152,6 @@ export default function Header() {
               </form>
             </div>
 
-            {/* Actions right */}
             <div className="ml-auto flex items-center gap-2">
               {status === "loading" ? (
                 <div className="h-9 w-24 rounded-lg bg-muted animate-pulse" />
@@ -188,7 +182,6 @@ export default function Header() {
                 </button>
               )}
 
-              {/* Hamburger - mobile only */}
               <button
                 type="button"
                 className="lg:hidden inline-flex items-center justify-center h-10 w-10 rounded-xl border border-ring bg-white hover:bg-muted"
@@ -200,7 +193,6 @@ export default function Header() {
             </div>
           </div>
 
-          {/* Search - Mobile only */}
           <div className="mt-3 lg:hidden">
             <form action="/search">
               <div className="relative">
@@ -222,10 +214,8 @@ export default function Header() {
         </div>
       </div>
 
-      {/* LIGNE BASSE : menu */}
       <div className="bg-white border-t border-ring">
         <div className="mx-auto max-w-6xl px-4 py-2">
-          {/* Desktop menu */}
           <nav className="hidden lg:block">
             <div className="flex items-center gap-1">
               <Link href="/pages" className={navLinkClass(Boolean(pathname?.startsWith("/pages")))}>
@@ -233,7 +223,7 @@ export default function Header() {
               </Link>
 
               {topLevel.map((n) => {
-                const href = `/c/${n.slug}`;
+                const href = `/${n.slug}`;
                 const active = Boolean(pathname?.startsWith(href));
                 const hasChildren = (n.children?.length ?? 0) > 0;
 
@@ -245,7 +235,6 @@ export default function Header() {
                   );
                 }
 
-                // Dropdown (hover) pour enfants + petits-enfants
                 return (
                   <div key={n.id} className="relative group">
                     <Link href={href} className={navLinkClass(active)} aria-haspopup="menu">
@@ -257,7 +246,7 @@ export default function Header() {
                         <div className="grid grid-cols-2 gap-2">
                           {n.children.map((c) => (
                             <div key={c.id} className="rounded-xl border border-ring/60 p-3 hover:bg-muted/40">
-                              <Link href={`/c/${c.slug}`} className="font-semibold text-sm text-ink hover:underline">
+                              <Link href={`/${c.slug}`} className="font-semibold text-sm text-ink hover:underline">
                                 {c.name}
                               </Link>
 
@@ -266,7 +255,7 @@ export default function Header() {
                                   {c.children.slice(0, 6).map((g) => (
                                     <li key={g.id}>
                                       <Link
-                                        href={`/c/${g.slug}`}
+                                        href={`/${g.slug}`}
                                         className="text-sm text-slate-600 hover:text-ink hover:underline"
                                       >
                                         {g.name}
@@ -289,17 +278,13 @@ export default function Header() {
             </div>
           </nav>
 
-          {/* Mobile hint */}
           <div className="lg:hidden text-xs text-slate-500">Menu : utilisez le bouton ☰</div>
         </div>
       </div>
 
-      {/* MOBILE DRAWER */}
       {mobileOpen ? (
         <div className="lg:hidden">
-          {/* overlay */}
           <div className="fixed inset-0 bg-black/40 z-50" onClick={() => setMobileOpen(false)} />
-          {/* panel */}
           <div className="fixed top-0 right-0 h-full w-[86%] max-w-sm bg-white z-50 border-l border-ring shadow-card">
             <div className="flex items-center justify-between px-4 py-3 border-b border-ring">
               <span className="text-sm font-semibold text-slate-800">Menu</span>
@@ -353,7 +338,7 @@ export default function Header() {
 
                   if (!hasChildren) {
                     return (
-                      <Link key={n.id} href={`/c/${n.slug}`} className={`block ${navLinkClass(active)}`}>
+                      <Link key={n.id} href={`/${n.slug}`} className={`block ${navLinkClass(active)}`}>
                         {n.name}
                       </Link>
                     );
@@ -364,10 +349,8 @@ export default function Header() {
                     <div key={n.id} className="rounded-xl border border-ring/70 overflow-hidden">
                       <div className="flex items-center">
                         <Link
-                          href={`/c/${n.slug}`}
-                          className={`flex-1 px-3 py-2 text-sm font-medium ${
-                            active ? "bg-brand-500/15" : "bg-white"
-                          }`}
+                          href={`/${n.slug}`}
+                          className={`flex-1 px-3 py-2 text-sm font-medium ${active ? "bg-brand-500/15" : "bg-white"}`}
                         >
                           {n.name}
                         </Link>
@@ -387,7 +370,7 @@ export default function Header() {
                           <ul className="space-y-1">
                             {n.children.map((c) => (
                               <li key={c.id}>
-                                <Link href={`/c/${c.slug}`} className="block py-1 text-sm text-ink hover:underline">
+                                <Link href={`/${c.slug}`} className="block py-1 text-sm text-ink hover:underline">
                                   {c.name}
                                 </Link>
 
@@ -396,7 +379,7 @@ export default function Header() {
                                     {c.children.map((g) => (
                                       <li key={g.id}>
                                         <Link
-                                          href={`/c/${g.slug}`}
+                                          href={`/${g.slug}`}
                                           className="block py-0.5 text-sm text-slate-600 hover:text-ink hover:underline"
                                         >
                                           {g.name}
