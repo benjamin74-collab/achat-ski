@@ -1,4 +1,5 @@
 // src/app/admin/tests/new/page.tsx
+import Link from "next/link";
 import { prisma } from "@/lib/prisma";
 import NewTestForm from "../partials/NewTestForm";
 
@@ -20,9 +21,10 @@ export default async function NewTestAdminPage() {
             produit existant.
           </p>
         </div>
-        <a href="/admin/tests" className="btn-outline text-sm">
+
+        <Link href="/admin/tests" className="btn-outline text-sm">
           ← Retour à la liste des tests
-        </a>
+        </Link>
       </header>
 
       {/* Intro */}

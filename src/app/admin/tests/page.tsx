@@ -1,4 +1,5 @@
 // src/app/admin/tests/page.tsx
+import Link from "next/link";
 import { prisma } from "@/lib/prisma";
 import { approveTest, rejectTest, deleteTest } from "@/app/actions/tests";
 
@@ -57,14 +58,14 @@ export default async function TestsAdminPage() {
         <div className="text-xs text-slate-500">
           Produit : {productLabel} ·{" "}
           {t.product?.slug ? (
-            <a
+            <Link
               className="underline"
               href={`/p/${t.product.slug}`}
               target="_blank"
               rel="noreferrer"
             >
               voir
-            </a>
+            </Link>
           ) : (
             "—"
           )}
@@ -133,9 +134,10 @@ export default async function TestsAdminPage() {
             Liste des tests liés aux produits. Tu peux modérer les tests existants ou en créer de nouveaux.
           </p>
         </div>
-        <a href="/admin/tests/new" className="btn">
+
+        <Link href="/admin/tests/new" className="btn">
           + Ajouter un test
-        </a>
+        </Link>
       </header>
 
       {totalCount === 0 && (
