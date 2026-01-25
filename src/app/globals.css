@@ -1,207 +1,77 @@
-@import "tailwindcss";
+/* Fallbacks (si pas de variables injectées) */
+:root {
+  --primary: 28 143 255;
+  --secondary: 255 106 0;
+  --accent: 0 219 135;
+
+  --background: 255 255 255;
+  --foreground: 15 23 42;
+
+  --muted: 245 247 251;
+  --muted-foreground: 107 114 128;
+
+  --border: 229 231 235;
+}
 
 /* ---------------------------------------------------
-   Tailwind v4 — Design tokens
-   - Primary : bleu électrique
-   - Secondary : orange punchy
-   - Accent : vert “glacier”
-   - Fond clair, UI punchy
+   Tailwind v4 — Design tokens (multi-sites)
+   Tout est dérivé des variables injectées dans <html>.
 ---------------------------------------------------- */
 @theme {
   /* Surface & texte */
-  --color-bg:       #0d1229; /* optionnel pour sections sombres ciblées */
-  --color-surface:  #ffffff; /* cartes/blocs */
-  --color-muted:    #f5f7fb; /* surfaces secondaires (fond page) */
-  --color-ring:     #e5e7eb; /* bordures */
-  --color-ink:      #111827; /* textes sur surface claire */
-  --color-text:     #0f172a; /* alias texte */
+  --color-bg: rgb(var(--foreground));                 /* sections sombres ciblées */
+  --color-surface: rgb(var(--background));            /* cartes/blocs */
+  --color-muted: rgb(var(--muted));                   /* fond page */
+  --color-ring: rgb(var(--border));                   /* bordures */
+  --color-ink: rgb(var(--foreground));                /* texte principal */
+  --color-text: rgb(var(--foreground));
 
-  /* Primary (bleu électrique) */
-  --color-brand-50:  #eef7ff;
-  --color-brand-100: #d9edff;
-  --color-brand-200: #b3dcff;
-  --color-brand-300: #85c4ff;
-  --color-brand-400: #4fa6ff;
-  --color-brand-500: #1c8fff; /* principal */
-  --color-brand-600: #0074e6;
-  --color-brand-700: #005cbc;
-  --color-brand-800: #004b98;
-  --color-brand-900: #003a73;
+  /* Primary -> brand */
+  --color-brand-50:  color-mix(in srgb, rgb(var(--primary)) 10%, white);
+  --color-brand-100: color-mix(in srgb, rgb(var(--primary)) 18%, white);
+  --color-brand-200: color-mix(in srgb, rgb(var(--primary)) 30%, white);
+  --color-brand-300: color-mix(in srgb, rgb(var(--primary)) 45%, white);
+  --color-brand-400: color-mix(in srgb, rgb(var(--primary)) 65%, white);
+  --color-brand-500: rgb(var(--primary));
+  --color-brand-600: color-mix(in srgb, rgb(var(--primary)) 85%, black);
+  --color-brand-700: color-mix(in srgb, rgb(var(--primary)) 72%, black);
+  --color-brand-800: color-mix(in srgb, rgb(var(--primary)) 60%, black);
+  --color-brand-900: color-mix(in srgb, rgb(var(--primary)) 48%, black);
 
-  /* Secondary (orange punchy) */
-  --color-sec-50:  #fff2e6;
-  --color-sec-100: #ffe4cc;
-  --color-sec-200: #ffc699;
-  --color-sec-300: #ffa266;
-  --color-sec-400: #ff7f33;
-  --color-sec-500: #ff6a00; /* accent orange */
-  --color-sec-600: #e05d00;
-  --color-sec-700: #b94c00;
-  --color-sec-800: #8f3c00;
-  --color-sec-900: #6e2f00;
+  /* Secondary -> sec */
+  --color-sec-50:  color-mix(in srgb, rgb(var(--secondary)) 10%, white);
+  --color-sec-100: color-mix(in srgb, rgb(var(--secondary)) 18%, white);
+  --color-sec-200: color-mix(in srgb, rgb(var(--secondary)) 30%, white);
+  --color-sec-300: color-mix(in srgb, rgb(var(--secondary)) 45%, white);
+  --color-sec-400: color-mix(in srgb, rgb(var(--secondary)) 65%, white);
+  --color-sec-500: rgb(var(--secondary));
+  --color-sec-600: color-mix(in srgb, rgb(var(--secondary)) 85%, black);
+  --color-sec-700: color-mix(in srgb, rgb(var(--secondary)) 72%, black);
+  --color-sec-800: color-mix(in srgb, rgb(var(--secondary)) 60%, black);
+  --color-sec-900: color-mix(in srgb, rgb(var(--secondary)) 48%, black);
 
-  /* Accent (vert glacier) */
-  --color-accent-50:  #ebfff6;
-  --color-accent-100: #c8ffe7;
-  --color-accent-200: #94ffd2;
-  --color-accent-300: #56ffbb;
-  --color-accent-400: #1afaa2;
-  --color-accent-500: #00db87; /* vert bouton/labels */
-  --color-accent-600: #00b873;
-  --color-accent-700: #00955f;
-  --color-accent-800: #00754c;
-  --color-accent-900: #055b3c;
+  /* Accent -> accent */
+  --color-accent-50:  color-mix(in srgb, rgb(var(--accent)) 10%, white);
+  --color-accent-100: color-mix(in srgb, rgb(var(--accent)) 18%, white);
+  --color-accent-200: color-mix(in srgb, rgb(var(--accent)) 30%, white);
+  --color-accent-300: color-mix(in srgb, rgb(var(--accent)) 45%, white);
+  --color-accent-400: color-mix(in srgb, rgb(var(--accent)) 65%, white);
+  --color-accent-500: rgb(var(--accent));
+  --color-accent-600: color-mix(in srgb, rgb(var(--accent)) 85%, black);
+  --color-accent-700: color-mix(in srgb, rgb(var(--accent)) 72%, black);
+  --color-accent-800: color-mix(in srgb, rgb(var(--accent)) 60%, black);
+  --color-accent-900: color-mix(in srgb, rgb(var(--accent)) 48%, black);
 
   /* States */
-  --color-success: #00b873;
-  --color-warning: #ff9a3c;
+  --color-success: rgb(var(--accent));
+  --color-warning: rgb(var(--secondary));
   --color-danger:  #ef4444;
 
-  /* Radii & shadows */
+  /* Radii & shadows (inchangés) */
   --radius-lg:  0.75rem;
   --radius-xl:  1rem;
   --radius-2xl: 1.25rem;
 
   --shadow-card:  0 14px 30px rgba(9, 12, 29, .10);
   --shadow-brand: 0 10px 28px rgba(28,143,255,.35);
-}
-
-/* -------------------------------
-   Base
--------------------------------- */
-@layer base {
-  /* ✅ fond clair “magazine” */
-  html, body { @apply bg-muted text-ink antialiased; }
-  a { @apply text-brand-600 hover:text-brand-500 underline-offset-2 hover:underline; }
-  h1, h2, h3 { @apply text-ink; }
-}
-
-/* -------------------------------
-   Composants génériques
--------------------------------- */
-@layer components {
-  .container-page { @apply mx-auto max-w-6xl px-4; }
-
-  .card { @apply rounded-2xl bg-surface shadow-card border border-ring; }
-
-  .chip { @apply inline-flex items-center gap-1 rounded-full border border-ring bg-muted px-3 py-1 text-xs text-ink; }
-
-  .btn {
-    @apply inline-flex items-center justify-center gap-2 rounded-xl px-4 py-2 text-sm font-semibold transition;
-    @apply bg-brand-500 text-white hover:bg-brand-600 shadow-brand;
-  }
-  .btn-secondary {
-    @apply inline-flex items-center justify-center gap-2 rounded-xl px-4 py-2 text-sm font-semibold transition;
-    @apply bg-sec-500 text-white hover:bg-sec-600;
-  }
-  .btn-accent {
-    @apply inline-flex items-center justify-center gap-2 rounded-xl px-4 py-2 text-sm font-semibold transition;
-    @apply bg-accent-500 text-white hover:bg-accent-600;
-  }
-  .btn-outline {
-    @apply inline-flex items-center justify-center gap-2 rounded-xl px-4 py-2 text-sm font-medium transition;
-    @apply border border-ring bg-white text-ink hover:bg-muted;
-  }
-
-  .pill { @apply inline-flex items-center rounded-full px-3 py-1 text-xs font-medium; }
-  .pill-brand  { @apply bg-brand-500/15 text-brand-700; }
-  .pill-sec    { @apply bg-sec-500/15 text-sec-700; }
-  .pill-accent { @apply bg-accent-500/15 text-accent-700; }
-
-  .brand-gradient {
-    background: linear-gradient(100deg, var(--color-brand-500) 0%, var(--color-sec-500) 55%, var(--color-accent-500) 100%);
-  }
-}
-
-/* -------------------------------
-   Sections communes
--------------------------------- */
-.section-hero {
-  background:
-    radial-gradient(1200px 500px at 10% -20%, rgba(28,143,255,.18), transparent 60%),
-    radial-gradient(1200px 500px at 90% -30%, rgba(255,106,0,.16), transparent 60%),
-    linear-gradient(180deg, #ffffff 0%, #f5f7fb 100%);
-}
-
-/* -------------------------------
-   Prose (descriptions produit)
-   - Fallback simple sans plugin
--------------------------------- */
-.prose {
-  color: var(--color-ink);
-  line-height: 1.7;
-}
-.prose p { margin: 0.6rem 0; }
-.prose h2 { margin-top: 1.2rem; margin-bottom: 0.4rem; font-weight: 700; font-size: 1.125rem; }
-.prose a { color: var(--color-sec-600); text-decoration: underline; }
-.prose ul { list-style: disc; padding-left: 1.25rem; margin: 0.6rem 0; }
-.prose ol { list-style: decimal; padding-left: 1.25rem; margin: 0.6rem 0; }
-.prose code { background: #f3f4f6; padding: 0.15rem 0.35rem; border-radius: 0.375rem; }
-
-/* Titres foncés dans les cartes claires */
-.card h1, .card h2, .card h3, .card h4 { @apply text-ink; }
-
-/* Cards admin (sections) */
-.card {
-  @apply rounded-2xl border border-slate-200 bg-white p-4 md:p-5 shadow-sm;
-}
-.section-title {
-  @apply text-sm font-semibold text-slate-700 mb-3;
-}
-
-/* Inputs : contraste léger + focus clair */
-.input {
-  @apply w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900
-         placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-brand-500/60;
-}
-
-/* Boutons */
-.btn {
-  @apply inline-flex items-center gap-2 rounded-xl bg-brand-600 px-4 py-2 text-sm text-white hover:bg-brand-700;
-}
-.btn-outline {
-  @apply inline-flex items-center gap-2 rounded-xl border border-slate-300 bg-white px-3 py-1.5 text-sm text-slate-700 hover:bg-slate-50;
-}
-.btn-sm { @apply px-2.5 py-1 text-xs rounded-lg; }
-.btn-xs { @apply px-2 py-0.5 text-xs rounded-md; }
-
-/* Prose dans l’éditeur (WYSIWYG) */
-.prose {
-  @apply leading-relaxed;
-}
-
-/* ---------------------------------
-   WYSIWYG – styles de prévisualisation
----------------------------------- */
-.editor-prose p {
-  @apply text-sm;
-}
-
-.editor-prose h2 {
-  @apply mt-4 mb-2 text-lg md:text-xl font-semibold;
-}
-
-.editor-prose h3 {
-  @apply mt-3 mb-1.5 text-base md:text-lg font-semibold;
-}
-
-.editor-prose h4 {
-  @apply mt-2.5 mb-1 text-sm md:text-base font-semibold;
-}
-
-.editor-prose ul,
-.editor-prose ol {
-  @apply text-sm;
-}
-/* ---------------------------------
-   Liens sans soulignement (zones UI)
-   - Header, menu, footer, listes de marques...
-   - Ne touche pas aux liens du contenu (prose)
----------------------------------- */
-.clean-links a {
-  text-decoration: none !important;
-}
-.clean-links a:hover,
-.clean-links a:focus-visible {
-  text-decoration: none !important;
 }
