@@ -17,12 +17,9 @@ export const metadata: Metadata = {
   metadataBase: new URL(siteUrl),
   title: "Meilleur-ski — Comparez les prix du matos de ski",
   description: "Comparez les prix des skis, fixations et chaussures chez nos marchands partenaires.",
-
-  // ✅ Remplace <meta name="robots" ... />
   robots: { index: false, follow: false },
 };
 
-// ✅ Remplace <meta name="viewport" ... />
 export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
@@ -54,8 +51,8 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   };
 
   return (
-    <html lang="fr" style={cssVars}>
-      <body className="min-h-screen bg-white text-ink antialiased">
+    <html lang="fr" style={cssVars} suppressHydrationWarning>
+      <body className="min-h-screen bg-white text-ink antialiased" suppressHydrationWarning>
         <Providers>
           <Header />
           <main className="container-page py-6">{children}</main>
