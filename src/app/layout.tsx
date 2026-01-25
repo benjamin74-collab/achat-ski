@@ -1,5 +1,5 @@
 // src/app/layout.tsx
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import "./globals.css";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
@@ -17,6 +17,15 @@ export const metadata: Metadata = {
   metadataBase: new URL(siteUrl),
   title: "Meilleur-ski — Comparez les prix du matos de ski",
   description: "Comparez les prix des skis, fixations et chaussures chez nos marchands partenaires.",
+
+  // ✅ Remplace <meta name="robots" ... />
+  robots: { index: false, follow: false },
+};
+
+// ✅ Remplace <meta name="viewport" ... />
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
 };
 
 type CSSVars = React.CSSProperties & Record<`--${string}`, string>;
@@ -34,7 +43,6 @@ function hexToRgbTriplet(hex: string): string {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   const cssVars: CSSVars = {
-    // ✅ RGB triplets (pour Tailwind + opacités)
     "--primary": hexToRgbTriplet(siteConfig.colors.primary),
     "--secondary": hexToRgbTriplet(siteConfig.colors.secondary),
     "--accent": hexToRgbTriplet(siteConfig.colors.accent),
@@ -43,19 +51,10 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     "--muted": hexToRgbTriplet(siteConfig.colors.muted),
     "--muted-foreground": hexToRgbTriplet(siteConfig.colors.mutedForeground),
     "--border": hexToRgbTriplet(siteConfig.colors.border),
-
-    // (optionnel debug)
-    "--site-id": `"${siteConfig.id}"`,
   };
 
   return (
     <html lang="fr" style={cssVars}>
-      <head>
-        {/* Empêche l'indexation tant que le site n’est pas finalisé */}
-        <meta name="robots" content="noindex, nofollow" />
-        <meta name="viewport" content="width=device-width, initial-scale=1" />
-        <meta charSet="utf-8" />
-      </head>
       <body className="min-h-screen bg-white text-ink antialiased">
         <Providers>
           <Header />
