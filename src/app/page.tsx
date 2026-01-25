@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { ArrowRight } from "lucide-react";
 import { prisma } from "@/lib/prisma";
+import { getSiteConfig } from "@/config/site";
 
 export const revalidate = 300;
 
@@ -53,9 +54,8 @@ const categoryTiles: CategoryTile[] = [
 ];
 
 export default async function HomePage() {
-  const site =
-    process.env.NEXT_PUBLIC_SITE_URL?.replace(/\/+$/, "") ??
-    (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : "https://meilleur-ski.com");
+  const siteConfig = getSiteConfig();
+  const site = siteConfig.domain.replace(/\/+$/, "");
 
   const homeJsonLd = {
     "@context": "https://schema.org",
@@ -63,14 +63,14 @@ export default async function HomePage() {
       {
         "@type": "Organization",
         "@id": `${site}/#organization`,
-        name: "Meilleur-ski",
+        name: siteConfig.name,
         url: site,
       },
       {
         "@type": "WebSite",
         "@id": `${site}/#website`,
         url: site,
-        name: "Meilleur-ski",
+        name: siteConfig.name,
         publisher: { "@id": `${site}/#organization` },
         potentialAction: {
           "@type": "SearchAction",
@@ -125,7 +125,7 @@ export default async function HomePage() {
 
   return (
     <main className="pb-20">
-      <link rel="canonical" href={`${site}/`} />
+      {/* ✅ JSON-LD OK dans le body */}
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(homeJsonLd) }} />
 
       {/* ---------------- HERO (sans search) ---------------- */}
@@ -195,8 +195,6 @@ export default async function HomePage() {
           ))}
         </ul>
       </section>
-
-      {/* ... le reste inchangé ... */}
 
       {/* ---------------- DERNIERS GUIDES ---------------- */}
       <section className="mt-14 md:mt-18 container-page">
