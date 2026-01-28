@@ -38,6 +38,26 @@ function hexToRgbTriplet(hex: string): string {
   return `${r} ${g} ${b}`;
 }
 
+type Branding = {
+  name?: string;
+  tagline?: string;
+  logo?: { src?: string };
+};
+
+function getBranding(cfg: unknown): Required<Pick<Branding, "name" | "tagline">> & { logoSrc: string } {
+  const fallback = { name: "Meilleur Ski", tagline: "Comparer & gagner", logoSrc: "" };
+
+  if (!cfg || typeof cfg !== "object") return fallback;
+
+  const b = cfg as Branding;
+
+  const name = typeof b.name === "string" && b.name.trim() ? b.name : fallback.name;
+  const tagline = typeof b.tagline === "string" && b.tagline.trim() ? b.tagline : fallback.tagline;
+  const logoSrc = typeof b.logo?.src === "string" ? b.logo.src : fallback.logoSrc;
+
+  return { name, tagline, logoSrc };
+}
+
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   const cssVars: CSSVars = {
     "--primary": hexToRgbTriplet(siteConfig.colors.primary),
@@ -50,10 +70,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     "--border": hexToRgbTriplet(siteConfig.colors.border),
   };
 
-  // ✅ Valeurs transmises au client via <html data-*>
-  const siteName = (siteConfig as any).name ?? "Meilleur Ski";
-  const siteTagline = (siteConfig as any).tagline ?? "Comparer & gagner";
-  const siteLogo = (siteConfig as any).logo?.src ?? ""; // exemple: "/logos/meilleur-ski.svg"
+  const branding = getBranding(siteConfig);
 
   return (
     <html
@@ -61,9 +78,9 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       style={cssVars}
       suppressHydrationWarning
       data-site-id={siteConfig.id}
-      data-site-name={siteName}
-      data-site-tagline={siteTagline}
-      data-site-logo={siteLogo}
+      data-site-name={branding.name}
+      data-site-tagline={branding.tagline}
+      data-site-logo={branding.logoSrc}
     >
       <body className="min-h-screen bg-white text-ink antialiased" suppressHydrationWarning>
         <Providers>
