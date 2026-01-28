@@ -6,6 +6,7 @@ import Footer from "@/components/Footer";
 import Providers from "@/components/Providers";
 import { getSiteConfig } from "@/config/site";
 import type { SiteConfig } from "@/config/site.types";
+import { getFontClasses, getFontFamilyVar } from "@/config/fonts";
 
 const siteConfig = getSiteConfig();
 
@@ -50,6 +51,7 @@ function getBranding(cfg: SiteConfig): { name: string; tagline: string; logoSrc:
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   const cssVars: CSSVars = {
+    // ✅ couleurs
     "--primary": hexToRgbTriplet(siteConfig.colors.primary),
     "--secondary": hexToRgbTriplet(siteConfig.colors.secondary),
     "--accent": hexToRgbTriplet(siteConfig.colors.accent),
@@ -58,13 +60,21 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     "--muted": hexToRgbTriplet(siteConfig.colors.muted),
     "--muted-foreground": hexToRgbTriplet(siteConfig.colors.mutedForeground),
     "--border": hexToRgbTriplet(siteConfig.colors.border),
+
+    // ✅ fonts (tokens)
+    "--font-sans": getFontFamilyVar(siteConfig.fonts.sans),
+    "--font-display": getFontFamilyVar(siteConfig.fonts.display),
   };
 
   const branding = getBranding(siteConfig);
 
+  // ✅ active seulement les fonts nécessaires (pool limité)
+  const fontClasses = getFontClasses([siteConfig.fonts.sans, siteConfig.fonts.display]);
+
   return (
     <html
       lang="fr"
+      className={fontClasses}
       style={cssVars}
       suppressHydrationWarning
       data-site-id={siteConfig.id}
