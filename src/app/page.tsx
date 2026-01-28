@@ -12,7 +12,7 @@ type CategoryTile = {
   title: string;
   desc: string;
   cta: string;
-  img: string; // chemin dans /public
+  img: string;
 };
 
 const categoryTiles: CategoryTile[] = [
@@ -96,39 +96,17 @@ export default async function HomePage() {
   });
 
   const topBrands = [
-    {
-      name: "Rossignol",
-      slug: "rossignol",
-      logo: "https://logos-marques.com/wp-content/uploads/2023/01/Rossignol-emblem.png",
-    },
-    {
-      name: "Salomon",
-      slug: "salomon",
-      logo: "https://upload.wikimedia.org/wikipedia/commons/8/8a/Salomon_group_logo.png",
-    },
-    {
-      name: "Head",
-      slug: "head",
-      logo: "https://www.head.com/HeadV2Logo-iGF.svg",
-    },
-    {
-      name: "Black Crows",
-      slug: "black-crows",
-      logo: "https://upload.wikimedia.org/wikipedia/commons/e/eb/Logo_Black_Crows.svg",
-    },
-    {
-      name: "Atomic",
-      slug: "atomic",
-      logo: "https://upload.wikimedia.org/wikipedia/commons/0/04/Atomic_ski_logo.png",
-    },
+    { name: "Rossignol", slug: "rossignol", logo: "https://logos-marques.com/wp-content/uploads/2023/01/Rossignol-emblem.png" },
+    { name: "Salomon", slug: "salomon", logo: "https://upload.wikimedia.org/wikipedia/commons/8/8a/Salomon_group_logo.png" },
+    { name: "Head", slug: "head", logo: "https://www.head.com/HeadV2Logo-iGF.svg" },
+    { name: "Black Crows", slug: "black-crows", logo: "https://upload.wikimedia.org/wikipedia/commons/e/eb/Logo_Black_Crows.svg" },
+    { name: "Atomic", slug: "atomic", logo: "https://upload.wikimedia.org/wikipedia/commons/0/04/Atomic_ski_logo.png" },
   ];
 
   return (
     <main className="pb-20">
-      {/* ✅ JSON-LD OK dans le body */}
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(homeJsonLd) }} />
 
-      {/* ---------------- HERO (sans search) ---------------- */}
       <section className="relative overflow-hidden py-14 md:py-20 text-center bg-gradient-to-b from-white to-muted/60">
         <div className="container-page relative z-10">
           <h1 className="text-3xl sm:text-4xl md:text-5xl font-bold leading-tight text-ink tracking-tight">
@@ -154,7 +132,6 @@ export default async function HomePage() {
         </div>
       </section>
 
-      {/* ---------------- CATEGORIES (vignettes) ---------------- */}
       <section id="categories" className="mt-12 md:mt-16 container-page">
         <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-2">
           <h2 className="text-xl sm:text-2xl font-bold text-ink">Catégories populaires</h2>
@@ -166,18 +143,9 @@ export default async function HomePage() {
         <ul className="mt-6 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
           {categoryTiles.map((c) => (
             <li key={c.slug} className="group">
-              <Link
-                href={`/${c.slug}`}
-                className="block card overflow-hidden hover:shadow-card transition"
-                aria-label={`Voir la catégorie ${c.title}`}
-              >
+              <Link href={`/${c.slug}`} className="block card overflow-hidden hover:shadow-card transition" aria-label={`Voir la catégorie ${c.title}`}>
                 <div className="relative aspect-[16/9] w-full bg-muted">
-                  {c.img ? (
-                    <img src={c.img} alt={c.title} className="h-full w-full object-cover" loading="lazy" />
-                  ) : (
-                    <div className="h-full w-full bg-gradient-to-br from-muted to-white" />
-                  )}
-
+                  <img src={c.img} alt={c.title} className="h-full w-full object-cover" loading="lazy" />
                   <div className="absolute inset-0 bg-gradient-to-t from-black/35 via-black/0 to-black/0" />
                 </div>
 
@@ -196,7 +164,6 @@ export default async function HomePage() {
         </ul>
       </section>
 
-      {/* ---------------- DERNIERS GUIDES ---------------- */}
       <section className="mt-14 md:mt-18 container-page">
         <div className="flex items-center justify-between gap-3">
           <h2 className="text-xl sm:text-2xl font-bold text-ink">Derniers guides</h2>
@@ -227,7 +194,6 @@ export default async function HomePage() {
         </ul>
       </section>
 
-      {/* ---------------- TOP MARQUES ---------------- */}
       <section className="mt-14 md:mt-18 container-page">
         <div className="flex items-center justify-between gap-3">
           <h2 className="text-xl sm:text-2xl font-bold text-ink">Top marques</h2>
@@ -239,12 +205,7 @@ export default async function HomePage() {
         <ul className="mt-5 grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-3 sm:gap-4">
           {topBrands.map((b) => (
             <li key={b.slug} className="group">
-              <Link
-                href={`/marques/${b.slug}`}
-                className="block rounded-2xl border border-ring bg-white p-4 sm:p-5 hover:shadow-card transition"
-                aria-label={`Voir la marque ${b.name}`}
-                title={b.name}
-              >
+              <Link href={`/marques/${b.slug}`} className="block rounded-2xl border border-ring bg-white p-4 sm:p-5 hover:shadow-card transition" aria-label={`Voir la marque ${b.name}`} title={b.name}>
                 <div className="aspect-[4/3] w-full overflow-hidden rounded-xl bg-muted/40 flex items-center justify-center">
                   <img src={b.logo} alt={b.name} className="max-h-14 sm:max-h-16 w-auto object-contain" loading="lazy" />
                 </div>
