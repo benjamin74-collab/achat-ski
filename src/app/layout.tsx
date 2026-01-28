@@ -5,6 +5,7 @@ import Header from "@/components/Header";
 import Footer from "@/components/Footer";
 import Providers from "@/components/Providers";
 import { getSiteConfig } from "@/config/site";
+import type { SiteConfig } from "@/config/site.types";
 
 const siteConfig = getSiteConfig();
 
@@ -38,24 +39,13 @@ function hexToRgbTriplet(hex: string): string {
   return `${r} ${g} ${b}`;
 }
 
-type Branding = {
-  name?: string;
-  tagline?: string;
-  logo?: { src?: string };
-};
-
-function getBranding(cfg: unknown): Required<Pick<Branding, "name" | "tagline">> & { logoSrc: string } {
-  const fallback = { name: "Meilleur Ski", tagline: "Comparer & gagner", logoSrc: "" };
-
-  if (!cfg || typeof cfg !== "object") return fallback;
-
-  const b = cfg as Branding;
-
-  const name = typeof b.name === "string" && b.name.trim() ? b.name : fallback.name;
-  const tagline = typeof b.tagline === "string" && b.tagline.trim() ? b.tagline : fallback.tagline;
-  const logoSrc = typeof b.logo?.src === "string" ? b.logo.src : fallback.logoSrc;
-
-  return { name, tagline, logoSrc };
+function getBranding(cfg: SiteConfig): { name: string; tagline: string; logoSrc: string; logoAlt: string } {
+  return {
+    name: cfg.name || "Meilleur Ski",
+    tagline: cfg.tagline || "Comparer & gagner",
+    logoSrc: cfg.brand?.logoSrc || "",
+    logoAlt: cfg.brand?.logoAlt || cfg.name || "Meilleur Ski",
+  };
 }
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
@@ -81,6 +71,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       data-site-name={branding.name}
       data-site-tagline={branding.tagline}
       data-site-logo={branding.logoSrc}
+      data-site-logo-alt={branding.logoAlt}
     >
       <body className="min-h-screen bg-white text-ink antialiased" suppressHydrationWarning>
         <Providers>
