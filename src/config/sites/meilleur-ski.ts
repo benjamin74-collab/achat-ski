@@ -5,6 +5,7 @@ export const meilleurSki: SiteConfig = {
   id: "meilleur-ski",
   name: "Meilleur Ski",
   domain: "https://meilleur-ski.com",
+  tagline: "Comparer & gagner",
 
   brand: {
     logoSrc: "/brands/meilleur-ski/logo.svg",

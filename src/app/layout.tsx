@@ -50,8 +50,21 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     "--border": hexToRgbTriplet(siteConfig.colors.border),
   };
 
+  // ✅ Valeurs transmises au client via <html data-*>
+  const siteName = (siteConfig as any).name ?? "Meilleur Ski";
+  const siteTagline = (siteConfig as any).tagline ?? "Comparer & gagner";
+  const siteLogo = (siteConfig as any).logo?.src ?? ""; // exemple: "/logos/meilleur-ski.svg"
+
   return (
-    <html lang="fr" style={cssVars} suppressHydrationWarning>
+    <html
+      lang="fr"
+      style={cssVars}
+      suppressHydrationWarning
+      data-site-id={siteConfig.id}
+      data-site-name={siteName}
+      data-site-tagline={siteTagline}
+      data-site-logo={siteLogo}
+    >
       <body className="min-h-screen bg-white text-ink antialiased" suppressHydrationWarning>
         <Providers>
           <Header />
