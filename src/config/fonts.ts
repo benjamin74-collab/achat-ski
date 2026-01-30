@@ -2,11 +2,11 @@
 import { Inter, Manrope, Plus_Jakarta_Sans } from "next/font/google";
 import type { FontKey } from "./site.types";
 
-// ✅ Pool limité = perf stable
+// ✅ Variables distinctes (important : ne jamais utiliser --font-sans ici)
 const inter = Inter({
   subsets: ["latin"],
   display: "swap",
-  variable: "--font-sans",
+  variable: "--font-inter",
 });
 
 const manrope = Manrope({
@@ -22,12 +22,12 @@ const plusJakarta = Plus_Jakarta_Sans({
 });
 
 /**
- * Retourne les classes à appliquer sur <html> ou <body>
- * pour activer les variables CSS des fonts.
+ * Classes à appliquer sur <html> pour activer les variables next/font.
+ * Inter toujours inclus (fallback “safe”).
  */
 export function getFontClasses(keys: FontKey[]): string {
   const set = new Set(keys);
-  const classes: string[] = [inter.variable]; // on garde Inter toujours dispo
+  const classes: string[] = [inter.variable];
 
   if (set.has("manrope")) classes.push(manrope.variable);
   if (set.has("plusJakarta")) classes.push(plusJakarta.variable);
@@ -36,17 +36,17 @@ export function getFontClasses(keys: FontKey[]): string {
 }
 
 /**
- * Map FontKey -> CSS font-family (via variables next/font)
- * On utilise Inter comme fallback sûr.
+ * Map FontKey -> font-family stack basé sur les variables next/font.
+ * Utilise Inter comme fallback.
  */
 export function getFontFamilyVar(key: FontKey): string {
   switch (key) {
     case "manrope":
-      return "var(--font-manrope), var(--font-sans), ui-sans-serif, system-ui";
+      return "var(--font-manrope), var(--font-inter), ui-sans-serif, system-ui";
     case "plusJakarta":
-      return "var(--font-plusjakarta), var(--font-sans), ui-sans-serif, system-ui";
+      return "var(--font-plusjakarta), var(--font-inter), ui-sans-serif, system-ui";
     case "inter":
     default:
-      return "var(--font-sans), ui-sans-serif, system-ui";
+      return "var(--font-inter), ui-sans-serif, system-ui";
   }
 }
