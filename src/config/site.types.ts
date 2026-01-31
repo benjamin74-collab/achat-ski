@@ -27,14 +27,56 @@ export type FontTokens = {
   display: FontKey; // font “titres”
 };
 
+export type HomeCta = {
+  label: string;
+  href: string;
+  variant?: "primary" | "outline" | "secondary" | "accent";
+};
+
+export type HomeTile = {
+  slug: string; // url interne => "/{slug}"
+  title: string;
+  desc: string;
+  cta: string;
+  img?: string; // chemin dans /public (ex: "/categories/xxx.jpg")
+};
+
+export type HomeBrand = {
+  name: string;
+  slug: string; // url interne => "/marques/{slug}" (ou autre selon ton site)
+  logo?: string; // url logo externe ou interne
+};
+
+export type HomeConfig = {
+  hero?: {
+    title: string;
+    highlight?: string; // mot/segment à surligner (optionnel)
+    subtitle?: string;
+    ctas?: HomeCta[];
+  };
+
+  sections?: {
+    // Permet de rendre les sites VRAIMENT différents sans dupliquer le code
+    categories?: boolean;
+    latestGuides?: boolean;
+    topBrands?: boolean;
+  };
+
+  categoryTiles?: HomeTile[];
+  topBrands?: HomeBrand[];
+};
+
 export type SiteConfig = {
   id: string; // ex: "meilleur-ski"
   name: string; // ex: "Meilleur Ski"
   domain: string; // ex: "https://meilleur-ski.com"
 
-  tagline?: string; // ✅ ex: "Comparer & gagner"
+  tagline?: string; // ex: "Comparer & gagner"
 
   brand: BrandTokens;
   colors: ColorTokens;
   fonts: FontTokens;
+
+  // ✅ Contenu home spécifique au site
+  home?: HomeConfig;
 };
