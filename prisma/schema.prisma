@@ -416,6 +416,56 @@ model ImportRun {
 
 /**
  * -----------------------------
+ * Paramétrage design sites
+ * ------------------------------
+ */
+model SiteSettings {
+  id     Int    @id @default(autoincrement())
+  siteId String @unique // "meilleur-ski" | "meilleur-robot" | etc.
+
+  // Branding
+  name       String?
+  tagline    String?
+  logoSrc    String?
+  logoAlt    String?
+  faviconSrc String?
+
+  // Colors tokens
+  primary          String
+  secondary        String
+  accent           String
+  background       String
+  foreground       String
+  muted            String
+  mutedForeground  String
+  border           String
+
+  // Fonts (keys)
+  fontSans    String
+  fontDisplay String
+
+  // Home / UI (JSON pour flexibilité)
+  heroTitle     String?
+  heroHighlight String?
+  heroSubtitle  String?
+  heroCtas      Json?  // [{label, href, variant}...]
+
+  showCategories   Boolean @default(true)
+  showLatestGuides Boolean @default(true)
+  showTopBrands    Boolean @default(true)
+
+  categoryTiles Json? // [{slug,title,desc,cta,img}...]
+  topBrands     Json? // [{name,slug,logo}...]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([siteId])
+}
+
+
+/**
+ * -----------------------------
  * MEDIA
  * ------------------------------
  */
