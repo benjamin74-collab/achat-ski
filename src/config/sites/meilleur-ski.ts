@@ -31,4 +31,66 @@ export const meilleurSki: SiteConfig = {
     sans: "inter",
     display: "manrope",
   },
+
+  home: {
+    hero: {
+      title: "Le comparateur des passionnés de ski",
+      highlight: "comparateur",
+      subtitle: "Comparez les prix, consultez les tests et les avis pour trouver le matériel parfait.",
+      ctas: [
+        { label: "Rechercher un modèle", href: "/search", variant: "primary" },
+        { label: "Explorer les catégories", href: "#categories", variant: "outline" },
+        { label: "Lire nos guides", href: "/pages", variant: "outline" },
+      ],
+    },
+    sections: {
+      categories: true,
+      latestGuides: true,
+      topBrands: true,
+    },
+    categoryTiles: [
+      {
+        slug: "skis-all-mountain",
+        title: "Skis All-Mountain",
+        desc: "Le meilleur compromis piste / hors-piste pour 80% des skieurs.",
+        cta: "Comparer les All-Mountain",
+        img: "/categories/skis-all-mountain.jpg",
+      },
+      {
+        slug: "skis-freeride",
+        title: "Skis Freeride",
+        desc: "Flottaison et stabilité : l’outil parfait quand il a neigé.",
+        cta: "Voir les Freeride",
+        img: "/categories/skis-freeride.jpg",
+      },
+      {
+        slug: "skis-rando",
+        title: "Skis de rando",
+        desc: "Léger à la montée, sûr à la descente : optimise ton set-up.",
+        cta: "Explorer la rando",
+        img: "/categories/skis-rando.jpg",
+      },
+      {
+        slug: "fixations",
+        title: "Fixations",
+        desc: "Alpine, rando, hybrides : compare les offres et la compatibilité.",
+        cta: "Comparer les fixations",
+        img: "/categories/fixations.jpg",
+      },
+      {
+        slug: "chaussures",
+        title: "Chaussures",
+        desc: "Confort et précision : le choix n°1 pour progresser.",
+        cta: "Trouver ses chaussures",
+        img: "/categories/chaussures.jpg",
+      },
+    ],
+    topBrands: [
+      { name: "Rossignol", slug: "rossignol", logo: "https://logos-marques.com/wp-content/uploads/2023/01/Rossignol-emblem.png" },
+      { name: "Salomon", slug: "salomon", logo: "https://upload.wikimedia.org/wikipedia/commons/8/8a/Salomon_group_logo.png" },
+      { name: "Head", slug: "head", logo: "https://www.head.com/HeadV2Logo-iGF.svg" },
+      { name: "Black Crows", slug: "black-crows", logo: "https://upload.wikimedia.org/wikipedia/commons/e/eb/Logo_Black_Crows.svg" },
+      { name: "Atomic", slug: "atomic", logo: "https://upload.wikimedia.org/wikipedia/commons/0/04/Atomic_ski_logo.png" },
+    ],
+  },
 };
