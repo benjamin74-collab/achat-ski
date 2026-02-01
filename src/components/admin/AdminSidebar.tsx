@@ -16,6 +16,7 @@ const NAV: Item[] = [
   { href: "/admin/brands", label: "Marques", desc: "Ajouter, modifier, supprimer" },
   { href: "/admin/pages", label: "Pages", desc: "Pages statiques / blog" },
   { href: "/admin/media", label: "Médiathèque", desc: "Uploader & gérer les images" },
+  { href: "/admin/design", label: "Design", desc: "Branding & homepage" },
   // on ajoutera “Menu builder” une fois la hiérarchie de catégories en place
 ];
 
