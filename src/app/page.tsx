@@ -4,55 +4,81 @@ import Link from "next/link";
 import { ArrowRight } from "lucide-react";
 import { prisma } from "@/lib/prisma";
 import { getSiteConfig } from "@/config/site";
-import type { HomeBrand, HomeCta, HomeTile } from "@/config/site.types";
 
 export const revalidate = 300;
 
-function ctaClass(variant?: HomeCta["variant"]) {
-  switch (variant) {
-    case "outline":
-      return "btn-outline";
-    case "secondary":
-      return "btn-secondary";
-    case "accent":
-      return "btn-accent";
-    case "primary":
-    default:
-      return "btn";
+type CategoryTile = {
+  slug: string;
+  title: string;
+  desc: string;
+  cta: string;
+  img: string;
+};
+
+type TopBrand = {
+  name: string;
+  slug: string;
+  logo: string;
+};
+
+function isString(v: unknown): v is string {
+  return typeof v === "string";
+}
+function isBool(v: unknown): v is boolean {
+  return typeof v === "boolean";
+}
+function isArray(v: unknown): v is unknown[] {
+  return Array.isArray(v);
+}
+
+function parseCategoryTiles(v: unknown, fallback: CategoryTile[]): CategoryTile[] {
+  if (!isArray(v)) return fallback;
+  const out: CategoryTile[] = [];
+  for (const item of v) {
+    if (typeof item !== "object" || item === null) continue;
+    const o = item as Record<string, unknown>;
+    if (
+      isString(o.slug) &&
+      isString(o.title) &&
+      isString(o.desc) &&
+      isString(o.cta) &&
+      isString(o.img)
+    ) {
+      out.push({ slug: o.slug, title: o.title, desc: o.desc, cta: o.cta, img: o.img });
+    }
   }
+  return out.length ? out : fallback;
+}
+
+function parseTopBrands(v: unknown, fallback: TopBrand[]): TopBrand[] {
+  if (!isArray(v)) return fallback;
+  const out: TopBrand[] = [];
+  for (const item of v) {
+    if (typeof item !== "object" || item === null) continue;
+    const o = item as Record<string, unknown>;
+    if (isString(o.name) && isString(o.slug) && isString(o.logo)) {
+      out.push({ name: o.name, slug: o.slug, logo: o.logo });
+    }
+  }
+  return out.length ? out : fallback;
 }
 
 export default async function HomePage() {
   const siteConfig = getSiteConfig();
   const site = siteConfig.domain.replace(/\/+$/, "");
-  const home = siteConfig.home;
 
-  const homeJsonLd = {
-    "@context": "https://schema.org",
-    "@graph": [
-      {
-        "@type": "Organization",
-        "@id": `${site}/#organization`,
-        name: siteConfig.name,
-        url: site,
-      },
-      {
-        "@type": "WebSite",
-        "@id": `${site}/#website`,
-        url: site,
-        name: siteConfig.name,
-        publisher: { "@id": `${site}/#organization` },
-        potentialAction: {
-          "@type": "SearchAction",
-          target: `${site}/search?q={search_term_string}`,
-          "query-input": "required name=search_term_string",
-        },
-      },
-    ],
-  };
+  // ✅ Chargement DB (par site)
+  const settings = await prisma.siteSettings.findUnique({
+    where: { siteId: siteConfig.id },
+  });
 
-  // ---- Defaults (fallback) : ton contenu “ski” actuel ----
-  const defaultTiles: HomeTile[] = [
+  // ------------------- Fallbacks "ski" (si pas de settings DB) -------------------
+  const fallbackHeroTitle = "Le comparateur des passionnés de ski";
+  const fallbackHeroHighlight = "comparateur";
+  const fallbackHeroSubtitle =
+    "Comparez les prix, consultez les tests et les avis pour trouver le matériel parfait.";
+
+  const fallbackCategoryTiles: CategoryTile[] = [
     {
       slug: "skis-all-mountain",
       title: "Skis All-Mountain",
@@ -90,52 +116,85 @@ export default async function HomePage() {
     },
   ];
 
-  const defaultTopBrands: HomeBrand[] = [
-    { name: "Rossignol", slug: "rossignol", logo: "https://logos-marques.com/wp-content/uploads/2023/01/Rossignol-emblem.png" },
-    { name: "Salomon", slug: "salomon", logo: "https://upload.wikimedia.org/wikipedia/commons/8/8a/Salomon_group_logo.png" },
-    { name: "Head", slug: "head", logo: "https://www.head.com/HeadV2Logo-iGF.svg" },
-    { name: "Black Crows", slug: "black-crows", logo: "https://upload.wikimedia.org/wikipedia/commons/e/eb/Logo_Black_Crows.svg" },
-    { name: "Atomic", slug: "atomic", logo: "https://upload.wikimedia.org/wikipedia/commons/0/04/Atomic_ski_logo.png" },
+  const fallbackTopBrands: TopBrand[] = [
+    {
+      name: "Rossignol",
+      slug: "rossignol",
+      logo: "https://logos-marques.com/wp-content/uploads/2023/01/Rossignol-emblem.png",
+    },
+    {
+      name: "Salomon",
+      slug: "salomon",
+      logo: "https://upload.wikimedia.org/wikipedia/commons/8/8a/Salomon_group_logo.png",
+    },
+    {
+      name: "Head",
+      slug: "head",
+      logo: "https://www.head.com/HeadV2Logo-iGF.svg",
+    },
+    {
+      name: "Black Crows",
+      slug: "black-crows",
+      logo: "https://upload.wikimedia.org/wikipedia/commons/e/eb/Logo_Black_Crows.svg",
+    },
+    {
+      name: "Atomic",
+      slug: "atomic",
+      logo: "https://upload.wikimedia.org/wikipedia/commons/0/04/Atomic_ski_logo.png",
+    },
   ];
 
-  // ---- Hero config ----
-  const heroTitle = home?.hero?.title ?? `Le comparateur des passionnés de ski`;
-  const heroHighlight = home?.hero?.highlight ?? "comparateur";
-  const heroSubtitle =
-    home?.hero?.subtitle ?? "Comparez les prix, consultez les tests et les avis pour trouver le matériel parfait.";
+  // ------------------- Valeurs finales (DB -> fallback) -------------------
+  const heroTitle = settings?.heroTitle ?? fallbackHeroTitle;
+  const heroHighlight = settings?.heroHighlight ?? fallbackHeroHighlight;
+  const heroSubtitle = settings?.heroSubtitle ?? fallbackHeroSubtitle;
 
-  const heroCtas: HomeCta[] =
-    home?.hero?.ctas ?? [
-      { label: "Rechercher un modèle", href: "/search", variant: "primary" },
-      { label: "Explorer les catégories", href: "#categories", variant: "outline" },
-      { label: "Lire nos guides", href: "/pages", variant: "outline" },
-    ];
+  const showCategories = isBool(settings?.showCategories) ? settings!.showCategories : true;
+  const showLatestGuides = isBool(settings?.showLatestGuides) ? settings!.showLatestGuides : true;
+  const showTopBrands = isBool(settings?.showTopBrands) ? settings!.showTopBrands : true;
 
-  // ---- Sections toggles ----
-  const showCategories = home?.sections?.categories ?? true;
-  const showLatestGuides = home?.sections?.latestGuides ?? true;
-  const showTopBrands = home?.sections?.topBrands ?? true;
+  const categoryTiles = parseCategoryTiles(settings?.categoryTiles, fallbackCategoryTiles);
+  const topBrands = parseTopBrands(settings?.topBrands, fallbackTopBrands);
 
-  // ---- Category tiles / top brands (per site) ----
-  const tiles: HomeTile[] = home?.categoryTiles?.length ? home.categoryTiles : defaultTiles;
-  const topBrands: HomeBrand[] = home?.topBrands?.length ? home.topBrands : defaultTopBrands;
-
-  // ---- Guides (DB) : seulement si section active ----
-  const latestGuides = showLatestGuides
-    ? await prisma.page.findMany({
-        where: { published: true, kind: "GUIDE" },
-        orderBy: { createdAt: "desc" },
-        take: 6,
-        select: {
-          id: true,
-          slug: true,
-          title: true,
-          intro: true,
-          thumbnailUrl: true,
-          createdAt: true,
+  // ------------------- JSON-LD -------------------
+  const homeJsonLd = {
+    "@context": "https://schema.org",
+    "@graph": [
+      {
+        "@type": "Organization",
+        "@id": `${site}/#organization`,
+        name: siteConfig.name,
+        url: site,
+      },
+      {
+        "@type": "WebSite",
+        "@id": `${site}/#website`,
+        url: site,
+        name: siteConfig.name,
+        publisher: { "@id": `${site}/#organization` },
+        potentialAction: {
+          "@type": "SearchAction",
+          target: `${site}/search?q={search_term_string}`,
+          "query-input": "required name=search_term_string",
         },
-      })
-    : [];
+      },
+    ],
+  };
+
+  // ------------------- Derniers guides (inchangé) -------------------
+  const latestGuides = await prisma.page.findMany({
+    where: { published: true, kind: "GUIDE" },
+    orderBy: { createdAt: "desc" },
+    take: 6,
+    select: {
+      id: true,
+      slug: true,
+      title: true,
+      intro: true,
+      thumbnailUrl: true,
+      createdAt: true,
+    },
+  });
 
   return (
     <main className="pb-20">
@@ -153,27 +212,29 @@ export default async function HomePage() {
               </>
             ) : (
               <>
-                <span className="text-brand-600">{heroTitle}</span>
+                {heroTitle} <span className="text-brand-600">{heroHighlight}</span>
               </>
             )}
           </h1>
 
-          {heroSubtitle ? (
-            <p className="mt-3 sm:mt-4 text-base sm:text-lg text-slate-600 max-w-[28rem] sm:max-w-2xl mx-auto px-2">
-              {heroSubtitle}
-            </p>
-          ) : null}
+          <p className="mt-3 sm:mt-4 text-base sm:text-lg text-slate-600 max-w-[28rem] sm:max-w-2xl mx-auto px-2">
+            {heroSubtitle}
+          </p>
 
-          {heroCtas.length ? (
-            <div className="mt-7 sm:mt-9 flex flex-col sm:flex-row items-center justify-center gap-3 px-3 sm:px-0">
-              {heroCtas.map((c) => (
-                <Link key={`${c.href}-${c.label}`} href={c.href} className={`${ctaClass(c.variant)} w-full sm:w-auto`}>
-                  {c.label}
-                  {c.variant === "primary" ? <ArrowRight className="h-4 w-4" /> : null}
-                </Link>
-              ))}
-            </div>
-          ) : null}
+          <div className="mt-7 sm:mt-9 flex flex-col sm:flex-row items-center justify-center gap-3 px-3 sm:px-0">
+            <Link href="/search" className="btn w-full sm:w-auto">
+              Rechercher
+              <ArrowRight className="h-4 w-4" />
+            </Link>
+            {showCategories ? (
+              <Link href="#categories" className="btn-outline w-full sm:w-auto">
+                Explorer
+              </Link>
+            ) : null}
+            <Link href="/pages" className="btn-outline w-full sm:w-auto">
+              Guides
+            </Link>
+          </div>
         </div>
       </section>
 
@@ -183,16 +244,20 @@ export default async function HomePage() {
           <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-2">
             <h2 className="text-xl sm:text-2xl font-bold text-ink">Catégories populaires</h2>
             <p className="text-sm text-slate-600 max-w-2xl">
-              Des pages catégories pensées pour la performance : filtres utiles, contenu d’aide au choix et liens marchands.
+              Des pages catégories pensées pour la performance : prix à jour, filtres utiles et contenu d’aide au choix.
             </p>
           </div>
 
           <ul className="mt-6 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
-            {tiles.map((c) => (
+            {categoryTiles.map((c) => (
               <li key={c.slug} className="group">
-                <Link href={`/${c.slug}`} className="block card overflow-hidden hover:shadow-card transition" aria-label={`Voir la catégorie ${c.title}`}>
+                <Link
+                  href={`/${c.slug}`}
+                  className="block card overflow-hidden hover:shadow-card transition"
+                  aria-label={`Voir la catégorie ${c.title}`}
+                >
                   <div className="relative aspect-[16/9] w-full bg-muted">
-                    {c.img ? <img src={c.img} alt={c.title} className="h-full w-full object-cover" loading="lazy" /> : null}
+                    <img src={c.img} alt={c.title} className="h-full w-full object-cover" loading="lazy" />
                     <div className="absolute inset-0 bg-gradient-to-t from-black/35 via-black/0 to-black/0" />
                   </div>
 
@@ -236,7 +301,9 @@ export default async function HomePage() {
                   <div className="p-4">
                     <h3 className="text-base font-semibold text-ink line-clamp-2">{p.title}</h3>
                     {p.intro ? <p className="text-sm text-slate-600 mt-1 line-clamp-2">{p.intro}</p> : null}
-                    <div className="mt-2 text-xs text-slate-500">Publié le {p.createdAt.toISOString().slice(0, 10)}</div>
+                    <div className="mt-2 text-xs text-slate-500">
+                      Publié le {p.createdAt.toISOString().slice(0, 10)}
+                    </div>
                   </div>
                 </Link>
               </li>
@@ -245,7 +312,7 @@ export default async function HomePage() {
         </section>
       ) : null}
 
-      {/* ---------------- TOP BRANDS ---------------- */}
+      {/* ---------------- TOP MARQUES ---------------- */}
       {showTopBrands ? (
         <section className="mt-14 md:mt-18 container-page">
           <div className="flex items-center justify-between gap-3">
@@ -258,9 +325,14 @@ export default async function HomePage() {
           <ul className="mt-5 grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-3 sm:gap-4">
             {topBrands.map((b) => (
               <li key={b.slug} className="group">
-                <Link href={`/marques/${b.slug}`} className="block rounded-2xl border border-ring bg-white p-4 sm:p-5 hover:shadow-card transition" aria-label={`Voir la marque ${b.name}`} title={b.name}>
+                <Link
+                  href={`/marques/${b.slug}`}
+                  className="block rounded-2xl border border-ring bg-white p-4 sm:p-5 hover:shadow-card transition"
+                  aria-label={`Voir la marque ${b.name}`}
+                  title={b.name}
+                >
                   <div className="aspect-[4/3] w-full overflow-hidden rounded-xl bg-muted/40 flex items-center justify-center">
-                    {b.logo ? <img src={b.logo} alt={b.name} className="max-h-14 sm:max-h-16 w-auto object-contain" loading="lazy" /> : null}
+                    <img src={b.logo} alt={b.name} className="max-h-14 sm:max-h-16 w-auto object-contain" loading="lazy" />
                   </div>
                   <div className="mt-2 text-center text-sm font-medium text-ink group-hover:underline">{b.name}</div>
                 </Link>
