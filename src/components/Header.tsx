@@ -7,6 +7,7 @@ import Logo from "./Logo";
 import { useSession, signIn } from "next-auth/react";
 import type { Role } from "@prisma/client";
 import { useEffect, useMemo, useState } from "react";
+import { getSiteConfig } from "@/config/site";
 
 type NavItem = {
   id: number;
@@ -49,6 +50,13 @@ function IconSearch(props: React.SVGProps<SVGSVGElement>) {
 export default function Header() {
   const pathname = usePathname();
   const { data: session, status } = useSession();
+
+  const siteConfig = getSiteConfig();
+
+  const searchPlaceholder =
+    siteConfig.id === "meilleur-robot"
+      ? "Rechercher un robot, une marque ou une catégorie…"
+      : "Rechercher un ski, modèle ou marque…";
 
   const user = (session?.user as SessionUser | undefined) ?? undefined;
   const role: Role = user?.role ?? "USER";
@@ -139,7 +147,7 @@ export default function Header() {
                   <IconSearch className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
                   <input
                     name="q"
-                    placeholder="Rechercher un ski, modèle ou marque…"
+                    placeholder={searchPlaceholder}
                     className="w-full rounded-xl bg-white/95 text-ink border border-ring pl-10 pr-28 py-2 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-brand-500"
                   />
                   <button
@@ -199,7 +207,7 @@ export default function Header() {
                 <IconSearch className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
                 <input
                   name="q"
-                  placeholder="Rechercher un ski, modèle ou marque…"
+                  placeholder={searchPlaceholder}
                   className="w-full rounded-xl bg-white/95 text-ink border border-ring pl-10 pr-28 py-2 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-brand-500"
                 />
                 <button
