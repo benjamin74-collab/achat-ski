@@ -1,43 +1,42 @@
-// src/components/Logo.tsx
 "use client";
 
-import { useEffect, useState } from "react";
 import Link from "next/link";
+import { useEffect, useState } from "react";
 
-type LogoData = {
-  name: string;
+type RuntimeBrand = {
+  siteName: string;
   tagline: string;
-  logoSrc: string;
+  logoSrc?: string;
+  logoAlt?: string;
 };
 
-function readLogoDataFromHtml(): LogoData {
-  if (typeof document === "undefined") {
-    return { name: "Meilleur Ski", tagline: "Comparer & gagner", logoSrc: "" };
-  }
-  const el = document.documentElement;
-  return {
-    name: el.dataset.siteName || "Meilleur Ski",
-    tagline: el.dataset.siteTagline || "Comparer & gagner",
-    logoSrc: el.dataset.siteLogo || "",
-  };
-}
-
 export default function Logo({ asLink = true }: { asLink?: boolean }) {
-  const [data, setData] = useState<LogoData>(() => readLogoDataFromHtml());
+  const [brand, setBrand] = useState<RuntimeBrand>({
+    siteName: "Meilleur",
+    tagline: "",
+    logoSrc: undefined,
+    logoAlt: undefined,
+  });
 
-  // ✅ Au cas où le DOM est prêt après hydration (sécurité)
   useEffect(() => {
-    setData(readLogoDataFromHtml());
+    const el = document.documentElement;
+    const siteName = el.dataset.siteName || "Meilleur";
+    const tagline = el.dataset.siteTagline || "";
+    const logoSrc = el.dataset.siteLogo || undefined;
+    const logoAlt = el.dataset.siteLogoAlt || siteName;
+
+    setBrand({ siteName, tagline, logoSrc, logoAlt });
   }, []);
 
   const Mark = (
     <div className="flex items-center gap-2">
-      {data.logoSrc ? (
+      {/* Logo fichier si dispo, sinon fallback carré gradient */}
+      {brand.logoSrc ? (
         // eslint-disable-next-line @next/next/no-img-element
         <img
-          src={data.logoSrc}
-          alt={data.name}
-          className="h-8 w-8 rounded-xl object-contain bg-white"
+          src={brand.logoSrc}
+          alt={brand.logoAlt || brand.siteName}
+          className="h-9 w-auto max-w-[160px] object-contain"
           loading="eager"
           decoding="async"
         />
@@ -46,8 +45,14 @@ export default function Logo({ asLink = true }: { asLink?: boolean }) {
       )}
 
       <div className="leading-tight">
-        <div className="text-white font-extrabold tracking-tight text-lg">{data.name}</div>
-        <div className="text-brand-300 text-[10px] uppercase tracking-wider">{data.tagline}</div>
+        <div className="text-ink font-extrabold tracking-tight text-lg">
+          {brand.siteName}
+        </div>
+        {brand.tagline ? (
+          <div className="text-brand-600 text-[10px] uppercase tracking-wider">
+            {brand.tagline}
+          </div>
+        ) : null}
       </div>
     </div>
   );
@@ -55,7 +60,7 @@ export default function Logo({ asLink = true }: { asLink?: boolean }) {
   if (!asLink) return Mark;
 
   return (
-    <Link href="/" className="hover:opacity-90 no-underline hover:no-underline" aria-label={`${data.name} — Accueil`}>
+    <Link href="/" className="hover:opacity-90 no-underline hover:no-underline" aria-label={`${brand.siteName} — Accueil`}>
       {Mark}
     </Link>
   );

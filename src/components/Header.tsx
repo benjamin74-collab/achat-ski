@@ -46,21 +46,14 @@ function IconSearch(props: React.SVGProps<SVGSVGElement>) {
   );
 }
 
+function getSearchPlaceholder(siteId: string | undefined) {
+  if (siteId === "meilleur-robot") return "Rechercher un robot, modèle ou marque…";
+  return "Rechercher un ski, modèle ou marque…";
+}
+
 export default function Header() {
   const pathname = usePathname();
   const { data: session, status } = useSession();
-
-  // ✅ SITE_ID côté client : on le lit depuis <html data-site-id="...">
-  const [siteId, setSiteId] = useState<string>("meilleur-ski");
-  useEffect(() => {
-    const id = document.documentElement.dataset.siteId;
-    if (id) setSiteId(id);
-  }, []);
-
-  const searchPlaceholder =
-    siteId === "meilleur-robot"
-      ? "Rechercher un robot, une marque ou une catégorie…"
-      : "Rechercher un ski, modèle ou marque…";
 
   const user = (session?.user as SessionUser | undefined) ?? undefined;
   const role: Role = user?.role ?? "USER";
@@ -79,6 +72,13 @@ export default function Header() {
       .map((s) => s[0]?.toUpperCase())
       .join("");
   }, [user?.name, user?.email]);
+
+  // ✅ Placeholder dynamique
+  const [searchPlaceholder, setSearchPlaceholder] = useState("Rechercher…");
+  useEffect(() => {
+    const siteId = document.documentElement.dataset.siteId;
+    setSearchPlaceholder(getSearchPlaceholder(siteId));
+  }, []);
 
   // --- Menu catégories dynamique ---
   const [navItems, setNavItems] = useState<NavItem[]>([]);
