@@ -15,12 +15,30 @@ const siteUrl =
   process.env.NEXT_PUBLIC_SITE_URL?.replace(/\/+$/, "") ??
   (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : "https://meilleur-ski.com");
 
-export const metadata: Metadata = {
-  metadataBase: new URL(siteUrl),
-  title: "Meilleur-ski — Comparez les prix du matos de ski",
-  description: "Comparez les prix des skis, fixations et chaussures chez nos marchands partenaires.",
-  robots: { index: false, follow: false },
-};
+/**
+ * Metadata dynamique par site
+ */
+export async function generateMetadata(): Promise<Metadata> {
+  const isRobot = siteConfig.id === "meilleur-robot";
+
+  const title = isRobot
+    ? "Meilleur Robot — Comparez les meilleurs robots au meilleur prix"
+    : "Meilleur Ski — Comparez les prix du matériel de ski";
+
+  const description = isRobot
+    ? "Comparez les robots aspirateurs, tondeuses, cuisine et plus : prix, avis et guides pour bien choisir."
+    : "Comparez les prix des skis, fixations et chaussures chez nos marchands partenaires.";
+
+  return {
+    metadataBase: new URL(siteUrl),
+    title,
+    description,
+    robots: { index: false, follow: false },
+    alternates: {
+      canonical: siteUrl,
+    },
+  };
+}
 
 export const viewport: Viewport = {
   width: "device-width",
@@ -40,7 +58,12 @@ function hexToRgbTriplet(hex: string): string {
   return `${r} ${g} ${b}`;
 }
 
-function getBranding(cfg: SiteConfig): { name: string; tagline: string; logoSrc: string; logoAlt: string } {
+function getBranding(cfg: SiteConfig): {
+  name: string;
+  tagline: string;
+  logoSrc: string;
+  logoAlt: string;
+} {
   return {
     name: cfg.name || "Meilleur Ski",
     tagline: cfg.tagline || "Comparer & gagner",
@@ -51,7 +74,7 @@ function getBranding(cfg: SiteConfig): { name: string; tagline: string; logoSrc:
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   const cssVars: CSSVars = {
-    // ✅ couleurs
+    // couleurs
     "--primary": hexToRgbTriplet(siteConfig.colors.primary),
     "--secondary": hexToRgbTriplet(siteConfig.colors.secondary),
     "--accent": hexToRgbTriplet(siteConfig.colors.accent),
@@ -61,15 +84,18 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     "--muted-foreground": hexToRgbTriplet(siteConfig.colors.mutedForeground),
     "--border": hexToRgbTriplet(siteConfig.colors.border),
 
-    // ✅ fonts (tokens)
+    // fonts (tokens)
     "--font-sans": getFontFamilyVar(siteConfig.fonts.sans),
     "--font-display": getFontFamilyVar(siteConfig.fonts.display),
   };
 
   const branding = getBranding(siteConfig);
 
-  // ✅ active seulement les fonts nécessaires (pool limité)
-  const fontClasses = getFontClasses([siteConfig.fonts.sans, siteConfig.fonts.display]);
+  // charge uniquement les fonts nécessaires au site courant
+  const fontClasses = getFontClasses([
+    siteConfig.fonts.sans,
+    siteConfig.fonts.display,
+  ]);
 
   return (
     <html
