@@ -31,27 +31,21 @@ function isArray(v: unknown): v is unknown[] {
   return Array.isArray(v);
 }
 
-function parseCategoryTiles(v: unknown, fallback: CategoryTile[]): CategoryTile[] {
-  if (!isArray(v)) return fallback;
+function parseCategoryTiles(v: unknown): CategoryTile[] {
+  if (!isArray(v)) return [];
   const out: CategoryTile[] = [];
   for (const item of v) {
     if (typeof item !== "object" || item === null) continue;
     const o = item as Record<string, unknown>;
-    if (
-      isString(o.slug) &&
-      isString(o.title) &&
-      isString(o.desc) &&
-      isString(o.cta) &&
-      isString(o.img)
-    ) {
+    if (isString(o.slug) && isString(o.title) && isString(o.desc) && isString(o.cta) && isString(o.img)) {
       out.push({ slug: o.slug, title: o.title, desc: o.desc, cta: o.cta, img: o.img });
     }
   }
-  return out.length ? out : fallback;
+  return out;
 }
 
-function parseTopBrands(v: unknown, fallback: TopBrand[]): TopBrand[] {
-  if (!isArray(v)) return fallback;
+function parseTopBrands(v: unknown): TopBrand[] {
+  if (!isArray(v)) return [];
   const out: TopBrand[] = [];
   for (const item of v) {
     if (typeof item !== "object" || item === null) continue;
@@ -60,101 +54,120 @@ function parseTopBrands(v: unknown, fallback: TopBrand[]): TopBrand[] {
       out.push({ name: o.name, slug: o.slug, logo: o.logo });
     }
   }
-  return out.length ? out : fallback;
+  return out;
 }
 
 export default async function HomePage() {
   const siteConfig = getSiteConfig();
   const site = siteConfig.domain.replace(/\/+$/, "");
+  const isSki = siteConfig.id === "meilleur-ski";
 
   // ✅ Chargement DB (par site)
   const settings = await prisma.siteSettings.findUnique({
     where: { siteId: siteConfig.id },
   });
 
-  // ------------------- Fallbacks "ski" (si pas de settings DB) -------------------
-  const fallbackHeroTitle = "Le comparateur des passionnés de ski";
-  const fallbackHeroHighlight = "comparateur";
-  const fallbackHeroSubtitle =
-    "Comparez les prix, consultez les tests et les avis pour trouver le matériel parfait.";
+  // ------------------- Fallbacks -------------------
+  // ⚠️ IMPORTANT : fallback "ski" uniquement pour meilleur-ski.
+  // Pour les autres sites (ex: meilleur-robot), fallback neutre + sections vides,
+  // et on pousse à configurer via Admin → Design.
+  const fallbackHeroTitle = isSki ? "Le comparateur des passionnés de ski" : `Le comparateur ${siteConfig.name}`;
+  const fallbackHeroHighlight = isSki ? "comparateur" : siteConfig.name;
+  const fallbackHeroSubtitle = isSki
+    ? "Comparez les prix, consultez les tests et les avis pour trouver le matériel parfait."
+    : "Configurez la homepage depuis Admin → Design (titres, sections, contenus).";
 
-  const fallbackCategoryTiles: CategoryTile[] = [
-    {
-      slug: "skis-all-mountain",
-      title: "Skis All-Mountain",
-      desc: "Le meilleur compromis piste / hors-piste pour 80% des skieurs.",
-      cta: "Comparer les All-Mountain",
-      img: "/categories/skis-all-mountain.jpg",
-    },
-    {
-      slug: "skis-freeride",
-      title: "Skis Freeride",
-      desc: "Flottaison et stabilité : l’outil parfait quand il a neigé.",
-      cta: "Voir les Freeride",
-      img: "/categories/skis-freeride.jpg",
-    },
-    {
-      slug: "skis-rando",
-      title: "Skis de rando",
-      desc: "Léger à la montée, sûr à la descente : optimise ton set-up.",
-      cta: "Explorer la rando",
-      img: "/categories/skis-rando.jpg",
-    },
-    {
-      slug: "fixations",
-      title: "Fixations",
-      desc: "Alpine, rando, hybrides : compare les offres et la compatibilité.",
-      cta: "Comparer les fixations",
-      img: "/categories/fixations.jpg",
-    },
-    {
-      slug: "chaussures",
-      title: "Chaussures",
-      desc: "Confort et précision : le choix n°1 pour progresser.",
-      cta: "Trouver ses chaussures",
-      img: "/categories/chaussures.jpg",
-    },
-  ];
+  const fallbackCategoryTiles: CategoryTile[] = isSki
+    ? [
+        {
+          slug: "skis-all-mountain",
+          title: "Skis All-Mountain",
+          desc: "Le meilleur compromis piste / hors-piste pour 80% des skieurs.",
+          cta: "Comparer les All-Mountain",
+          img: "/categories/skis-all-mountain.jpg",
+        },
+        {
+          slug: "skis-freeride",
+          title: "Skis Freeride",
+          desc: "Flottaison et stabilité : l’outil parfait quand il a neigé.",
+          cta: "Voir les Freeride",
+          img: "/categories/skis-freeride.jpg",
+        },
+        {
+          slug: "skis-rando",
+          title: "Skis de rando",
+          desc: "Léger à la montée, sûr à la descente : optimise ton set-up.",
+          cta: "Explorer la rando",
+          img: "/categories/skis-rando.jpg",
+        },
+        {
+          slug: "fixations",
+          title: "Fixations",
+          desc: "Alpine, rando, hybrides : compare les offres et la compatibilité.",
+          cta: "Comparer les fixations",
+          img: "/categories/fixations.jpg",
+        },
+        {
+          slug: "chaussures",
+          title: "Chaussures",
+          desc: "Confort et précision : le choix n°1 pour progresser.",
+          cta: "Trouver ses chaussures",
+          img: "/categories/chaussures.jpg",
+        },
+      ]
+    : [];
 
-  const fallbackTopBrands: TopBrand[] = [
-    {
-      name: "Rossignol",
-      slug: "rossignol",
-      logo: "https://logos-marques.com/wp-content/uploads/2023/01/Rossignol-emblem.png",
-    },
-    {
-      name: "Salomon",
-      slug: "salomon",
-      logo: "https://upload.wikimedia.org/wikipedia/commons/8/8a/Salomon_group_logo.png",
-    },
-    {
-      name: "Head",
-      slug: "head",
-      logo: "https://www.head.com/HeadV2Logo-iGF.svg",
-    },
-    {
-      name: "Black Crows",
-      slug: "black-crows",
-      logo: "https://upload.wikimedia.org/wikipedia/commons/e/eb/Logo_Black_Crows.svg",
-    },
-    {
-      name: "Atomic",
-      slug: "atomic",
-      logo: "https://upload.wikimedia.org/wikipedia/commons/0/04/Atomic_ski_logo.png",
-    },
-  ];
+  const fallbackTopBrands: TopBrand[] = isSki
+    ? [
+        {
+          name: "Rossignol",
+          slug: "rossignol",
+          logo: "https://logos-marques.com/wp-content/uploads/2023/01/Rossignol-emblem.png",
+        },
+        {
+          name: "Salomon",
+          slug: "salomon",
+          logo: "https://upload.wikimedia.org/wikipedia/commons/8/8a/Salomon_group_logo.png",
+        },
+        {
+          name: "Head",
+          slug: "head",
+          logo: "https://www.head.com/HeadV2Logo-iGF.svg",
+        },
+        {
+          name: "Black Crows",
+          slug: "black-crows",
+          logo: "https://upload.wikimedia.org/wikipedia/commons/e/eb/Logo_Black_Crows.svg",
+        },
+        {
+          name: "Atomic",
+          slug: "atomic",
+          logo: "https://upload.wikimedia.org/wikipedia/commons/0/04/Atomic_ski_logo.png",
+        },
+      ]
+    : [];
 
   // ------------------- Valeurs finales (DB -> fallback) -------------------
   const heroTitle = settings?.heroTitle ?? fallbackHeroTitle;
   const heroHighlight = settings?.heroHighlight ?? fallbackHeroHighlight;
   const heroSubtitle = settings?.heroSubtitle ?? fallbackHeroSubtitle;
 
-  const showCategories = isBool(settings?.showCategories) ? settings!.showCategories : true;
-  const showLatestGuides = isBool(settings?.showLatestGuides) ? settings!.showLatestGuides : true;
-  const showTopBrands = isBool(settings?.showTopBrands) ? settings!.showTopBrands : true;
+  const showCategories = isBool(settings?.showCategories) ? settings.showCategories : true;
+  const showLatestGuides = isBool(settings?.showLatestGuides) ? settings.showLatestGuides : true;
+  const showTopBrands = isBool(settings?.showTopBrands) ? settings.showTopBrands : true;
 
-  const categoryTiles = parseCategoryTiles(settings?.categoryTiles, fallbackCategoryTiles);
-  const topBrands = parseTopBrands(settings?.topBrands, fallbackTopBrands);
+  // ✅ DB d'abord. Si vide => fallback (ski uniquement) sinon [] pour autres sites
+  const categoryTiles = (() => {
+    const parsed = parseCategoryTiles(settings?.categoryTiles);
+    if (parsed.length) return parsed;
+    return fallbackCategoryTiles;
+  })();
+
+  const topBrands = (() => {
+    const parsed = parseTopBrands(settings?.topBrands);
+    if (parsed.length) return parsed;
+    return fallbackTopBrands;
+  })();
 
   // ------------------- JSON-LD -------------------
   const homeJsonLd = {
@@ -163,14 +176,14 @@ export default async function HomePage() {
       {
         "@type": "Organization",
         "@id": `${site}/#organization`,
-        name: siteConfig.name,
+        name: settings?.name ?? siteConfig.name,
         url: site,
       },
       {
         "@type": "WebSite",
         "@id": `${site}/#website`,
         url: site,
-        name: siteConfig.name,
+        name: settings?.name ?? siteConfig.name,
         publisher: { "@id": `${site}/#organization` },
         potentialAction: {
           "@type": "SearchAction",
@@ -181,20 +194,22 @@ export default async function HomePage() {
     ],
   };
 
-  // ------------------- Derniers guides (inchangé) -------------------
-  const latestGuides = await prisma.page.findMany({
-    where: { published: true, kind: "GUIDE" },
-    orderBy: { createdAt: "desc" },
-    take: 6,
-    select: {
-      id: true,
-      slug: true,
-      title: true,
-      intro: true,
-      thumbnailUrl: true,
-      createdAt: true,
-    },
-  });
+  // ✅ Ne charge les guides que si la section est active
+  const latestGuides = showLatestGuides
+    ? await prisma.page.findMany({
+        where: { published: true, kind: "GUIDE" },
+        orderBy: { createdAt: "desc" },
+        take: 6,
+        select: {
+          id: true,
+          slug: true,
+          title: true,
+          intro: true,
+          thumbnailUrl: true,
+          createdAt: true,
+        },
+      })
+    : [];
 
   return (
     <main className="pb-20">
@@ -248,32 +263,38 @@ export default async function HomePage() {
             </p>
           </div>
 
-          <ul className="mt-6 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
-            {categoryTiles.map((c) => (
-              <li key={c.slug} className="group">
-                <Link
-                  href={`/${c.slug}`}
-                  className="block card overflow-hidden hover:shadow-card transition"
-                  aria-label={`Voir la catégorie ${c.title}`}
-                >
-                  <div className="relative aspect-[16/9] w-full bg-muted">
-                    <img src={c.img} alt={c.title} className="h-full w-full object-cover" loading="lazy" />
-                    <div className="absolute inset-0 bg-gradient-to-t from-black/35 via-black/0 to-black/0" />
-                  </div>
-
-                  <div className="p-5">
-                    <h3 className="text-base font-semibold text-ink">{c.title}</h3>
-                    <p className="mt-1 text-sm text-slate-600 line-clamp-2">{c.desc}</p>
-
-                    <div className="mt-3 inline-flex items-center gap-2 text-sm font-semibold text-brand-600">
-                      {c.cta}
-                      <ArrowRight className="h-4 w-4 transition group-hover:translate-x-0.5" />
+          {categoryTiles.length ? (
+            <ul className="mt-6 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
+              {categoryTiles.map((c) => (
+                <li key={c.slug} className="group">
+                  <Link
+                    href={`/${c.slug}`}
+                    className="block card overflow-hidden hover:shadow-card transition"
+                    aria-label={`Voir la catégorie ${c.title}`}
+                  >
+                    <div className="relative aspect-[16/9] w-full bg-muted">
+                      <img src={c.img} alt={c.title} className="h-full w-full object-cover" loading="lazy" />
+                      <div className="absolute inset-0 bg-gradient-to-t from-black/35 via-black/0 to-black/0" />
                     </div>
-                  </div>
-                </Link>
-              </li>
-            ))}
-          </ul>
+
+                    <div className="p-5">
+                      <h3 className="text-base font-semibold text-ink">{c.title}</h3>
+                      <p className="mt-1 text-sm text-slate-600 line-clamp-2">{c.desc}</p>
+
+                      <div className="mt-3 inline-flex items-center gap-2 text-sm font-semibold text-brand-600">
+                        {c.cta}
+                        <ArrowRight className="h-4 w-4 transition group-hover:translate-x-0.5" />
+                      </div>
+                    </div>
+                  </Link>
+                </li>
+              ))}
+            </ul>
+          ) : (
+            <div className="mt-6 rounded-2xl border border-ring bg-white p-5 text-sm text-slate-600">
+              Aucune vignette configurée. Va dans <strong>Admin → Design</strong> pour définir les catégories de la homepage.
+            </div>
+          )}
         </section>
       ) : null}
 
@@ -287,28 +308,34 @@ export default async function HomePage() {
             </Link>
           </div>
 
-          <ul className="mt-5 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-            {latestGuides.map((p) => (
-              <li key={p.id} className="rounded-2xl border border-ring bg-white hover:shadow-card transition">
-                <Link href={`/pages/${p.slug}`} className="block">
-                  <div className="aspect-[16/9] w-full overflow-hidden rounded-t-2xl bg-muted">
-                    {p.thumbnailUrl ? (
-                      <img src={p.thumbnailUrl} alt={p.title} className="h-full w-full object-cover" loading="lazy" />
-                    ) : (
-                      <div className="h-full w-full bg-gradient-to-br from-muted to-white" />
-                    )}
-                  </div>
-                  <div className="p-4">
-                    <h3 className="text-base font-semibold text-ink line-clamp-2">{p.title}</h3>
-                    {p.intro ? <p className="text-sm text-slate-600 mt-1 line-clamp-2">{p.intro}</p> : null}
-                    <div className="mt-2 text-xs text-slate-500">
-                      Publié le {p.createdAt.toISOString().slice(0, 10)}
+          {latestGuides.length ? (
+            <ul className="mt-5 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+              {latestGuides.map((p) => (
+                <li key={p.id} className="rounded-2xl border border-ring bg-white hover:shadow-card transition">
+                  <Link href={`/pages/${p.slug}`} className="block">
+                    <div className="aspect-[16/9] w-full overflow-hidden rounded-t-2xl bg-muted">
+                      {p.thumbnailUrl ? (
+                        <img src={p.thumbnailUrl} alt={p.title} className="h-full w-full object-cover" loading="lazy" />
+                      ) : (
+                        <div className="h-full w-full bg-gradient-to-br from-muted to-white" />
+                      )}
                     </div>
-                  </div>
-                </Link>
-              </li>
-            ))}
-          </ul>
+                    <div className="p-4">
+                      <h3 className="text-base font-semibold text-ink line-clamp-2">{p.title}</h3>
+                      {p.intro ? <p className="text-sm text-slate-600 mt-1 line-clamp-2">{p.intro}</p> : null}
+                      <div className="mt-2 text-xs text-slate-500">
+                        Publié le {p.createdAt.toISOString().slice(0, 10)}
+                      </div>
+                    </div>
+                  </Link>
+                </li>
+              ))}
+            </ul>
+          ) : (
+            <div className="mt-5 rounded-2xl border border-ring bg-white p-5 text-sm text-slate-600">
+              Aucun guide publié pour le moment.
+            </div>
+          )}
         </section>
       ) : null}
 
@@ -322,23 +349,34 @@ export default async function HomePage() {
             </Link>
           </div>
 
-          <ul className="mt-5 grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-3 sm:gap-4">
-            {topBrands.map((b) => (
-              <li key={b.slug} className="group">
-                <Link
-                  href={`/marques/${b.slug}`}
-                  className="block rounded-2xl border border-ring bg-white p-4 sm:p-5 hover:shadow-card transition"
-                  aria-label={`Voir la marque ${b.name}`}
-                  title={b.name}
-                >
-                  <div className="aspect-[4/3] w-full overflow-hidden rounded-xl bg-muted/40 flex items-center justify-center">
-                    <img src={b.logo} alt={b.name} className="max-h-14 sm:max-h-16 w-auto object-contain" loading="lazy" />
-                  </div>
-                  <div className="mt-2 text-center text-sm font-medium text-ink group-hover:underline">{b.name}</div>
-                </Link>
-              </li>
-            ))}
-          </ul>
+          {topBrands.length ? (
+            <ul className="mt-5 grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-3 sm:gap-4">
+              {topBrands.map((b) => (
+                <li key={b.slug} className="group">
+                  <Link
+                    href={`/marques/${b.slug}`}
+                    className="block rounded-2xl border border-ring bg-white p-4 sm:p-5 hover:shadow-card transition"
+                    aria-label={`Voir la marque ${b.name}`}
+                    title={b.name}
+                  >
+                    <div className="aspect-[4/3] w-full overflow-hidden rounded-xl bg-muted/40 flex items-center justify-center">
+                      <img
+                        src={b.logo}
+                        alt={b.name}
+                        className="max-h-14 sm:max-h-16 w-auto object-contain"
+                        loading="lazy"
+                      />
+                    </div>
+                    <div className="mt-2 text-center text-sm font-medium text-ink group-hover:underline">{b.name}</div>
+                  </Link>
+                </li>
+              ))}
+            </ul>
+          ) : (
+            <div className="mt-5 rounded-2xl border border-ring bg-white p-5 text-sm text-slate-600">
+              Aucune marque configurée. Va dans <strong>Admin → Design</strong> pour définir les top marques.
+            </div>
+          )}
         </section>
       ) : null}
     </main>
