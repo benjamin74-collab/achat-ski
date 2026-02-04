@@ -7,7 +7,6 @@ import Logo from "./Logo";
 import { useSession, signIn } from "next-auth/react";
 import type { Role } from "@prisma/client";
 import { useEffect, useMemo, useState } from "react";
-import { getSiteConfig } from "@/config/site";
 
 type NavItem = {
   id: number;
@@ -51,10 +50,15 @@ export default function Header() {
   const pathname = usePathname();
   const { data: session, status } = useSession();
 
-  const siteConfig = getSiteConfig();
+  // ✅ SITE_ID côté client : on le lit depuis <html data-site-id="...">
+  const [siteId, setSiteId] = useState<string>("meilleur-ski");
+  useEffect(() => {
+    const id = document.documentElement.dataset.siteId;
+    if (id) setSiteId(id);
+  }, []);
 
   const searchPlaceholder =
-    siteConfig.id === "meilleur-robot"
+    siteId === "meilleur-robot"
       ? "Rechercher un robot, une marque ou une catégorie…"
       : "Rechercher un ski, modèle ou marque…";
 
