@@ -33,10 +33,12 @@ export default async function AdminLayout({ children }: { children: ReactNode })
 
   if (!session || role !== "ADMIN") return notFound();
 
-  const host = (headers().get("host") || "").toLowerCase().split(":")[0];
+  // ✅ Next.js 15: headers() peut être async côté types -> on await
+  const h = await headers();
+  const host = (h.get("host") || "").toLowerCase().split(":")[0];
   const currentSite = getSiteSlugFromHost(host);
 
-  const userSiteId = (session.user as unknown as SessionUserWithSite).siteId;
+  const userSiteId = (session.user as unknown as SessionUserWithSite).siteId ?? null;
   if (userSiteId && userSiteId !== currentSite) return notFound();
 
   return (
