@@ -1,245 +1,309 @@
 // src/app/admin/design/page.tsx
 import { prisma } from "@/lib/prisma";
 import { getSiteConfig } from "@/config/site";
-import { saveDesign, resetDesign } from "@/app/actions/design";
+import type { SiteSettings } from "@prisma/client";
+import { saveDesign } from "@/app/actions/design";
 
-type Props = {
-  searchParams?: Promise<{ site?: string }>;
-};
+type FontKey = "inter" | "manrope" | "plusJakarta";
 
-function prettyJson(v: unknown) {
-  if (!v) return "";
+function safeJsonStringify(v: unknown, fallback = "[]") {
+  if (v === null || v === undefined) return fallback;
   try {
     return JSON.stringify(v, null, 2);
   } catch {
-    return "";
+    return fallback;
   }
 }
 
-const SITE_IDS = ["meilleur-ski", "meilleur-robot"] as const;
+export default async function AdminDesignPage() {
+  const siteConfig = getSiteConfig();
 
-export default async function AdminDesignPage({ searchParams }: Props) {
-  const sp = (await searchParams) ?? {};
-  const siteId = SITE_IDS.includes(sp.site as any)
-    ? (sp.site as (typeof SITE_IDS)[number])
-    : (process.env.SITE_ID as any) || "meilleur-ski";
+  const settings: SiteSettings | null = await prisma.siteSettings.findUnique({
+    where: { siteId: siteConfig.id },
+  });
 
-  const cfg = getSiteConfig(siteId);
-  const settings = await prisma.siteSettings.findUnique({ where: { siteId } });
+  // ---------- Defaults (config -> DB) ----------
+  const name = settings?.name ?? siteConfig.name;
+  const tagline = settings?.tagline ?? "";
+  const logoSrc = settings?.logoSrc ?? siteConfig.brand.logoSrc;
+  const logoAlt = settings?.logoAlt ?? siteConfig.brand.logoAlt;
+  const faviconSrc = settings?.faviconSrc ?? siteConfig.brand.faviconSrc ?? "";
 
-  // valeurs "finales" (DB -> fallback config)
-  const value = {
-    siteId,
+  const primary = settings?.primary ?? siteConfig.colors.primary;
+  const secondary = settings?.secondary ?? siteConfig.colors.secondary;
+  const accent = settings?.accent ?? siteConfig.colors.accent;
+  const background = settings?.background ?? siteConfig.colors.background;
+  const foreground = settings?.foreground ?? siteConfig.colors.foreground;
+  const muted = settings?.muted ?? siteConfig.colors.muted;
+  const mutedForeground = settings?.mutedForeground ?? siteConfig.colors.mutedForeground;
+  const border = settings?.border ?? siteConfig.colors.border;
 
-    name: settings?.name ?? cfg.name,
-    tagline: settings?.tagline ?? (cfg as any).tagline ?? "",
-    logoSrc: settings?.logoSrc ?? cfg.brand.logoSrc,
-    logoAlt: settings?.logoAlt ?? cfg.brand.logoAlt,
-    faviconSrc: settings?.faviconSrc ?? cfg.brand.faviconSrc ?? "",
+  const fontSans = (settings?.fontSans ?? siteConfig.fonts.sans) as FontKey;
+  const fontDisplay = (settings?.fontDisplay ?? siteConfig.fonts.display) as FontKey;
 
-    primary: settings?.primary ?? cfg.colors.primary,
-    secondary: settings?.secondary ?? cfg.colors.secondary,
-    accent: settings?.accent ?? cfg.colors.accent,
-    background: settings?.background ?? cfg.colors.background,
-    foreground: settings?.foreground ?? cfg.colors.foreground,
-    muted: settings?.muted ?? cfg.colors.muted,
-    mutedForeground: settings?.mutedForeground ?? cfg.colors.mutedForeground,
-    border: settings?.border ?? cfg.colors.border,
+  const heroTitle = settings?.heroTitle ?? "";
+  const heroHighlight = settings?.heroHighlight ?? "";
+  const heroSubtitle = settings?.heroSubtitle ?? "";
+  const heroCtas = safeJsonStringify(settings?.heroCtas, "[]");
 
-    fontSans: settings?.fontSans ?? cfg.fonts.sans,
-    fontDisplay: settings?.fontDisplay ?? cfg.fonts.display,
+  const showCategories = settings?.showCategories ?? true;
+  const showLatestGuides = settings?.showLatestGuides ?? true;
+  const showTopBrands = settings?.showTopBrands ?? true;
 
-    heroTitle: settings?.heroTitle ?? "",
-    heroHighlight: settings?.heroHighlight ?? "",
-    heroSubtitle: settings?.heroSubtitle ?? "",
+  const categoryTiles = safeJsonStringify(settings?.categoryTiles, "[]");
+  const topBrands = safeJsonStringify(settings?.topBrands, "[]");
 
-    heroCtas: prettyJson(settings?.heroCtas),
-    categoryTiles: prettyJson(settings?.categoryTiles),
-    topBrands: prettyJson(settings?.topBrands),
-
-    showCategories: settings?.showCategories ?? true,
-    showLatestGuides: settings?.showLatestGuides ?? true,
-    showTopBrands: settings?.showTopBrands ?? true,
-  };
+  const fontOptions: Array<{ value: FontKey; label: string }> = [
+    { value: "inter", label: "Inter (sans)" },
+    { value: "manrope", label: "Manrope (display)" },
+    { value: "plusJakarta", label: "Plus Jakarta Sans (display)" },
+  ];
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
-        <div>
-          <h1 className="text-xl font-semibold text-ink">Design</h1>
-          <p className="text-sm text-slate-600">
-            Configure le branding, les couleurs, les polices et la homepage (par site).
-          </p>
-        </div>
-
-        <form action="/admin/design" className="flex items-center gap-2">
-          <label className="text-sm text-slate-600">Site</label>
-          <select
-            name="site"
-            defaultValue={siteId}
-            className="rounded-xl border border-ring bg-white px-3 py-2 text-sm"
-          >
-            {SITE_IDS.map((id) => (
-              <option key={id} value={id}>
-                {id}
-              </option>
-            ))}
-          </select>
-          <button className="btn" type="submit">
-            Ouvrir
-          </button>
-        </form>
+      <div className="rounded-2xl border border-ring bg-white p-5">
+        <h1 className="text-lg font-semibold text-ink">Design</h1>
+        <p className="mt-1 text-sm text-slate-600">
+          Configuration par site (<span className="font-medium">{siteConfig.id}</span>) : logo, couleurs, polices et homepage.
+        </p>
       </div>
 
-      <div className="rounded-2xl border border-ring bg-white p-4 shadow-card">
-        <form action={saveDesign} className="space-y-8">
-          <input type="hidden" name="siteId" value={value.siteId} />
+      <form action={saveDesign} className="space-y-6">
+        {/* -------- Identité -------- */}
+        <section className="rounded-2xl border border-ring bg-white p-5">
+          <h2 className="text-base font-semibold text-ink">Identité</h2>
 
-          {/* Branding */}
-          <section className="space-y-3">
-            <h2 className="text-base font-semibold text-ink">Branding</h2>
-            <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
-              <Field label="Nom" name="name" defaultValue={value.name} />
-              <Field label="Tagline" name="tagline" defaultValue={value.tagline} />
-              <Field label="Logo (src)" name="logoSrc" defaultValue={value.logoSrc} />
-              <Field label="Logo (alt)" name="logoAlt" defaultValue={value.logoAlt} />
-              <Field label="Favicon (src)" name="faviconSrc" defaultValue={value.faviconSrc} />
-            </div>
-          </section>
-
-          {/* Colors */}
-          <section className="space-y-3">
-            <h2 className="text-base font-semibold text-ink">Couleurs</h2>
-            <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
-              <Field label="Primary" name="primary" defaultValue={value.primary} />
-              <Field label="Secondary" name="secondary" defaultValue={value.secondary} />
-              <Field label="Accent" name="accent" defaultValue={value.accent} />
-              <Field label="Background" name="background" defaultValue={value.background} />
-              <Field label="Foreground" name="foreground" defaultValue={value.foreground} />
-              <Field label="Muted" name="muted" defaultValue={value.muted} />
-              <Field label="Muted foreground" name="mutedForeground" defaultValue={value.mutedForeground} />
-              <Field label="Border" name="border" defaultValue={value.border} />
-            </div>
-            <p className="text-xs text-slate-500">
-              Format recommandé : <code>#RRGGBB</code>
-            </p>
-          </section>
-
-          {/* Fonts */}
-          <section className="space-y-3">
-            <h2 className="text-base font-semibold text-ink">Polices</h2>
-            <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
-              <Field label="Sans" name="fontSans" defaultValue={value.fontSans} placeholder="inter | manrope | plusJakarta" />
-              <Field label="Display" name="fontDisplay" defaultValue={value.fontDisplay} placeholder="inter | manrope | plusJakarta" />
-            </div>
-          </section>
-
-          {/* Homepage */}
-          <section className="space-y-3">
-            <h2 className="text-base font-semibold text-ink">Homepage</h2>
-
-            <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
-              <Field label="Hero title" name="heroTitle" defaultValue={value.heroTitle} />
-              <Field label="Hero highlight" name="heroHighlight" defaultValue={value.heroHighlight} />
-            </div>
-
-            <div className="grid grid-cols-1 gap-3">
-              <TextArea label="Hero subtitle" name="heroSubtitle" defaultValue={value.heroSubtitle} rows={3} />
-            </div>
-
-            <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
-              <Toggle label="Afficher catégories" name="showCategories" defaultChecked={value.showCategories} />
-              <Toggle label="Afficher derniers guides" name="showLatestGuides" defaultChecked={value.showLatestGuides} />
-              <Toggle label="Afficher top marques" name="showTopBrands" defaultChecked={value.showTopBrands} />
-            </div>
-
-            <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
-              <TextArea
-                label="Hero CTAs (JSON)"
-                name="heroCtas"
-                defaultValue={value.heroCtas}
-                rows={10}
-                hint={`Ex: [{"label":"Comparer","href":"/search","variant":"primary"}]`}
+          <div className="mt-4 grid grid-cols-1 gap-4 md:grid-cols-2">
+            <label className="block">
+              <span className="text-sm font-medium text-ink">Nom du site</span>
+              <input
+                name="name"
+                defaultValue={name}
+                className="mt-2 w-full rounded-xl border border-ring bg-white px-3 py-2 text-sm"
               />
-              <TextArea
-                label="Category tiles (JSON)"
-                name="categoryTiles"
-                defaultValue={value.categoryTiles}
-                rows={10}
-                hint={`Ex: [{"slug":"robots-tondeuse","title":"Robots tondeuse","desc":"...","cta":"Comparer","img":"/categories/robots-tondeuse.jpg"}]`}
+            </label>
+
+            <label className="block">
+              <span className="text-sm font-medium text-ink">Tagline</span>
+              <input
+                name="tagline"
+                defaultValue={tagline}
+                className="mt-2 w-full rounded-xl border border-ring bg-white px-3 py-2 text-sm"
+                placeholder="Ex: Comparer & gagner"
               />
-              <TextArea
-                label="Top brands (JSON)"
-                name="topBrands"
-                defaultValue={value.topBrands}
-                rows={10}
-                hint={`Ex: [{"name":"Husqvarna","slug":"husqvarna","logo":"https://..."}]`}
+            </label>
+
+            <label className="block md:col-span-2">
+              <span className="text-sm font-medium text-ink">Logo (chemin public)</span>
+              <input
+                name="logoSrc"
+                defaultValue={logoSrc}
+                className="mt-2 w-full rounded-xl border border-ring bg-white px-3 py-2 text-sm"
+                placeholder="/brands/meilleur-ski/logo.svg"
               />
-            </div>
-          </section>
+              <p className="mt-1 text-xs text-slate-500">Le fichier doit être dans /public. Ex: public/brands/…</p>
+            </label>
 
-          <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-            <div className="text-xs text-slate-500">
-              Les changements s’appliquent au site <span className="font-semibold">{siteId}</span>.
-            </div>
+            <label className="block md:col-span-2">
+              <span className="text-sm font-medium text-ink">Alt du logo</span>
+              <input
+                name="logoAlt"
+                defaultValue={logoAlt}
+                className="mt-2 w-full rounded-xl border border-ring bg-white px-3 py-2 text-sm"
+              />
+            </label>
 
-            <div className="flex gap-2">
-              <button type="submit" className="btn">
-                Enregistrer
-              </button>
-
-              <form
-                action={async () => {
-                  "use server";
-                  await resetDesign(siteId);
-                }}
-              >
-                <button type="submit" className="btn-outline">
-                  Réinitialiser (config)
-                </button>
-              </form>
-            </div>
+            <label className="block md:col-span-2">
+              <span className="text-sm font-medium text-ink">Favicon (chemin public)</span>
+              <input
+                name="faviconSrc"
+                defaultValue={faviconSrc}
+                className="mt-2 w-full rounded-xl border border-ring bg-white px-3 py-2 text-sm"
+                placeholder="/brands/meilleur-ski/favicon.ico"
+              />
+            </label>
           </div>
-        </form>
-      </div>
+        </section>
+
+        {/* -------- Couleurs -------- */}
+        <section className="rounded-2xl border border-ring bg-white p-5">
+          <h2 className="text-base font-semibold text-ink">Couleurs</h2>
+
+          <div className="mt-4 grid grid-cols-1 gap-4 md:grid-cols-3">
+            {[
+              ["primary", "Primary", primary],
+              ["secondary", "Secondary", secondary],
+              ["accent", "Accent", accent],
+              ["background", "Background", background],
+              ["foreground", "Foreground", foreground],
+              ["muted", "Muted", muted],
+              ["mutedForeground", "Muted foreground", mutedForeground],
+              ["border", "Border", border],
+            ].map(([key, label, value]) => (
+              <label key={key} className="block">
+                <span className="text-sm font-medium text-ink">{label}</span>
+                <div className="mt-2 flex items-center gap-3">
+                  <input
+                    type="color"
+                    defaultValue={String(value)}
+                    onChange={() => {}}
+                    className="h-10 w-12 rounded-lg border border-ring bg-white p-1"
+                    aria-label={String(label)}
+                    // pas de name sur color => on envoie la valeur via l'input texte ci-dessous
+                  />
+                  <input
+                    name={String(key)}
+                    defaultValue={String(value)}
+                    className="w-full rounded-xl border border-ring bg-white px-3 py-2 text-sm"
+                  />
+                </div>
+              </label>
+            ))}
+          </div>
+
+          <p className="mt-3 text-xs text-slate-500">
+            Format attendu : HEX (#rrggbb). Ces couleurs alimentent les variables CSS du thème.
+          </p>
+        </section>
+
+        {/* -------- Polices -------- */}
+        <section className="rounded-2xl border border-ring bg-white p-5">
+          <h2 className="text-base font-semibold text-ink">Polices</h2>
+
+          <div className="mt-4 grid grid-cols-1 gap-4 md:grid-cols-2">
+            <label className="block">
+              <span className="text-sm font-medium text-ink">Font “sans” (texte)</span>
+              <select
+                name="fontSans"
+                defaultValue={fontSans}
+                className="mt-2 w-full rounded-xl border border-ring bg-white px-3 py-2 text-sm"
+              >
+                {fontOptions.map((f) => (
+                  <option key={f.value} value={f.value}>
+                    {f.label}
+                  </option>
+                ))}
+              </select>
+            </label>
+
+            <label className="block">
+              <span className="text-sm font-medium text-ink">Font “display” (titres)</span>
+              <select
+                name="fontDisplay"
+                defaultValue={fontDisplay}
+                className="mt-2 w-full rounded-xl border border-ring bg-white px-3 py-2 text-sm"
+              >
+                {fontOptions.map((f) => (
+                  <option key={f.value} value={f.value}>
+                    {f.label}
+                  </option>
+                ))}
+              </select>
+            </label>
+          </div>
+        </section>
+
+        {/* -------- Homepage -------- */}
+        <section className="rounded-2xl border border-ring bg-white p-5">
+          <h2 className="text-base font-semibold text-ink">Homepage</h2>
+
+          <div className="mt-4 grid grid-cols-1 gap-4 md:grid-cols-2">
+            <label className="block md:col-span-2">
+              <span className="text-sm font-medium text-ink">Hero title</span>
+              <input
+                name="heroTitle"
+                defaultValue={heroTitle}
+                className="mt-2 w-full rounded-xl border border-ring bg-white px-3 py-2 text-sm"
+                placeholder="Ex: Le comparateur des passionnés de ski"
+              />
+            </label>
+
+            <label className="block">
+              <span className="text-sm font-medium text-ink">Hero highlight</span>
+              <input
+                name="heroHighlight"
+                defaultValue={heroHighlight}
+                className="mt-2 w-full rounded-xl border border-ring bg-white px-3 py-2 text-sm"
+                placeholder="Ex: comparateur"
+              />
+            </label>
+
+            <label className="block md:col-span-2">
+              <span className="text-sm font-medium text-ink">Hero subtitle</span>
+              <textarea
+                name="heroSubtitle"
+                defaultValue={heroSubtitle}
+                className="mt-2 w-full rounded-xl border border-ring bg-white px-3 py-2 text-sm"
+                rows={3}
+              />
+            </label>
+
+            <label className="block md:col-span-2">
+              <span className="text-sm font-medium text-ink">Hero CTAs (JSON)</span>
+              <textarea
+                name="heroCtas"
+                defaultValue={heroCtas}
+                className="mt-2 w-full rounded-xl border border-ring bg-white px-3 py-2 font-mono text-xs"
+                rows={6}
+                placeholder='[{"label":"Comparer","href":"/search","variant":"primary"}]'
+              />
+              <p className="mt-1 text-xs text-slate-500">
+                JSON attendu (array). Tu peux laisser vide si tu n’utilises pas les CTAs custom.
+              </p>
+            </label>
+
+            <div className="md:col-span-2 grid grid-cols-1 gap-3 md:grid-cols-3">
+              <label className="flex items-center gap-2 rounded-xl border border-ring bg-muted/30 px-3 py-3">
+                <input type="checkbox" name="showCategories" defaultChecked={showCategories} />
+                <span className="text-sm text-ink">Afficher les catégories</span>
+              </label>
+
+              <label className="flex items-center gap-2 rounded-xl border border-ring bg-muted/30 px-3 py-3">
+                <input type="checkbox" name="showLatestGuides" defaultChecked={showLatestGuides} />
+                <span className="text-sm text-ink">Afficher les derniers guides</span>
+              </label>
+
+              <label className="flex items-center gap-2 rounded-xl border border-ring bg-muted/30 px-3 py-3">
+                <input type="checkbox" name="showTopBrands" defaultChecked={showTopBrands} />
+                <span className="text-sm text-ink">Afficher les top marques</span>
+              </label>
+            </div>
+
+            <label className="block md:col-span-2">
+              <span className="text-sm font-medium text-ink">Category tiles (JSON)</span>
+              <textarea
+                name="categoryTiles"
+                defaultValue={categoryTiles}
+                className="mt-2 w-full rounded-xl border border-ring bg-white px-3 py-2 font-mono text-xs"
+                rows={10}
+                placeholder='[{"slug":"skis-all-mountain","title":"...","desc":"...","cta":"...","img":"/categories/....jpg"}]'
+              />
+              <p className="mt-1 text-xs text-slate-500">
+                JSON attendu (array). Les images doivent exister dans <span className="font-medium">/public/categories</span>.
+              </p>
+            </label>
+
+            <label className="block md:col-span-2">
+              <span className="text-sm font-medium text-ink">Top brands (JSON)</span>
+              <textarea
+                name="topBrands"
+                defaultValue={topBrands}
+                className="mt-2 w-full rounded-xl border border-ring bg-white px-3 py-2 font-mono text-xs"
+                rows={10}
+                placeholder='[{"name":"...","slug":"...","logo":"https://..."}]'
+              />
+              <p className="mt-1 text-xs text-slate-500">JSON attendu (array).</p>
+            </label>
+          </div>
+        </section>
+
+        {/* -------- Submit -------- */}
+        <div className="flex items-center justify-end gap-3">
+          <button type="submit" className="btn">
+            Enregistrer
+          </button>
+        </div>
+      </form>
     </div>
-  );
-}
-
-function Field(props: { label: string; name: string; defaultValue?: string; placeholder?: string }) {
-  return (
-    <label className="block">
-      <div className="text-sm font-medium text-ink">{props.label}</div>
-      <input
-        className="mt-1 w-full rounded-xl border border-ring bg-white px-3 py-2 text-sm"
-        name={props.name}
-        defaultValue={props.defaultValue ?? ""}
-        placeholder={props.placeholder}
-      />
-    </label>
-  );
-}
-
-function TextArea(props: { label: string; name: string; defaultValue?: string; rows?: number; hint?: string }) {
-  return (
-    <label className="block">
-      <div className="text-sm font-medium text-ink">{props.label}</div>
-      <textarea
-        className="mt-1 w-full rounded-xl border border-ring bg-white px-3 py-2 text-sm font-mono"
-        name={props.name}
-        defaultValue={props.defaultValue ?? ""}
-        rows={props.rows ?? 6}
-      />
-      {props.hint ? <div className="mt-1 text-xs text-slate-500">{props.hint}</div> : null}
-    </label>
-  );
-}
-
-function Toggle(props: { label: string; name: string; defaultChecked?: boolean }) {
-  return (
-    <label className="flex items-center gap-2 rounded-xl border border-ring bg-white px-3 py-2">
-      <input type="checkbox" name={props.name} defaultChecked={props.defaultChecked ?? false} />
-      <span className="text-sm text-ink">{props.label}</span>
-    </label>
   );
 }
