@@ -1,7 +1,12 @@
-// middleware.ts
+// src/middleware.ts
 import { NextResponse } from "next/server";
 import { getToken } from "next-auth/jwt";
 import type { NextRequest } from "next/server";
+
+type TokenWithSite = {
+  role?: string;
+  siteId?: string | null;
+};
 
 function getHost(req: NextRequest) {
   // ex: "meilleur-robot.com:3000" -> "meilleur-robot.com"
@@ -29,7 +34,6 @@ function getSiteSlugFromHost(host: string): string {
   if (host.includes("meilleur-robot")) return "meilleur-robot";
   if (host.includes("meilleur-ski") || host.includes("achat-ski")) return "meilleur-ski";
 
-  // fallback ultime
   return process.env.DEFAULT_SITE_SLUG || "meilleur-ski";
 }
 
@@ -37,7 +41,10 @@ export async function middleware(req: NextRequest) {
   const { pathname } = req.nextUrl;
 
   if (pathname.startsWith("/admin")) {
-    const token = await getToken({ req, secret: process.env.NEXTAUTH_SECRET });
+    const token = (await getToken({
+      req,
+      secret: process.env.NEXTAUTH_SECRET,
+    })) as TokenWithSite | null;
 
     // Pas connecté -> login
     if (!token) {
@@ -56,7 +63,7 @@ export async function middleware(req: NextRequest) {
     const currentSite = getSiteSlugFromHost(host);
 
     // token.siteId null => super-admin (accès à tous sites)
-    const tokenSite = (token as any).siteId as string | null | undefined;
+    const tokenSite = token.siteId ?? null;
 
     if (tokenSite && tokenSite !== currentSite) {
       return NextResponse.redirect(new URL("/", req.url));

@@ -6,6 +6,10 @@ import { notFound } from "next/navigation";
 import { headers } from "next/headers";
 import AdminSidebar from "@/components/admin/AdminSidebar";
 
+type SessionUserWithSite = {
+  siteId?: string | null;
+};
+
 function getSiteSlugFromHost(host: string): string {
   const raw = process.env.SITE_HOST_MAP;
   if (raw) {
@@ -32,7 +36,7 @@ export default async function AdminLayout({ children }: { children: ReactNode })
   const host = (headers().get("host") || "").toLowerCase().split(":")[0];
   const currentSite = getSiteSlugFromHost(host);
 
-  const userSiteId = (session.user as any).siteId as string | null | undefined;
+  const userSiteId = (session.user as unknown as SessionUserWithSite).siteId;
   if (userSiteId && userSiteId !== currentSite) return notFound();
 
   return (
