@@ -8,13 +8,12 @@ import { Role } from "@prisma/client";
 import bcrypt from "bcryptjs";
 
 type RoleLiteral = "ADMIN" | "USER";
-type UserWithRole = User & { role?: RoleLiteral };
-type JwtWithRole = JWT & { id?: string; role?: RoleLiteral };
+type UserWithRoleSite = User & { role?: RoleLiteral; siteId?: string | null };
+type JwtWithRoleSite = JWT & { id?: string; role?: RoleLiteral; siteId?: string | null };
 
 export const authOptions: NextAuthOptions = {
   session: { strategy: "jwt" },
 
-  // ➜ on branche notre page custom
   pages: {
     signIn: "/auth/signin",
   },
@@ -29,30 +28,9 @@ export const authOptions: NextAuthOptions = {
       async authorize(credentials): Promise<User | null> {
         const email = (credentials?.email || "").toLowerCase().trim();
         const pass = credentials?.password || "";
-
         if (!email || !pass) return null;
 
-        const adminEmail = (process.env.ADMIN_EMAIL || "").toLowerCase().trim();
-        const adminPass = process.env.ADMIN_PASSWORD || "";
-
-        // 🔐 1) Cas ADMIN : email + mot de passe env
-        if (email === adminEmail && pass === adminPass) {
-          const dbUser = await prisma.user.upsert({
-            where: { email },
-            update: { role: Role.ADMIN, name: "Admin" },
-            create: { email, role: Role.ADMIN, name: "Admin" },
-          });
-
-          const user: UserWithRole = {
-            id: String(dbUser.id),
-            email: dbUser.email ?? undefined,
-            name: dbUser.name ?? "Admin",
-            role: "ADMIN",
-          };
-          return user;
-        }
-
-        // 👤 2) Cas utilisateur classique : lookup en base + passwordHash
+        // ✅ On s’appuie sur la base (per-site admin compatible multi-sites)
         const dbUser = await prisma.user.findUnique({
           where: { email },
           select: {
@@ -60,6 +38,7 @@ export const authOptions: NextAuthOptions = {
             email: true,
             name: true,
             role: true,
+            siteId: true,
             passwordHash: true,
             pseudo: true,
             firstName: true,
@@ -67,9 +46,7 @@ export const authOptions: NextAuthOptions = {
           },
         });
 
-        if (!dbUser || !dbUser.passwordHash) {
-          return null;
-        }
+        if (!dbUser || !dbUser.passwordHash) return null;
 
         const ok = await bcrypt.compare(pass, dbUser.passwordHash);
         if (!ok) return null;
@@ -81,11 +58,12 @@ export const authOptions: NextAuthOptions = {
           dbUser.email ||
           "Utilisateur";
 
-        const user: UserWithRole = {
+        const user: UserWithRoleSite = {
           id: String(dbUser.id),
           email: dbUser.email ?? undefined,
           name: displayName,
           role: (dbUser.role as RoleLiteral) ?? "USER",
+          siteId: dbUser.siteId ?? null,
         };
 
         return user;
@@ -99,11 +77,12 @@ export const authOptions: NextAuthOptions = {
             clientSecret: process.env.GITHUB_SECRET!,
             allowDangerousEmailAccountLinking: true,
             profile(profile): User {
-              const u: UserWithRole = {
+              const u: UserWithRoleSite = {
                 id: String(profile.id),
                 name: profile.name ?? profile.login,
                 email: profile.email ?? undefined,
                 role: "USER",
+                siteId: null,
               };
               return u;
             },
@@ -119,34 +98,35 @@ export const authOptions: NextAuthOptions = {
 
     async jwt({ token, user }): Promise<JWT> {
       if (user) {
-        const role = (user as UserWithRole).role ?? "USER";
-        (token as JwtWithRole).id = user.id;
-        (token as JwtWithRole).role = role;
+        const role = (user as UserWithRoleSite).role ?? "USER";
+        (token as JwtWithRoleSite).id = user.id;
+        (token as JwtWithRoleSite).role = role;
+        (token as JwtWithRoleSite).siteId = (user as UserWithRoleSite).siteId ?? null;
       }
       return token;
     },
 
     async session({ session, token }): Promise<Session> {
       if (session.user) {
-        (session.user as typeof session.user & { id: string; role: RoleLiteral }).id =
-          (token as JwtWithRole).id ?? "";
-        (session.user as typeof session.user & { id: string; role: RoleLiteral }).role =
-          ((token as JwtWithRole).role ?? "USER") as RoleLiteral;
+        (session.user as typeof session.user & { id: string; role: RoleLiteral; siteId: string | null }).id =
+          (token as JwtWithRoleSite).id ?? "";
+
+        (session.user as typeof session.user & { id: string; role: RoleLiteral; siteId: string | null }).role =
+          ((token as JwtWithRoleSite).role ?? "USER") as RoleLiteral;
+
+        (session.user as typeof session.user & { id: string; role: RoleLiteral; siteId: string | null }).siteId =
+          (token as JwtWithRoleSite).siteId ?? null;
       }
       return session;
     },
 
-    // ➜ Respecte callbackUrl (ex: /admin pour l’admin, /me pour un utilisateur)
     async redirect({ url, baseUrl }): Promise<string> {
       try {
         const u = new URL(url, baseUrl);
         const callbackUrl = u.searchParams.get("callbackUrl");
 
         if (callbackUrl) {
-          // callbackUrl relatif
           if (callbackUrl.startsWith("/")) return `${baseUrl}${callbackUrl}`;
-
-          // callbackUrl absolu mais même origine
           try {
             const absCb = new URL(callbackUrl);
             if (absCb.origin === baseUrl) return absCb.toString();
@@ -158,18 +138,13 @@ export const authOptions: NextAuthOptions = {
         /* ignore */
       }
 
-      // URL relative -> même origine
       if (url.startsWith("/")) return `${baseUrl}${url}`;
-
-      // URL absolue même origine
       try {
         const abs = new URL(url);
         if (abs.origin === baseUrl) return abs.toString();
       } catch {
         /* ignore */
       }
-
-      // fallback sécurisé
       return baseUrl;
     },
   },

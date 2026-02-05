@@ -19,6 +19,10 @@ model User {
   emailVerified           DateTime?
   image                   String?
   role                    Role                     @default(USER)
+
+  // Multi-site : null = super-admin (tous sites), sinon slug du site (ex: "meilleur-robot")
+  siteId                  String?
+
   avatarId                Int?
   avatar                  MediaAsset?              @relation("UserAvatar", fields: [avatarId], references: [id])
   mediaCreated            MediaAsset[]             @relation("MediaCreatedBy")
@@ -44,7 +48,10 @@ model User {
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+
+  @@index([siteId])
 }
+
 
 model EmailVerificationToken {
   id        Int      @id @default(autoincrement())
