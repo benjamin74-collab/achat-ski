@@ -59,6 +59,17 @@ export default async function AdminDesignPage() {
     { value: "plusJakarta", label: "Plus Jakarta Sans (display)" },
   ];
 
+  const colorFields: Array<{ key: string; label: string; value: string }> = [
+    { key: "primary", label: "Primary", value: primary },
+    { key: "secondary", label: "Secondary", value: secondary },
+    { key: "accent", label: "Accent", value: accent },
+    { key: "background", label: "Background", value: background },
+    { key: "foreground", label: "Foreground", value: foreground },
+    { key: "muted", label: "Muted", value: muted },
+    { key: "mutedForeground", label: "Muted foreground", value: mutedForeground },
+    { key: "border", label: "Border", value: border },
+  ];
+
   return (
     <div className="space-y-6">
       <div className="rounded-2xl border border-ring bg-white p-5">
@@ -130,30 +141,19 @@ export default async function AdminDesignPage() {
           <h2 className="text-base font-semibold text-ink">Couleurs</h2>
 
           <div className="mt-4 grid grid-cols-1 gap-4 md:grid-cols-3">
-            {[
-              ["primary", "Primary", primary],
-              ["secondary", "Secondary", secondary],
-              ["accent", "Accent", accent],
-              ["background", "Background", background],
-              ["foreground", "Foreground", foreground],
-              ["muted", "Muted", muted],
-              ["mutedForeground", "Muted foreground", mutedForeground],
-              ["border", "Border", border],
-            ].map(([key, label, value]) => (
-              <label key={key} className="block">
-                <span className="text-sm font-medium text-ink">{label}</span>
+            {colorFields.map((f) => (
+              <label key={f.key} className="block">
+                <span className="text-sm font-medium text-ink">{f.label}</span>
                 <div className="mt-2 flex items-center gap-3">
                   <input
                     type="color"
-                    defaultValue={String(value)}
-                    onChange={() => {}}
+                    defaultValue={f.value}
                     className="h-10 w-12 rounded-lg border border-ring bg-white p-1"
-                    aria-label={String(label)}
-                    // pas de name sur color => on envoie la valeur via l'input texte ci-dessous
+                    aria-label={f.label}
                   />
                   <input
-                    name={String(key)}
-                    defaultValue={String(value)}
+                    name={f.key}
+                    defaultValue={f.value}
                     className="w-full rounded-xl border border-ring bg-white px-3 py-2 text-sm"
                   />
                 </div>
@@ -161,9 +161,7 @@ export default async function AdminDesignPage() {
             ))}
           </div>
 
-          <p className="mt-3 text-xs text-slate-500">
-            Format attendu : HEX (#rrggbb). Ces couleurs alimentent les variables CSS du thème.
-          </p>
+          <p className="mt-3 text-xs text-slate-500">Format attendu : HEX (#rrggbb).</p>
         </section>
 
         {/* -------- Polices -------- */}
@@ -214,7 +212,6 @@ export default async function AdminDesignPage() {
                 name="heroTitle"
                 defaultValue={heroTitle}
                 className="mt-2 w-full rounded-xl border border-ring bg-white px-3 py-2 text-sm"
-                placeholder="Ex: Le comparateur des passionnés de ski"
               />
             </label>
 
@@ -224,7 +221,6 @@ export default async function AdminDesignPage() {
                 name="heroHighlight"
                 defaultValue={heroHighlight}
                 className="mt-2 w-full rounded-xl border border-ring bg-white px-3 py-2 text-sm"
-                placeholder="Ex: comparateur"
               />
             </label>
 
@@ -245,11 +241,7 @@ export default async function AdminDesignPage() {
                 defaultValue={heroCtas}
                 className="mt-2 w-full rounded-xl border border-ring bg-white px-3 py-2 font-mono text-xs"
                 rows={6}
-                placeholder='[{"label":"Comparer","href":"/search","variant":"primary"}]'
               />
-              <p className="mt-1 text-xs text-slate-500">
-                JSON attendu (array). Tu peux laisser vide si tu n’utilises pas les CTAs custom.
-              </p>
             </label>
 
             <div className="md:col-span-2 grid grid-cols-1 gap-3 md:grid-cols-3">
@@ -276,11 +268,7 @@ export default async function AdminDesignPage() {
                 defaultValue={categoryTiles}
                 className="mt-2 w-full rounded-xl border border-ring bg-white px-3 py-2 font-mono text-xs"
                 rows={10}
-                placeholder='[{"slug":"skis-all-mountain","title":"...","desc":"...","cta":"...","img":"/categories/....jpg"}]'
               />
-              <p className="mt-1 text-xs text-slate-500">
-                JSON attendu (array). Les images doivent exister dans <span className="font-medium">/public/categories</span>.
-              </p>
             </label>
 
             <label className="block md:col-span-2">
@@ -290,14 +278,11 @@ export default async function AdminDesignPage() {
                 defaultValue={topBrands}
                 className="mt-2 w-full rounded-xl border border-ring bg-white px-3 py-2 font-mono text-xs"
                 rows={10}
-                placeholder='[{"name":"...","slug":"...","logo":"https://..."}]'
               />
-              <p className="mt-1 text-xs text-slate-500">JSON attendu (array).</p>
             </label>
           </div>
         </section>
 
-        {/* -------- Submit -------- */}
         <div className="flex items-center justify-end gap-3">
           <button type="submit" className="btn">
             Enregistrer
