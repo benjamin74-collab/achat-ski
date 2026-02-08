@@ -9,16 +9,9 @@ type TokenWithSite = {
 };
 
 function getHost(req: NextRequest) {
-  // ex: "meilleur-robot.com:3000" -> "meilleur-robot.com"
   return (req.headers.get("host") || "").toLowerCase().split(":")[0];
 }
 
-/**
- * Déduit le siteSlug depuis le host.
- * - Priorité 1 : mapping explicite via env JSON
- *   ex: SITE_HOST_MAP='{"meilleur-ski.com":"meilleur-ski","www.meilleur-ski.com":"meilleur-ski","meilleur-robot.com":"meilleur-robot"}'
- * - Fallback : heuristique simple (contient "meilleur-robot" / "meilleur-ski")
- */
 function getSiteSlugFromHost(host: string): string {
   const raw = process.env.SITE_HOST_MAP;
   if (raw) {
@@ -27,7 +20,7 @@ function getSiteSlugFromHost(host: string): string {
       const found = map[host];
       if (found) return found;
     } catch {
-      // ignore JSON parse error
+      // ignore
     }
   }
 
@@ -46,10 +39,10 @@ export async function middleware(req: NextRequest) {
       secret: process.env.NEXTAUTH_SECRET,
     })) as TokenWithSite | null;
 
-    // Pas connecté -> login
+    // ✅ Pas connecté -> redirige vers ta page custom /auth/signin avec URL complète (même domaine)
     if (!token) {
-      const url = new URL("/api/auth/signin", req.url);
-      url.searchParams.set("callbackUrl", req.nextUrl.pathname);
+      const url = new URL("/auth/signin", req.url);
+      url.searchParams.set("callbackUrl", req.nextUrl.href);
       return NextResponse.redirect(url);
     }
 
@@ -58,11 +51,9 @@ export async function middleware(req: NextRequest) {
       return NextResponse.redirect(new URL("/", req.url));
     }
 
-    // ✅ Check multi-site
+    // ✅ Check multi-site (admin limité à son site)
     const host = getHost(req);
     const currentSite = getSiteSlugFromHost(host);
-
-    // token.siteId null => super-admin (accès à tous sites)
     const tokenSite = token.siteId ?? null;
 
     if (tokenSite && tokenSite !== currentSite) {

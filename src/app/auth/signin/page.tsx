@@ -7,7 +7,7 @@ import Link from "next/link";
 
 export default function SignInPage() {
   const searchParams = useSearchParams();
-  const callbackUrl = searchParams.get("callbackUrl") || "/me";
+  const callbackUrl = searchParams.get("callbackUrl") || "/admin";
   const urlError = searchParams.get("error");
 
   const [email, setEmail] = useState("");
