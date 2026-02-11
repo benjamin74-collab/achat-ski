@@ -1,14 +1,65 @@
 "use client";
 
-import { FormEvent, useState } from "react";
+import { FormEvent, useEffect, useMemo, useState } from "react";
 import { signIn } from "next-auth/react";
 import { useSearchParams } from "next/navigation";
 import Link from "next/link";
+
+type SiteCopy = {
+  title: string;
+  description: string;
+  bullets: string[];
+};
+
+function getSiteSlugFromHost(host: string) {
+  const h = host.toLowerCase();
+
+  if (h.includes("meilleur-robot")) return "meilleur-robot";
+  if (h.includes("meilleur-ski") || h.includes("achat-ski")) return "meilleur-ski";
+
+  // fallback : si tu ajoutes d'autres domaines plus tard
+  return "meilleur-ski";
+}
+
+const COPY_BY_SITE: Record<string, SiteCopy> = {
+  "meilleur-ski": {
+    title: "Nouveau sur Meilleur-Ski ?",
+    description:
+      "Crée ton compte pour laisser des avis, proposer des tests de matériel, suivre tes contenus favoris et profiter d’une expérience personnalisée.",
+    bullets: [
+      "• Laisser des avis sur les skis et chaussures",
+      "• Suivre tes tests et leur statut de publication",
+      "• Sauvegarder des produits pour plus tard",
+    ],
+  },
+  "meilleur-robot": {
+    title: "Nouveau sur Meilleur-Robot ?",
+    description:
+      "Crée ton compte pour laisser des avis, proposer des tests de robots, suivre tes comparatifs favoris et profiter d’une expérience personnalisée.",
+    bullets: [
+      "• Laisser des avis sur les robots aspirateurs et tondeuses",
+      "• Suivre tes tests et leur statut de publication",
+      "• Sauvegarder des produits pour plus tard",
+    ],
+  },
+};
 
 export default function SignInPage() {
   const searchParams = useSearchParams();
   const callbackUrl = searchParams.get("callbackUrl") || "/admin";
   const urlError = searchParams.get("error");
+
+  const [siteSlug, setSiteSlug] = useState<string>("meilleur-ski");
+
+  useEffect(() => {
+    // Côté client uniquement
+    const host = window.location.host || "";
+    setSiteSlug(getSiteSlugFromHost(host));
+  }, []);
+
+  const copy = useMemo(() => {
+    return COPY_BY_SITE[siteSlug] ?? COPY_BY_SITE["meilleur-ski"];
+  }, [siteSlug]);
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -97,21 +148,16 @@ export default function SignInPage() {
             </form>
           </div>
 
-          {/* Colonne droite : Création de compte */}
+          {/* Colonne droite : Création de compte (dynamique) */}
           <div className="p-6 md:p-8 bg-slate-900 text-slate-50 flex flex-col justify-center">
-            <h2 className="text-lg font-semibold mb-2">
-              Nouveau sur Meilleur-Ski ?
-            </h2>
-            <p className="text-sm text-slate-200 mb-4">
-              Crée ton compte pour laisser des avis, proposer des tests de
-              matériel, suivre tes contenus favoris et profiter d’une expérience
-              personnalisée.
-            </p>
+            <h2 className="text-lg font-semibold mb-2">{copy.title}</h2>
+
+            <p className="text-sm text-slate-200 mb-4">{copy.description}</p>
 
             <ul className="text-xs text-slate-200 space-y-1 mb-5">
-              <li>• Laisser des avis sur les skis et chaussures</li>
-              <li>• Suivre tes tests et leur statut de publication</li>
-              <li>• Sauvegarder des produits pour plus tard</li>
+              {copy.bullets.map((b, i) => (
+                <li key={i}>{b}</li>
+              ))}
             </ul>
 
             <Link
