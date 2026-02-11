@@ -7,19 +7,19 @@ export type ProductSearchItem = {
   brand: string | null;
   model: string | null;
   season: string | null;
-  category: string | null;
+  category: string | null; // ✅ désormais: Category.name
   minPriceCents: number | null;
   offerCount: number;
-  rank: number;        // score FTS
+  rank: number; // score FTS
   prefixScore: number; // 0/1 si préfixe brand/model
-  simScore: number;    // similarité trigram
+  simScore: number; // similarité trigram
 };
 
 export async function searchProducts(opts: {
   q: string;
   page?: number;
   pageSize?: number;
-  category?: string;
+  category?: string; // ✅ désormais: Category.slug
   inStockOnly?: boolean;
   minPriceCents?: number | null;
   maxPriceCents?: number | null;
@@ -30,15 +30,12 @@ export async function searchProducts(opts: {
   const pageSize = Math.min(50, Math.max(1, opts.pageSize ?? 20));
   const offset = (page - 1) * pageSize;
 
-  const category = opts.category ?? null;
+  const category = opts.category ?? null; // slug
   const inStockOnly = Boolean(opts.inStockOnly);
   const minPriceCents = opts.minPriceCents ?? null;
   const maxPriceCents = opts.maxPriceCents ?? null;
   const sort = opts.sort ?? "relevance";
 
-  // On calcule le vecteur FTS à la volée pour éviter d'avoir besoin de la colonne p.fts
-  // tsvector = to_tsvector('french', unaccent(brand || ' ' || model || ' ' || season))
-  // tsquery  = websearch_to_tsquery('french', unaccent(qs)) si qs non vide
   const rows = await prisma.$queryRaw<ProductSearchItem[]>`
     WITH base AS (
       SELECT
@@ -47,11 +44,10 @@ export async function searchProducts(opts: {
         p.brand,
         p.model,
         p.season,
-        p.category,
+        c.name AS category, -- ✅ remplace p.category
         MIN(CASE WHEN o."inStock" THEN o."priceCents" END)::int AS "minPriceCents",
         COUNT(CASE WHEN o."inStock" THEN 1 END)::int           AS "offerCount",
 
-        -- tsquery calculée seulement si qs non vide
         CASE
           WHEN ${qs}::text = ''::text THEN 0::float4
           ELSE ts_rank(
@@ -62,19 +58,18 @@ export async function searchProducts(opts: {
                )::float4
         END AS rank,
 
-        -- Match préfixe (brand/model commence par q)
         GREATEST(
           (unaccent(coalesce(p.brand,'')) ILIKE unaccent(${qs}::text || '%'))::int,
           (unaccent(coalesce(p.model,'')) ILIKE unaccent(${qs}::text || '%'))::int
         ) AS "prefixScore",
 
-        -- Similarité trigram (tolérance fautes)
         GREATEST(
           similarity(unaccent(coalesce(p.brand,'')), unaccent(${qs}::text))::float4,
           similarity(unaccent(coalesce(p.model,'')), unaccent(${qs}::text))::float4
         ) AS "simScore"
 
       FROM "Product" p
+      LEFT JOIN "Category" c ON c.id = p."categoryId" -- ✅ join catégorie
       LEFT JOIN "Sku"   s ON s."productId" = p.id
       LEFT JOIN "Offer" o ON o."skuId"     = s.id
       WHERE
@@ -91,7 +86,7 @@ export async function searchProducts(opts: {
         )
         AND (
           COALESCE(${category}::text, ''::text) = ''::text
-          OR p."category" = ${category}::text
+          OR c.slug = ${category}::text -- ✅ filtre sur slug
         )
         AND (
           CASE WHEN ${inStockOnly}::boolean
@@ -99,7 +94,7 @@ export async function searchProducts(opts: {
                ELSE TRUE
           END
         )
-      GROUP BY p.id
+      GROUP BY p.id, c.name
       HAVING
         (COALESCE(${minPriceCents}::int, -1) = -1 OR MIN(CASE WHEN o."inStock" THEN o."priceCents" END)::int >= ${minPriceCents}::int)
         AND
@@ -127,6 +122,7 @@ export async function searchProducts(opts: {
         p.id,
         MIN(CASE WHEN o."inStock" THEN o."priceCents" END)::int AS "minPriceCents"
       FROM "Product" p
+      LEFT JOIN "Category" c ON c.id = p."categoryId" -- ✅ join catégorie
       LEFT JOIN "Sku"   s ON s."productId" = p.id
       LEFT JOIN "Offer" o ON o."skuId"     = s.id
       WHERE
@@ -143,7 +139,7 @@ export async function searchProducts(opts: {
         )
         AND (
           COALESCE(${category}::text, ''::text) = ''::text
-          OR p."category" = ${category}::text
+          OR c.slug = ${category}::text -- ✅ filtre sur slug
         )
         AND (
           CASE WHEN ${inStockOnly}::boolean

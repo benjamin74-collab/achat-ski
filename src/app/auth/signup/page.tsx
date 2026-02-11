@@ -168,7 +168,7 @@ export default function SignUpPage() {
               onChange={(e) => setMarketingOptIn(e.target.checked)}
             />
             <span>
-              J’accepte de recevoir des emails occasionnels de Meilleur-Ski
+              J’accepte de recevoir des emails occasionnels
               (actualités, nouveautés, bons plans). Je pourrai me désabonner à
               tout moment.
             </span>
