@@ -9,6 +9,7 @@ type FooterPack = {
   categories: Array<{ href: string; label: string }>; // Bloc 2
   about: Array<{ href: string; label: string }>; // Bloc 3
   newsletterIntro: string; // Bloc 4
+  legal: Array<{ href: string; label: string }>; // ✅ bas de page (multi-site)
   copyright: string; // bas de page
 };
 
@@ -16,7 +17,7 @@ const year = new Date().getFullYear();
 
 const FOOTER_PACKS: Record<string, FooterPack> = {
   "meilleur-ski": {
-    siteLabel: "Meilleur-ski",
+    siteLabel: "Meilleur-Ski",
     intro:
       "Compare les prix du matériel de ski (skis, fixations, chaussures) chez des marchands partenaires sélectionnés. Objectif : trouver le meilleur prix, rapidement.",
     categories: [
@@ -33,11 +34,18 @@ const FOOTER_PACKS: Record<string, FooterPack> = {
       { href: "/contact", label: "Contact" },
     ],
     newsletterIntro: "Bons plans & promos ski — 1 à 2 fois par mois.",
-    copyright: "Meilleur-ski.com — Certains liens sont affiliés. Prix susceptibles d’évolution.",
+    legal: [
+      { href: "/mentions-legales", label: "Mentions légales" },
+      { href: "/confidentialite", label: "Confidentialité" },
+      { href: "/cookies", label: "Cookies" },
+      { href: "/cgu", label: "CGU" },
+    ],
+    copyright:
+      "Meilleur-ski.com — Certains liens sont affiliés. Prix susceptibles d’évolution.",
   },
 
   "meilleur-robot": {
-    siteLabel: "Meilleur-robot",
+    siteLabel: "Meilleur-Robot",
     intro:
       "Compare les prix et consulte des guides pour choisir le meilleur robot (aspirateur, cuisine, tondeuse, piscine…). Objectif : le bon modèle au bon prix.",
     categories: [
@@ -54,7 +62,14 @@ const FOOTER_PACKS: Record<string, FooterPack> = {
       { href: "/contact", label: "Contact" },
     ],
     newsletterIntro: "Bons plans & promos robots — 1 à 2 fois par mois.",
-    copyright: "Meilleur-robot.com — Certains liens sont affiliés. Prix susceptibles d’évolution.",
+    legal: [
+      { href: "/mentions-legales", label: "Mentions légales" },
+      { href: "/confidentialite", label: "Confidentialité" },
+      { href: "/cookies", label: "Cookies" },
+      { href: "/cgu", label: "CGU" },
+    ],
+    copyright:
+      "Meilleur-robot.com — Certains liens sont affiliés. Prix susceptibles d’évolution.",
   },
 };
 
@@ -66,7 +81,10 @@ export default function Footer() {
     if (id) setSiteId(id);
   }, []);
 
-  const pack = useMemo(() => FOOTER_PACKS[siteId] ?? FOOTER_PACKS["meilleur-ski"], [siteId]);
+  const pack = useMemo(
+    () => FOOTER_PACKS[siteId] ?? FOOTER_PACKS["meilleur-ski"],
+    [siteId]
+  );
 
   return (
     <footer className="mt-12 border-t border-ring bg-surface/60 clean-links">
@@ -114,7 +132,11 @@ export default function Footer() {
           <div>
             <h3 className="text-sm font-semibold text-ink">Newsletter</h3>
             <p className="mt-3 text-sm text-slate-600">{pack.newsletterIntro}</p>
-            <form className="mt-3 flex items-center gap-2" action="/api/newsletter" method="POST">
+            <form
+              className="mt-3 flex items-center gap-2"
+              action="/api/newsletter"
+              method="POST"
+            >
               <input
                 type="email"
                 name="email"
@@ -126,7 +148,9 @@ export default function Footer() {
                 S’inscrire
               </button>
             </form>
-            <p className="mt-2 text-[12px] text-slate-500">Vous pouvez vous désinscrire à tout moment.</p>
+            <p className="mt-2 text-[12px] text-slate-500">
+              Vous pouvez vous désinscrire à tout moment.
+            </p>
           </div>
         </div>
       </div>
@@ -134,30 +158,16 @@ export default function Footer() {
       {/* Bas de page */}
       <div className="border-t border-ring">
         <div className="container-page flex flex-col gap-3 py-4 md:flex-row md:items-center md:justify-between">
-          <p className="text-xs text-slate-600">
-            © {year} {pack.copyright}
-          </p>
+          <p className="text-xs text-slate-600">© {year} {pack.copyright}</p>
+
           <ul className="flex flex-wrap items-center gap-3 text-xs">
-            <li>
-              <Link className="hover:text-brand-600" href="/mentions-legales">
-                Mentions légales
-              </Link>
-            </li>
-            <li>
-              <Link className="hover:text-brand-600" href="/confidentialite">
-                Confidentialité
-              </Link>
-            </li>
-            <li>
-              <Link className="hover:text-brand-600" href="/cookies">
-                Cookies
-              </Link>
-            </li>
-            <li>
-              <Link className="hover:text-brand-600" href="/cgu">
-                CGU
-              </Link>
-            </li>
+            {pack.legal.map((l) => (
+              <li key={l.href}>
+                <Link className="hover:text-brand-600" href={l.href}>
+                  {l.label}
+                </Link>
+              </li>
+            ))}
           </ul>
         </div>
       </div>
