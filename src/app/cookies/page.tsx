@@ -1,40 +1,11 @@
-"use client";
+// src/app/cookies/page.tsx
+import { getSiteConfig } from "@/config/site";
 
-import { useEffect, useMemo, useState } from "react";
-
-type CookiesPack = {
-  title: string;
-  contactEmail: string;
-};
-
-const COOKIES: Record<string, CookiesPack> = {
-  "meilleur-ski": {
-    title: "Cookies — Meilleur-Ski",
-    contactEmail: "contact@meilleur-ski.com",
-  },
-  "meilleur-robot": {
-    title: "Cookies — Meilleur-Robot",
-    contactEmail: "contact@meilleur-robot.com",
-  },
-  "achat-ski": {
-    title: "Cookies — Achat-Ski",
-    contactEmail: "contact@achat-ski.com",
-  },
-};
+export const revalidate = 86400;
 
 export default function CookiesPage() {
-  const [siteId, setSiteId] = useState<string>("meilleur-ski");
-
-  useEffect(() => {
-    const id = document.documentElement.dataset.siteId;
-    if (id) setSiteId(id);
-  }, []);
-
-  const pack = useMemo(() => COOKIES[siteId] ?? COOKIES["meilleur-ski"], [siteId]);
-
-  useEffect(() => {
-    document.title = pack.title;
-  }, [pack.title]);
+  const site = getSiteConfig();
+  const contactEmail = `contact@${new URL(site.domain).hostname}`;
 
   return (
     <main className="container-page py-8">
@@ -42,8 +13,8 @@ export default function CookiesPage() {
 
       <div className="mt-4 space-y-3 text-neutral-700 max-w-2xl">
         <p>
-          Nous utilisons des cookies et technologies similaires pour assurer le bon fonctionnement du site, mesurer
-          l’audience et améliorer l’expérience utilisateur.
+          <strong>{site.name}</strong> peut utiliser des cookies et technologies similaires pour assurer le bon
+          fonctionnement du site, mesurer l’audience et améliorer l’expérience utilisateur.
         </p>
 
         <p>
@@ -52,7 +23,7 @@ export default function CookiesPage() {
         </p>
 
         <p>
-          <strong>Contact :</strong> {pack.contactEmail}
+          <strong>Contact :</strong> {contactEmail}
         </p>
 
         <p className="text-sm text-neutral-500">

@@ -1,44 +1,12 @@
-"use client";
+// src/app/cgu/page.tsx
+import { getSiteConfig } from "@/config/site";
 
-import { useEffect, useMemo, useState } from "react";
-
-type CGUPack = {
-  title: string;
-  editor: string;
-  contactEmail: string;
-};
-
-const CGU: Record<string, CGUPack> = {
-  "meilleur-ski": {
-    title: "CGU — Meilleur-Ski",
-    editor: "Meilleur-Ski.com",
-    contactEmail: "contact@meilleur-ski.com",
-  },
-  "meilleur-robot": {
-    title: "CGU — Meilleur-Robot",
-    editor: "Meilleur-Robot.com",
-    contactEmail: "contact@meilleur-robot.com",
-  },
-  "achat-ski": {
-    title: "CGU — Achat-Ski",
-    editor: "Achat-Ski.com",
-    contactEmail: "contact@achat-ski.com",
-  },
-};
+export const revalidate = 86400;
 
 export default function CguPage() {
-  const [siteId, setSiteId] = useState<string>("meilleur-ski");
-
-  useEffect(() => {
-    const id = document.documentElement.dataset.siteId;
-    if (id) setSiteId(id);
-  }, []);
-
-  const pack = useMemo(() => CGU[siteId] ?? CGU["meilleur-ski"], [siteId]);
-
-  useEffect(() => {
-    document.title = pack.title;
-  }, [pack.title]);
+  const site = getSiteConfig();
+  const host = new URL(site.domain).hostname;
+  const contactEmail = `contact@${host}`;
 
   return (
     <main className="container-page py-8">
@@ -46,10 +14,10 @@ export default function CguPage() {
 
       <div className="mt-4 space-y-3 text-neutral-700 max-w-2xl">
         <p>
-          <strong>Éditeur :</strong> {pack.editor}
+          <strong>Éditeur :</strong> {host}
         </p>
         <p>
-          <strong>Contact :</strong> {pack.contactEmail}
+          <strong>Contact :</strong> {contactEmail}
         </p>
 
         <p>
