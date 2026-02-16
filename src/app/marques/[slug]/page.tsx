@@ -93,11 +93,14 @@ export default async function BrandPage({ params }: { params: { slug: string } }
 
   const productsWithPrice = products.map((p) => {
     const allOffers = p.skus.flatMap((s) => s.offers);
-    const minTotal = allOffers.length
-      ? allOffers
-          .map((o) => totalCents(o.priceCents, o.shippingCents ?? 0))
-          .reduce((a, b) => Math.min(a, b), Number.POSITIVE_INFINITY)
-      : null;
+    const minTotal =
+      allOffers.length > 0
+        ? allOffers.reduce<number>((min, o) => {
+            const t = totalCents(o.priceCents, o.shippingCents ?? 0);
+            return Math.min(min, t);
+          }, Number.POSITIVE_INFINITY)
+        : null;
+
     return { ...p, minTotal };
   });
 

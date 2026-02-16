@@ -1,31 +1,47 @@
-// src/app/admin/brands/[id]/edit/page.tsx
 import Link from "next/link";
 import { prisma } from "@/lib/prisma";
 import { updateBrand, deleteBrand } from "../../actions";
 import BrandForm from "../../BrandForm";
 import Breadcrumbs from "@/components/Breadcrumbs";
 import { redirect } from "next/navigation";
+import type { MediaAsset } from "@prisma/client";
+
+type BrandWithLogo = {
+  id: number;
+  name: string;
+  slug: string;
+  websiteUrl: string | null;
+  logoUrl: string | null;
+  description: string | null;
+  active: boolean;
+
+  // ✅ relation (optionnelle)
+  logoId: number | null;
+  logo: Pick<MediaAsset, "id" | "publicUrl" | "alt" | "title"> | null;
+
+  // ✅ nouveaux champs optionnels (si tu les as ajoutés au modèle Brand)
+  bannerUrl?: string | null;
+  bannerId?: number | null;
+  metaTitle?: string | null;
+  metaDescription?: string | null;
+};
 
 export default async function EditBrandPage({ params }: { params: { id: string } }) {
   const id = Number(params.id);
 
-  const brand = await prisma.brand.findUnique({
+  const brand = (await prisma.brand.findUnique({
     where: { id },
     include: {
-      logo: { select: { id: true, publicUrl: true, filename: true, alt: true } },
-      banner: { select: { id: true, publicUrl: true, filename: true, alt: true } },
+      logo: { select: { id: true, publicUrl: true, alt: true, title: true } },
+      // si tu as une relation banner, ajoute-la ici :
+      // banner: { select: { id: true, publicUrl: true, alt: true, title: true } },
     },
-  });
+  })) as BrandWithLogo | null;
 
   if (!brand) {
     return (
       <div className="container-page py-8">
-        <Breadcrumbs
-          items={[
-            { href: "/admin", label: "Admin" },
-            { href: "/admin/brands", label: "Marques" },
-          ]}
-        />
+        <Breadcrumbs items={[{ href: "/admin", label: "Admin" }, { href: "/admin/brands", label: "Marques" }]} />
         <p>Marque introuvable.</p>
       </div>
     );
@@ -43,15 +59,8 @@ export default async function EditBrandPage({ params }: { params: { id: string }
     redirect("/admin/brands");
   }
 
-  const logoAsset =
-    brand.logo?.publicUrl
-      ? { id: brand.logo.id, url: brand.logo.publicUrl, filename: brand.logo.filename ?? null, alt: brand.logo.alt ?? null }
-      : null;
-
-  const bannerAsset =
-    brand.banner?.publicUrl
-      ? { id: brand.banner.id, url: brand.banner.publicUrl, filename: brand.banner.filename ?? null, alt: brand.banner.alt ?? null }
-      : null;
+  // ✅ URL logo “effective” (asset > fallback url)
+  const logoEffectiveUrl = brand.logo?.publicUrl ?? brand.logoUrl ?? null;
 
   return (
     <div className="container-page py-8">
@@ -77,18 +86,14 @@ export default async function EditBrandPage({ params }: { params: { id: string }
             name: brand.name,
             slug: brand.slug,
             websiteUrl: brand.websiteUrl,
-
-            logoUrl: brand.logoUrl,
-            bannerUrl: (brand as any).bannerUrl ?? null, // au cas où ton type Prisma n'est pas régénéré localement
-
+            logoUrl: logoEffectiveUrl,
             description: brand.description,
             active: brand.active,
 
-            metaTitle: (brand as any).metaTitle ?? null,
-            metaDescription: (brand as any).metaDescription ?? null,
-
-            logoAsset,
-            bannerAsset,
+            // ✅ si ton BrandForm supporte ces champs, tu peux les passer :
+            bannerUrl: brand.bannerUrl ?? null,
+            metaTitle: brand.metaTitle ?? null,
+            metaDescription: brand.metaDescription ?? null,
           }}
           onSubmit={onSubmit}
           onDelete={onDelete}
