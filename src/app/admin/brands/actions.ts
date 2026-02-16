@@ -1,3 +1,4 @@
+// src/app/admin/brands/actions.ts
 "use server";
 
 import { prisma } from "@/lib/prisma";
@@ -10,10 +11,12 @@ type FormBrand = {
   name: string;
   slug?: string;
   websiteUrl?: string | null;
-  logoUrl?: string | null;      // fallback URL
-  description?: string | null;  // HTML
-  active?: string | boolean;    // "on" ou boolean
-  logoAssetId?: string | null;  // id du média (string à convertir)
+  logoUrl?: string | null; // fallback URL
+  description?: string | null; // HTML
+  active?: string | boolean; // "on" ou boolean
+
+  // ⚠️ Le formulaire envoie "logoAssetId" (id du MediaAsset), mais en DB c’est Brand.logoId
+  logoAssetId?: string | null;
 };
 
 function boolFromInput(v: string | boolean | undefined) {
@@ -40,18 +43,17 @@ export async function createBrand(form: FormData) {
   };
 
   if (!data.name) throw new Error("Le nom de la marque est obligatoire.");
+
   const slug = data.slug ? slugify(data.slug) : slugify(data.name);
-  const logoAssetId = numOrNull(data.logoAssetId ?? null);
+  const logoId = numOrNull(data.logoAssetId ?? null);
 
   const brand = await prisma.brand.create({
     data: {
       name: data.name,
       slug,
       websiteUrl: data.websiteUrl || null,
-      logoUrl: data.logoUrl || null, // garde le fallback
-      // ⚠️ nécessite les champs dans le schéma :
-      //   logoAssetId Int? ; logoAsset MediaAsset? @relation(fields: [logoAssetId], references: [id])
-      ...(logoAssetId ? { logoAssetId } : {}),
+      logoUrl: data.logoUrl || null, // fallback
+      ...(logoId ? { logoId } : {}), // ✅ Brand.logoId
       description: data.description ? sanitizeHtml(data.description) : null,
       active: boolFromInput(data.active),
     },
@@ -74,8 +76,9 @@ export async function updateBrand(id: number, form: FormData) {
   };
 
   if (!data.name) throw new Error("Le nom de la marque est obligatoire.");
+
   const slug = data.slug ? slugify(data.slug) : slugify(data.name);
-  const logoAssetId = numOrNull(data.logoAssetId ?? null);
+  const logoId = numOrNull(data.logoAssetId ?? null);
 
   const brand = await prisma.brand.update({
     where: { id },
@@ -83,8 +86,11 @@ export async function updateBrand(id: number, form: FormData) {
       name: data.name,
       slug,
       websiteUrl: data.websiteUrl || null,
-      logoUrl: data.logoUrl || null, // garde le fallback
-      ...(logoAssetId !== null ? { logoAssetId } : {}), // si vide, on n’écrase pas
+      logoUrl: data.logoUrl || null, // fallback
+
+      // ✅ si logoId est null/empty => on ne touche pas
+      ...(logoId !== null ? { logoId } : {}),
+
       description: data.description ? sanitizeHtml(data.description) : null,
       active: boolFromInput(data.active),
     },
