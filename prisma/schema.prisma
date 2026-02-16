@@ -108,16 +108,28 @@ model Brand {
   id          Int         @id @default(autoincrement())
   name        String      @unique
   slug        String      @unique
-  description String? // HTML sanitisé
+  description String?     // HTML sanitisé
   websiteUrl  String?     @db.VarChar(512)
+
+  // logo (médiathèque) + fallback URL
   logoUrl     String?     @db.VarChar(512)
-  active      Boolean     @default(true)
-  createdAt   DateTime    @default(now())
-  updatedAt   DateTime    @updatedAt
   logoId      Int?
   logo        MediaAsset? @relation("BrandLogo", fields: [logoId], references: [id])
 
-  products Product[] // relation inverse
+  // bannière (médiathèque) + fallback URL
+  bannerUrl   String?     @db.VarChar(512)
+  bannerId    Int?
+  banner      MediaAsset? @relation("BrandBanner", fields: [bannerId], references: [id])
+
+  // SEO
+  metaTitle       String?
+  metaDescription String?
+
+  active      Boolean     @default(true)
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+
+  products Product[]
 }
 
 model Page {
@@ -192,7 +204,7 @@ model Product {
   model   String
   season  String? // ex: "2025/26"
 
-  // ⚠️ Migration en douceur : on introduit la vraie relation vers Category.
+  // Migration en douceur : on introduit la vraie relation vers Category.
   // Ancien champ libre (texte) mis en commentaire si tu veux couper plus tard :
   // category    String?      // all-mountain, rando, freeride... (deprecated)
 
@@ -495,6 +507,7 @@ model MediaAsset {
 
   // back-relations (facultatives)
   brandsLogo     Brand[]         @relation("BrandLogo")
+  brandsBanner   Brand[]         @relation("BrandBanner")
   pagesThumbnail Page[]          @relation("PageThumbnail")
   pagesBanner    Page[]          @relation("PageBanner")
   usersAvatar    User[]          @relation("UserAvatar")

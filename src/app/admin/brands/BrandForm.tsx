@@ -1,3 +1,4 @@
+// src/app/admin/brands/BrandForm.tsx
 "use client";
 
 import { useState } from "react";
@@ -5,10 +6,16 @@ import dynamic from "next/dynamic";
 import MediaPicker from "@/components/admin/MediaPicker";
 
 // Éditeur WYSIWYG utilisé aussi pour les Pages
-const RichTextEditor = dynamic(
-  () => import("@/components/admin/RichTextEditor"),
-  { ssr: false }
-);
+const RichTextEditor = dynamic(() => import("@/components/admin/RichTextEditor"), {
+  ssr: false,
+});
+
+type MediaAsset = {
+  id: number;
+  url: string;
+  filename?: string | null;
+  alt?: string | null;
+};
 
 type BrandFormProps = {
   initial?: {
@@ -16,9 +23,23 @@ type BrandFormProps = {
     name?: string;
     slug?: string;
     websiteUrl?: string | null;
-    logoUrl?: string | null; // fallback (ancienne méthode par URL)
+
+    // Fallback URLs
+    logoUrl?: string | null;
+    bannerUrl?: string | null;
+
+    // HTML
     description?: string | null;
+
     active?: boolean;
+
+    // SEO
+    metaTitle?: string | null;
+    metaDescription?: string | null;
+
+    // Assets (pour preview)
+    logoAsset?: MediaAsset | null;
+    bannerAsset?: MediaAsset | null;
   };
   onSubmit: (formData: FormData) => Promise<void>;
   onDelete?: () => Promise<void>;
@@ -42,37 +63,22 @@ export default function BrandForm({ initial, onSubmit, onDelete }: BrandFormProp
     <form onSubmit={handleSubmit} className="grid gap-4">
       <div className="grid gap-1">
         <label className="text-sm">Nom *</label>
-        <input
-          name="name"
-          required
-          defaultValue={initial?.name ?? ""}
-          className="input"
-        />
+        <input name="name" required defaultValue={initial?.name ?? ""} className="input" />
       </div>
 
       <div className="grid gap-1">
         <label className="text-sm">Slug (optionnel)</label>
-        <input
-          name="slug"
-          defaultValue={initial?.slug ?? ""}
-          className="input"
-        />
-        <p className="text-xs text-neutral-500">
-          Laisser vide pour générer automatiquement.
-        </p>
+        <input name="slug" defaultValue={initial?.slug ?? ""} className="input" />
+        <p className="text-xs text-neutral-500">Laisser vide pour générer automatiquement.</p>
       </div>
 
       <div className="grid md:grid-cols-2 gap-3">
         <div className="grid gap-1">
           <label className="text-sm">Site web</label>
-          <input
-            name="websiteUrl"
-            defaultValue={initial?.websiteUrl ?? ""}
-            className="input"
-          />
+          <input name="websiteUrl" defaultValue={initial?.websiteUrl ?? ""} className="input" />
         </div>
 
-        {/* ── Sélecteur/Upload via médiathèque ─────────────────────── */}
+        {/* ── Logo via médiathèque ─────────────────────── */}
         <div className="grid gap-1">
           <MediaPicker
             label="Logo (médiathèque)"
@@ -80,7 +86,7 @@ export default function BrandForm({ initial, onSubmit, onDelete }: BrandFormProp
             kind="brand-logo"
             folder="brands"
             accept="image/*"
-            initial={null /* on ne connaît pas l'id du média existant ici */}
+            initial={initial?.logoAsset ?? null}
           />
           <p className="text-xs text-neutral-500">
             Vous pouvez aussi renseigner une URL externe ci-dessous (fallback).
@@ -88,25 +94,64 @@ export default function BrandForm({ initial, onSubmit, onDelete }: BrandFormProp
         </div>
       </div>
 
-      {/* Fallback URL logo (compat ascendante) */}
+      {/* Fallback URL logo */}
       <div className="grid gap-1">
         <label className="text-sm">Logo URL (optionnel)</label>
-        <input
-          name="logoUrl"
-          defaultValue={initial?.logoUrl ?? ""}
-          className="input"
-        />
+        <input name="logoUrl" defaultValue={initial?.logoUrl ?? ""} className="input" />
       </div>
 
-      {/* Description en WYSIWYG (HTML stocké en base) */}
+      {/* ── Bannière via médiathèque ───────────────────── */}
+      <div className="grid gap-1">
+        <MediaPicker
+          label="Bannière (médiathèque)"
+          nameId="bannerAssetId"
+          kind="brand-banner"
+          folder="brands"
+          accept="image/*"
+          initial={initial?.bannerAsset ?? null}
+        />
+        <p className="text-xs text-neutral-500">
+          Astuce : une image large (ex: 1600×480) rend mieux en haut de page.
+        </p>
+      </div>
+
+      {/* Fallback URL bannière */}
+      <div className="grid gap-1">
+        <label className="text-sm">Bannière URL (optionnel)</label>
+        <input name="bannerUrl" defaultValue={initial?.bannerUrl ?? ""} className="input" />
+      </div>
+
+      {/* SEO */}
+      <div className="grid gap-3 md:grid-cols-2">
+        <div className="grid gap-1">
+          <label className="text-sm">Meta title (SEO)</label>
+          <input
+            name="metaTitle"
+            defaultValue={initial?.metaTitle ?? ""}
+            className="input"
+            placeholder="Ex: Rossignol — Prix, tests et offres"
+          />
+          <p className="text-xs text-neutral-500">Conseil : ~50–60 caractères.</p>
+        </div>
+
+        <div className="grid gap-1">
+          <label className="text-sm">Meta description (SEO)</label>
+          <textarea
+            name="metaDescription"
+            defaultValue={initial?.metaDescription ?? ""}
+            className="input min-h-[44px]"
+            placeholder="Ex: Comparez les prix Rossignol, consultez nos guides et trouvez le bon modèle."
+          />
+          <p className="text-xs text-neutral-500">Conseil : ~140–160 caractères.</p>
+        </div>
+      </div>
+
+      {/* Description HTML */}
       <div className="grid gap-1">
         <label className="text-sm">Description</label>
         <RichTextEditor
-          /** Le champ "name" DOIT être "description" pour matcher actions.ts */
           name="description"
-          /** Valeur initiale venant de la base (HTML déjà sanitisé) */
           initialValue={initial?.description ?? ""}
-          /** Optionnel : label interne si ton composant en gère un */
           label="Description de la marque"
         />
         <p className="text-xs text-neutral-500">
@@ -115,11 +160,7 @@ export default function BrandForm({ initial, onSubmit, onDelete }: BrandFormProp
       </div>
 
       <label className="inline-flex items-center gap-2 text-sm">
-        <input
-          type="checkbox"
-          name="active"
-          defaultChecked={initial?.active ?? true}
-        />
+        <input type="checkbox" name="active" defaultChecked={initial?.active ?? true} />
         Actif
       </label>
 
@@ -127,6 +168,7 @@ export default function BrandForm({ initial, onSubmit, onDelete }: BrandFormProp
         <button className="btn" disabled={pending}>
           {pending ? "Enregistrement…" : "Enregistrer"}
         </button>
+
         {onDelete && (
           <button
             type="button"

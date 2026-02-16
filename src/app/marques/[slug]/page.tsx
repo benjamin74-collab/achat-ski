@@ -1,3 +1,4 @@
+// src/app/marques/[slug]/page.tsx
 import { prisma } from "@/lib/prisma";
 import Breadcrumbs from "@/components/Breadcrumbs";
 import { sanitizeHtml } from "@/lib/sanitize";
@@ -14,35 +15,59 @@ function getSiteUrl() {
   return "https://meilleur-ski.com";
 }
 
+function stripHtml(s: string) {
+  return s.replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim();
+}
+
 export async function generateStaticParams() {
-  const brands = await prisma.brand.findMany({ where: { active: true }, select: { slug: true } });
+  const brands = await prisma.brand.findMany({
+    where: { active: true },
+    select: { slug: true },
+  });
   return brands.map((b) => ({ slug: b.slug }));
 }
 
 export async function generateMetadata({ params }: { params: { slug: string } }) {
   const brand = await prisma.brand.findUnique({
     where: { slug: params.slug },
-    select: { name: true, description: true, slug: true },
+    select: {
+      name: true,
+      slug: true,
+      description: true,
+      metaTitle: true,
+      metaDescription: true,
+    },
   });
+
   if (!brand) return { title: "Marque introuvable — Meilleur-Ski" };
 
   const site = getSiteUrl();
   const url = `${site}/marques/${brand.slug}`;
 
+  const title = (brand.metaTitle && brand.metaTitle.trim()) || `${brand.name} — Tests, prix et produits`;
+  const description =
+    (brand.metaDescription && brand.metaDescription.trim()) ||
+    (brand.description ? stripHtml(brand.description).slice(0, 160) : `Produits ${brand.name} : tests, prix, comparatifs.`);
+
   return {
-    title: `${brand.name} — Tests, prix et produits`,
-    description: brand.description
-      ? brand.description.replace(/<[^>]+>/g, "").slice(0, 160)
-      : `Produits ${brand.name} : tests, prix, comparatifs.`,
+    title,
+    description,
     alternates: { canonical: url },
-    openGraph: { title: `${brand.name} — Tests, prix et produits`, url },
+    openGraph: { title, url, description },
   };
 }
 
 export default async function BrandPage({ params }: { params: { slug: string } }) {
   const site = getSiteUrl();
 
-  const brand = await prisma.brand.findUnique({ where: { slug: params.slug } });
+  const brand = await prisma.brand.findUnique({
+    where: { slug: params.slug },
+    include: {
+      logo: { select: { publicUrl: true, alt: true } },
+      banner: { select: { publicUrl: true, alt: true } },
+    },
+  });
+
   if (!brand || !brand.active) {
     return (
       <div className="container-page py-8">
@@ -53,6 +78,9 @@ export default async function BrandPage({ params }: { params: { slug: string } }
   }
 
   const canonicalUrl = `${site}/marques/${brand.slug}`;
+
+  const logo = brand.logo?.publicUrl || brand.logoUrl || null;
+  const banner = brand.banner?.publicUrl || (brand as any).bannerUrl || null;
 
   const products = await prisma.product.findMany({
     where: {
@@ -88,7 +116,7 @@ export default async function BrandPage({ params }: { params: { slug: string } }
     "@type": "Organization",
     name: brand.name,
     url: canonicalUrl,
-    ...(brand.logoUrl ? { logo: brand.logoUrl } : {}),
+    ...(logo ? { logo } : {}),
     ...(brand.websiteUrl ? { sameAs: [brand.websiteUrl] } : {}),
   };
 
@@ -133,24 +161,61 @@ export default async function BrandPage({ params }: { params: { slug: string } }
 
       <Breadcrumbs items={[{ href: "/", label: "Accueil" }, { href: "/marques", label: "Marques" }, { label: brand.name }]} />
 
-      <header className="card p-4 flex items-center gap-4">
-        {brand.logoUrl ? <img src={brand.logoUrl} alt="" width={60} height={60} /> : null}
-        <div>
+      {/* Bannière */}
+      {banner ? (
+        <section className="mt-4 overflow-hidden rounded-2xl border border-ring bg-surface/60 shadow-card">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src={banner}
+            alt={brand.banner?.alt ?? `Bannière ${brand.name}`}
+            className="h-[160px] w-full object-cover sm:h-[220px]"
+            loading="lazy"
+            decoding="async"
+          />
+        </section>
+      ) : null}
+
+      {/* En-tête marque */}
+      <header className="mt-4 card p-4 flex items-center gap-4">
+        {logo ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img
+            src={logo}
+            alt={brand.logo?.alt ?? `${brand.name} logo`}
+            width={64}
+            height={64}
+            className="h-16 w-16 rounded-xl border border-ring bg-white object-contain p-2"
+            loading="lazy"
+            decoding="async"
+          />
+        ) : (
+          <div className="h-16 w-16 rounded-xl border border-ring bg-muted flex items-center justify-center text-xs text-slate-500">
+            Logo
+          </div>
+        )}
+
+        <div className="min-w-0">
           <h1 className="text-xl font-bold">{brand.name}</h1>
-          {brand.websiteUrl && (
-            <a className="text-sm text-blue-600 underline" href={brand.websiteUrl} target="_blank" rel="noreferrer">
-              Site officiel
-            </a>
-          )}
+          <div className="mt-1 flex flex-wrap items-center gap-3">
+            {brand.websiteUrl ? (
+              <a className="text-sm text-blue-600 underline" href={brand.websiteUrl} target="_blank" rel="noreferrer">
+                Site officiel
+              </a>
+            ) : null}
+            <span className="text-xs text-slate-500">•</span>
+            <span className="text-xs text-slate-600">Marque</span>
+          </div>
         </div>
       </header>
 
-      {brand.description && (
+      {/* Description */}
+      {brand.description ? (
         <section className="rounded-2xl border border-ring bg-surface/60 p-5 shadow-card my-4">
           <article className="prose max-w-none" dangerouslySetInnerHTML={{ __html: sanitizeHtml(brand.description) }} />
         </section>
-      )}
+      ) : null}
 
+      {/* Produits */}
       <section className="mt-6">
         <h2 className="text-lg font-semibold mb-3">Produits {brand.name}</h2>
         {productsWithPrice.length ? (
