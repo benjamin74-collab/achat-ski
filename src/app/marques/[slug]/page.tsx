@@ -44,10 +44,15 @@ export async function generateMetadata({ params }: { params: { slug: string } })
   const site = getSiteUrl();
   const url = `${site}/marques/${brand.slug}`;
 
-  const title = (brand.metaTitle && brand.metaTitle.trim()) || `${brand.name} — Tests, prix et produits`;
+  const title =
+    (brand.metaTitle && brand.metaTitle.trim()) ||
+    `${brand.name} — Tests, prix et produits`;
+
   const description =
     (brand.metaDescription && brand.metaDescription.trim()) ||
-    (brand.description ? stripHtml(brand.description).slice(0, 160) : `Produits ${brand.name} : tests, prix, comparatifs.`);
+    (brand.description
+      ? stripHtml(brand.description).slice(0, 160)
+      : `Produits ${brand.name} : tests, prix, comparatifs.`);
 
   return {
     title,
@@ -71,7 +76,12 @@ export default async function BrandPage({ params }: { params: { slug: string } }
   if (!brand || !brand.active) {
     return (
       <div className="container-page py-8">
-        <Breadcrumbs items={[{ href: "/", label: "Accueil" }, { href: "/marques", label: "Marques" }]} />
+        <Breadcrumbs
+          items={[
+            { href: "/", label: "Accueil" },
+            { href: "/marques", label: "Marques" },
+          ]}
+        />
         <h1 className="text-xl font-semibold">Marque introuvable</h1>
       </div>
     );
@@ -79,14 +89,18 @@ export default async function BrandPage({ params }: { params: { slug: string } }
 
   const canonicalUrl = `${site}/marques/${brand.slug}`;
 
+  // ✅ plus de `any`
   const logo = brand.logo?.publicUrl || brand.logoUrl || null;
-  const banner = brand.banner?.publicUrl || (brand as any).bannerUrl || null;
+  const banner = brand.banner?.publicUrl || null;
 
   const products = await prisma.product.findMany({
     where: {
       OR: [{ brandId: brand.id }, { brand: brand.name }],
     },
-    include: { category: { select: { name: true } }, skus: { include: { offers: true } } },
+    include: {
+      category: { select: { name: true } },
+      skus: { include: { offers: true } },
+    },
     take: 60,
     orderBy: { id: "desc" },
   });
@@ -129,9 +143,14 @@ export default async function BrandPage({ params }: { params: { slug: string } }
     name: `Produits ${brand.name}`,
     numberOfItems: productsWithPrice.length,
     itemListElement: productsWithPrice.map((p, idx) => {
-      const title = [p.brand ?? brand.name, p.model, p.season].filter(Boolean).join(" ");
+      const title = [p.brand ?? brand.name, p.model, p.season]
+        .filter(Boolean)
+        .join(" ");
       const url = `${site}/p/${p.slug}`;
-      const lowPrice = typeof p.minTotal === "number" ? (p.minTotal / 100).toFixed(2) : undefined;
+      const lowPrice =
+        typeof p.minTotal === "number"
+          ? (p.minTotal / 100).toFixed(2)
+          : undefined;
 
       return {
         "@type": "ListItem",
@@ -158,11 +177,26 @@ export default async function BrandPage({ params }: { params: { slug: string } }
   return (
     <div className="container-page py-8">
       <link rel="canonical" href={canonicalUrl} />
-      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbJsonLd) }} />
-      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(organizationJsonLd) }} />
-      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(itemListJsonLd) }} />
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbJsonLd) }}
+      />
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(organizationJsonLd) }}
+      />
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(itemListJsonLd) }}
+      />
 
-      <Breadcrumbs items={[{ href: "/", label: "Accueil" }, { href: "/marques", label: "Marques" }, { label: brand.name }]} />
+      <Breadcrumbs
+        items={[
+          { href: "/", label: "Accueil" },
+          { href: "/marques", label: "Marques" },
+          { label: brand.name },
+        ]}
+      />
 
       {/* Bannière */}
       {banner ? (
@@ -201,7 +235,12 @@ export default async function BrandPage({ params }: { params: { slug: string } }
           <h1 className="text-xl font-bold">{brand.name}</h1>
           <div className="mt-1 flex flex-wrap items-center gap-3">
             {brand.websiteUrl ? (
-              <a className="text-sm text-blue-600 underline" href={brand.websiteUrl} target="_blank" rel="noreferrer">
+              <a
+                className="text-sm text-blue-600 underline"
+                href={brand.websiteUrl}
+                target="_blank"
+                rel="noreferrer"
+              >
                 Site officiel
               </a>
             ) : null}
@@ -214,7 +253,10 @@ export default async function BrandPage({ params }: { params: { slug: string } }
       {/* Description */}
       {brand.description ? (
         <section className="rounded-2xl border border-ring bg-surface/60 p-5 shadow-card my-4">
-          <article className="prose max-w-none" dangerouslySetInnerHTML={{ __html: sanitizeHtml(brand.description) }} />
+          <article
+            className="prose max-w-none"
+            dangerouslySetInnerHTML={{ __html: sanitizeHtml(brand.description) }}
+          />
         </section>
       ) : null}
 
@@ -224,7 +266,9 @@ export default async function BrandPage({ params }: { params: { slug: string } }
         {productsWithPrice.length ? (
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
             {productsWithPrice.map((p) => {
-              const cardTitle = [p.brand ?? brand.name, p.model, p.season].filter(Boolean).join(" ");
+              const cardTitle = [p.brand ?? brand.name, p.model, p.season]
+                .filter(Boolean)
+                .join(" ");
               return (
                 <ProductCard
                   key={p.id}
