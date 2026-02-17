@@ -5,6 +5,8 @@ import { sanitizeHtml } from "@/lib/sanitize";
 import { totalCents } from "@/lib/format";
 import ProductCard from "@/components/ProductCard";
 
+export const runtime = "nodejs";
+export const dynamic = "force-dynamic";
 export const revalidate = 300;
 
 function getSiteUrl() {
@@ -17,14 +19,6 @@ function getSiteUrl() {
 
 function stripHtml(s: string) {
   return s.replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim();
-}
-
-export async function generateStaticParams() {
-  const brands = await prisma.brand.findMany({
-    where: { active: true },
-    select: { slug: true },
-  });
-  return brands.map((b) => ({ slug: b.slug }));
 }
 
 export async function generateMetadata({ params }: { params: { slug: string } }) {
@@ -89,7 +83,6 @@ export default async function BrandPage({ params }: { params: { slug: string } }
 
   const canonicalUrl = `${site}/marques/${brand.slug}`;
 
-  // ✅ plus de `any`
   const logo = brand.logo?.publicUrl || brand.logoUrl || null;
   const banner = brand.banner?.publicUrl || null;
 
@@ -143,14 +136,9 @@ export default async function BrandPage({ params }: { params: { slug: string } }
     name: `Produits ${brand.name}`,
     numberOfItems: productsWithPrice.length,
     itemListElement: productsWithPrice.map((p, idx) => {
-      const title = [p.brand ?? brand.name, p.model, p.season]
-        .filter(Boolean)
-        .join(" ");
+      const title = [p.brand ?? brand.name, p.model, p.season].filter(Boolean).join(" ");
       const url = `${site}/p/${p.slug}`;
-      const lowPrice =
-        typeof p.minTotal === "number"
-          ? (p.minTotal / 100).toFixed(2)
-          : undefined;
+      const lowPrice = typeof p.minTotal === "number" ? (p.minTotal / 100).toFixed(2) : undefined;
 
       return {
         "@type": "ListItem",
@@ -177,18 +165,9 @@ export default async function BrandPage({ params }: { params: { slug: string } }
   return (
     <div className="container-page py-8">
       <link rel="canonical" href={canonicalUrl} />
-      <script
-        type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbJsonLd) }}
-      />
-      <script
-        type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(organizationJsonLd) }}
-      />
-      <script
-        type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(itemListJsonLd) }}
-      />
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbJsonLd) }} />
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(organizationJsonLd) }} />
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(itemListJsonLd) }} />
 
       <Breadcrumbs
         items={[
@@ -235,12 +214,7 @@ export default async function BrandPage({ params }: { params: { slug: string } }
           <h1 className="text-xl font-bold">{brand.name}</h1>
           <div className="mt-1 flex flex-wrap items-center gap-3">
             {brand.websiteUrl ? (
-              <a
-                className="text-sm text-blue-600 underline"
-                href={brand.websiteUrl}
-                target="_blank"
-                rel="noreferrer"
-              >
+              <a className="text-sm text-blue-600 underline" href={brand.websiteUrl} target="_blank" rel="noreferrer">
                 Site officiel
               </a>
             ) : null}
@@ -253,10 +227,7 @@ export default async function BrandPage({ params }: { params: { slug: string } }
       {/* Description */}
       {brand.description ? (
         <section className="rounded-2xl border border-ring bg-surface/60 p-5 shadow-card my-4">
-          <article
-            className="prose max-w-none"
-            dangerouslySetInnerHTML={{ __html: sanitizeHtml(brand.description) }}
-          />
+          <article className="prose max-w-none" dangerouslySetInnerHTML={{ __html: sanitizeHtml(brand.description) }} />
         </section>
       ) : null}
 
@@ -266,9 +237,7 @@ export default async function BrandPage({ params }: { params: { slug: string } }
         {productsWithPrice.length ? (
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
             {productsWithPrice.map((p) => {
-              const cardTitle = [p.brand ?? brand.name, p.model, p.season]
-                .filter(Boolean)
-                .join(" ");
+              const cardTitle = [p.brand ?? brand.name, p.model, p.season].filter(Boolean).join(" ");
               return (
                 <ProductCard
                   key={p.id}
