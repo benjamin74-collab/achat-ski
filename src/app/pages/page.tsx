@@ -27,6 +27,7 @@ export default async function PagesIndex() {
       intro: true,
       thumbnailUrl: true,
       createdAt: true,
+      thumbnail: { select: { publicUrl: true, alt: true } },
     },
   });
 
@@ -44,26 +45,35 @@ export default async function PagesIndex() {
     "@type": "ItemList",
     name: "Guides & articles",
     numberOfItems: pages.length,
-    itemListElement: pages.slice(0, 200).map((p, idx) => ({
-      "@type": "ListItem",
-      position: idx + 1,
-      url: `${site}/pages/${p.slug}`,
-      item: {
-        "@type": "BlogPosting",
-        headline: p.title,
+    itemListElement: pages.slice(0, 200).map((p, idx) => {
+      const image = p.thumbnail?.publicUrl || p.thumbnailUrl || null;
+      return {
+        "@type": "ListItem",
+        position: idx + 1,
         url: `${site}/pages/${p.slug}`,
-        ...(p.intro ? { description: p.intro } : {}),
-        datePublished: p.createdAt.toISOString(),
-        ...(p.thumbnailUrl ? { image: [p.thumbnailUrl] } : {}),
-      },
-    })),
+        item: {
+          "@type": "BlogPosting",
+          headline: p.title,
+          url: `${site}/pages/${p.slug}`,
+          ...(p.intro ? { description: p.intro } : {}),
+          datePublished: p.createdAt.toISOString(),
+          ...(image ? { image: [image] } : {}),
+        },
+      };
+    }),
   };
 
   return (
     <main className="container-page py-8">
       <link rel="canonical" href={canonicalUrl} />
-      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbJsonLd) }} />
-      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(itemListJsonLd) }} />
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbJsonLd) }}
+      />
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(itemListJsonLd) }}
+      />
 
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-bold">Articles & Guides</h1>
@@ -73,22 +83,42 @@ export default async function PagesIndex() {
       </div>
 
       <ul className="mt-6 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-        {pages.map((p) => (
-          <li key={p.id} className="rounded-2xl border border-ring bg-white hover:shadow-card transition">
-            <Link href={`/pages/${p.slug}`} className="block">
-              <div className="aspect-[16/9] w-full overflow-hidden rounded-t-2xl bg-muted">
-                {p.thumbnailUrl ? (
-                  <img src={p.thumbnailUrl} alt={p.title} className="h-full w-full object-cover" loading="lazy" />
-                ) : null}
-              </div>
-              <div className="p-4">
-                <h2 className="text-base font-semibold">{p.title}</h2>
-                {p.intro ? <p className="text-sm text-slate-600 mt-1 line-clamp-2">{p.intro}</p> : null}
-                <div className="mt-2 text-xs text-slate-500">Publié le {p.createdAt.toISOString().slice(0, 10)}</div>
-              </div>
-            </Link>
-          </li>
-        ))}
+        {pages.map((p) => {
+          const thumb = p.thumbnail?.publicUrl || p.thumbnailUrl || null;
+
+          return (
+            <li
+              key={p.id}
+              className="rounded-2xl border border-ring bg-white hover:shadow-card transition"
+            >
+              <Link href={`/pages/${p.slug}`} className="block">
+                <div className="aspect-[16/9] w-full overflow-hidden rounded-t-2xl bg-muted">
+                  {thumb ? (
+                    <img
+                      src={thumb}
+                      alt={p.thumbnail?.alt ?? p.title}
+                      className="h-full w-full object-cover"
+                      loading="lazy"
+                      decoding="async"
+                    />
+                  ) : (
+                    <div className="h-full w-full bg-gradient-to-br from-muted to-white" />
+                  )}
+                </div>
+
+                <div className="p-4">
+                  <h2 className="text-base font-semibold">{p.title}</h2>
+                  {p.intro ? (
+                    <p className="text-sm text-slate-600 mt-1 line-clamp-2">{p.intro}</p>
+                  ) : null}
+                  <div className="mt-2 text-xs text-slate-500">
+                    Publié le {p.createdAt.toISOString().slice(0, 10)}
+                  </div>
+                </div>
+              </Link>
+            </li>
+          );
+        })}
       </ul>
     </main>
   );
