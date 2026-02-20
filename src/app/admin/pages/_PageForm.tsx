@@ -58,20 +58,39 @@ export default function PageForm({ initial }: { initial?: PageData }) {
   const [currentSlug, setCurrentSlug] = useState<string>(initial?.slug ?? "");
 
   async function onSubmit(formData: FormData) {
-    setSaving(true);
-    const res = await fetch(
-      initial?.id ? `/api/admin/pages/${initial.id}` : `/api/admin/pages`,
-      {
-        method: initial?.id ? "PUT" : "POST",
-        body: formData,
-      }
-    );
-    setSaving(false);
-    if (res.ok) {
-      const { slug } = await res.json();
-      r.push(`/pages/${slug}`);
+  setSaving(true);
+
+  const res = await fetch(
+    initial?.id ? `/api/admin/pages/${initial.id}` : `/api/admin/pages`,
+    {
+      method: initial?.id ? "PUT" : "POST",
+      body: formData,
     }
+  );
+
+  setSaving(false);
+
+  if (!res.ok) {
+    alert("Erreur lors de l’enregistrement");
+    return;
   }
+
+  // On évite le push vers /pages/[slug] (qui peut 404 si non publié)
+  if (initial?.id) {
+    r.push(`/admin/pages/${initial.id}/edit`);
+    return;
+  }
+
+  // Création : l’API doit idéalement renvoyer l’id créé
+  // Si elle ne le fait pas, on fallback sur /admin/pages
+  try {
+    const json = (await res.json()) as { id?: number };
+    if (json?.id) r.push(`/admin/pages/${json.id}/edit`);
+    else r.push(`/admin/pages`);
+  } catch {
+    r.push(`/admin/pages`);
+  }
+}
 
   const initialThumb =
     initial?.thumbnailAssetId && initial?.thumbnailAssetUrl
