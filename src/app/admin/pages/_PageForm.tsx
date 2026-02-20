@@ -30,6 +30,26 @@ type PageData = {
 
 type TabKey = "general" | "content" | "seo";
 
+function TabPanel({
+  active,
+  children,
+}: {
+  active: boolean;
+  children: React.ReactNode;
+}) {
+  // Important:
+  // - on ne démonte PAS => les inputs & l'éditeur gardent leur état
+  // - on cache via CSS + on retire de la navigation clavier / lecteurs
+  return (
+    <div
+      className={active ? "block" : "hidden"}
+      aria-hidden={!active}
+    >
+      {children}
+    </div>
+  );
+}
+
 export default function PageForm({ initial }: { initial?: PageData }) {
   const r = useRouter();
   const [saving, setSaving] = useState(false);
@@ -156,8 +176,8 @@ export default function PageForm({ initial }: { initial?: PageData }) {
         </button>
       </div>
 
-      {/* Onglet 1 : Infos générales */}
-      {activeTab === "general" && (
+      {/* ✅ On garde les 3 panneaux MONTÉS, on cache seulement */}
+      <TabPanel active={activeTab === "general"}>
         <div className="card grid gap-4">
           <div className="grid gap-2">
             <label className="text-sm font-medium text-slate-700">Titre</label>
@@ -242,10 +262,9 @@ export default function PageForm({ initial }: { initial?: PageData }) {
             </div>
           </div>
         </div>
-      )}
+      </TabPanel>
 
-      {/* Onglet 2 : Contenu */}
-      {activeTab === "content" && (
+      <TabPanel active={activeTab === "content"}>
         <div className="card">
           <RichTextEditor
             name="content"
@@ -253,10 +272,9 @@ export default function PageForm({ initial }: { initial?: PageData }) {
             initialValue={initial?.content ?? ""}
           />
         </div>
-      )}
+      </TabPanel>
 
-      {/* Onglet 3 : SEO & Tags */}
-      {activeTab === "seo" && (
+      <TabPanel active={activeTab === "seo"}>
         <div className="card grid gap-4">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="grid gap-2">
@@ -295,7 +313,7 @@ export default function PageForm({ initial }: { initial?: PageData }) {
             />
           </div>
         </div>
-      )}
+      </TabPanel>
     </form>
   );
 }
