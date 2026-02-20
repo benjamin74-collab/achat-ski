@@ -68,9 +68,6 @@ export default async function HomePage() {
   });
 
   // ------------------- Fallbacks -------------------
-  // ⚠️ IMPORTANT : fallback "ski" uniquement pour meilleur-ski.
-  // Pour les autres sites (ex: meilleur-robot), fallback neutre + sections vides,
-  // et on pousse à configurer via Admin → Design.
   const fallbackHeroTitle = isSki ? "Le comparateur des passionnés de ski" : `Le comparateur ${siteConfig.name}`;
   const fallbackHeroHighlight = isSki ? "comparateur" : siteConfig.name;
   const fallbackHeroSubtitle = isSki
@@ -156,7 +153,6 @@ export default async function HomePage() {
   const showLatestGuides = isBool(settings?.showLatestGuides) ? settings.showLatestGuides : true;
   const showTopBrands = isBool(settings?.showTopBrands) ? settings.showTopBrands : true;
 
-  // ✅ DB d'abord. Si vide => fallback (ski uniquement) sinon [] pour autres sites
   const categoryTiles = (() => {
     const parsed = parseCategoryTiles(settings?.categoryTiles);
     if (parsed.length) return parsed;
@@ -194,11 +190,15 @@ export default async function HomePage() {
     ],
   };
 
-  // ✅ Ne charge les guides que si la section est active
-  const latestGuides = showLatestGuides
+  // ✅ Ne charge les contenus que si la section est active
+  // IMPORTANT : on affiche TOUT (GUIDE/ARTICLE/COMPARATIF) sinon ton bloc reste vide.
+  const latestArticles = showLatestGuides
     ? await prisma.page.findMany({
-        where: { published: true, kind: "GUIDE" },
-        orderBy: { createdAt: "desc" },
+        where: {
+          published: true,
+          kind: { in: ["GUIDE", "ARTICLE", "COMPARATIF"] },
+        },
+        orderBy: { updatedAt: "desc" },
         take: 6,
         select: {
           id: true,
@@ -206,10 +206,14 @@ export default async function HomePage() {
           title: true,
           intro: true,
           thumbnailUrl: true,
+          thumbnail: { select: { publicUrl: true } },
           createdAt: true,
+          updatedAt: true,
         },
       })
     : [];
+
+  const fmt = new Intl.DateTimeFormat("fr-FR", { dateStyle: "medium" });
 
   return (
     <main className="pb-20">
@@ -298,42 +302,44 @@ export default async function HomePage() {
         </section>
       ) : null}
 
-      {/* ---------------- DERNIERS GUIDES ---------------- */}
+      {/* ---------------- DERNIERS ARTICLES ---------------- */}
       {showLatestGuides ? (
         <section className="mt-14 md:mt-18 container-page">
           <div className="flex items-center justify-between gap-3">
-            <h2 className="text-xl sm:text-2xl font-bold text-ink">Derniers guides</h2>
+            <h2 className="text-xl sm:text-2xl font-bold text-ink">Derniers articles</h2>
             <Link href="/pages" className="text-sm underline text-brand-600 hover:text-brand-700">
-              Voir tous les guides
+              Voir tout
             </Link>
           </div>
 
-          {latestGuides.length ? (
+          {latestArticles.length ? (
             <ul className="mt-5 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-              {latestGuides.map((p) => (
-                <li key={p.id} className="rounded-2xl border border-ring bg-white hover:shadow-card transition">
-                  <Link href={`/pages/${p.slug}`} className="block">
-                    <div className="aspect-[16/9] w-full overflow-hidden rounded-t-2xl bg-muted">
-                      {p.thumbnailUrl ? (
-                        <img src={p.thumbnailUrl} alt={p.title} className="h-full w-full object-cover" loading="lazy" />
-                      ) : (
-                        <div className="h-full w-full bg-gradient-to-br from-muted to-white" />
-                      )}
-                    </div>
-                    <div className="p-4">
-                      <h3 className="text-base font-semibold text-ink line-clamp-2">{p.title}</h3>
-                      {p.intro ? <p className="text-sm text-slate-600 mt-1 line-clamp-2">{p.intro}</p> : null}
-                      <div className="mt-2 text-xs text-slate-500">
-                        Publié le {p.createdAt.toISOString().slice(0, 10)}
+              {latestArticles.map((p) => {
+                const thumb = p.thumbnail?.publicUrl || p.thumbnailUrl || null;
+                const date = p.updatedAt ?? p.createdAt;
+                return (
+                  <li key={p.id} className="rounded-2xl border border-ring bg-white hover:shadow-card transition">
+                    <Link href={`/pages/${p.slug}`} className="block">
+                      <div className="aspect-[16/9] w-full overflow-hidden rounded-t-2xl bg-muted">
+                        {thumb ? (
+                          <img src={thumb} alt={p.title} className="h-full w-full object-cover" loading="lazy" />
+                        ) : (
+                          <div className="h-full w-full bg-gradient-to-br from-muted to-white" />
+                        )}
                       </div>
-                    </div>
-                  </Link>
-                </li>
-              ))}
+                      <div className="p-4">
+                        <h3 className="text-base font-semibold text-ink line-clamp-2">{p.title}</h3>
+                        {p.intro ? <p className="text-sm text-slate-600 mt-1 line-clamp-2">{p.intro}</p> : null}
+                        <div className="mt-2 text-xs text-slate-500">Mis à jour le {fmt.format(date)}</div>
+                      </div>
+                    </Link>
+                  </li>
+                );
+              })}
             </ul>
           ) : (
             <div className="mt-5 rounded-2xl border border-ring bg-white p-5 text-sm text-slate-600">
-              Aucun guide publié pour le moment.
+              Aucun contenu publié pour le moment.
             </div>
           )}
         </section>
