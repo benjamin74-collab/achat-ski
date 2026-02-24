@@ -28,6 +28,56 @@ function kindLabel(k?: PageKind) {
   return "Article";
 }
 
+function stripTags(input: string) {
+  return input.replace(/<[^>]+>/g, "").replace(/\s+/g, " ").trim();
+}
+
+function slugify(input: string) {
+  return input
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/&amp;/g, "and")
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/(^-|-$)/g, "")
+    .slice(0, 80);
+}
+
+type TocItem = { id: string; text: string; level: 2 | 3 };
+
+function addHeadingIdsAndBuildToc(html: string): { html: string; toc: TocItem[] } {
+  const toc: TocItem[] = [];
+  const used = new Map<string, number>();
+
+  // Capture <h2...>...</h2> and <h3...>...</h3>
+  const out = html.replace(/<(h2|h3)([^>]*)>([\s\S]*?)<\/\1>/gi, (full, tag, attrs, inner) => {
+    const level = tag.toLowerCase() === "h2" ? 2 : 3;
+    const text = stripTags(String(inner));
+    if (!text) return full;
+
+    let id = slugify(text);
+    if (!id) return full;
+
+    const n = (used.get(id) ?? 0) + 1;
+    used.set(id, n);
+    if (n > 1) id = `${id}-${n}`;
+
+    toc.push({ id, text, level });
+
+    // If there's already an id, keep it; else inject ours
+    if (/\sid\s*=\s*["'][^"']+["']/.test(attrs)) return full;
+
+    return `<${tag}${attrs} id="${id}">${inner}</${tag}>`;
+  });
+
+  return { html: out, toc };
+}
+
+function formatDateISO(d: Date) {
+  // YYYY-MM-DD
+  return d.toISOString().slice(0, 10);
+}
+
 export async function generateMetadata({ params }: { params: Params }): Promise<Metadata> {
   const p = await prisma.page.findFirst({
     where: { slug: params.slug, published: true },
@@ -88,14 +138,15 @@ export default async function PageDetail({ params }: { params: Params }) {
 
   if (!page) return notFound();
 
-  const html = sanitizeHtml(page.content || "");
   const canonicalUrl = `${site}/pages/${page.slug}`;
 
   const bannerSrc = page.banner?.publicUrl ?? page.bannerUrl ?? null;
   const thumbSrc = page.thumbnail?.publicUrl ?? page.thumbnailUrl ?? null;
-
-  // ✅ Une seule image de header : banner si dispo, sinon thumbnail
   const heroSrc = bannerSrc ?? thumbSrc;
+
+  // HTML + TOC
+  const sanitized = sanitizeHtml(page.content || "");
+  const { html: htmlWithIds, toc } = addHeadingIdsAndBuildToc(sanitized);
 
   const [lastArticle, latest3] = await Promise.all([
     prisma.page.findFirst({
@@ -162,86 +213,272 @@ export default async function PageDetail({ params }: { params: Params }) {
     },
   };
 
-  // Config pubs
+  // Ads
   const adTop = AD_CONFIG.page_top;
   const adSidebar = AD_CONFIG.page_sidebar;
   const adInline = AD_CONFIG.page_inline;
   const adBottom = AD_CONFIG.page_bottom;
 
-  // ✅ IMPORTANT : le layout global contient déjà <main className="container-page ...">
-  // Donc ici on évite un deuxième <main> + container.
+  // ⚠️ Le layout global contient déjà <main className="container-page py-6"> {children} </main>
+  // Donc ici on évite un second container/main.
   return (
     <section className="py-2 md:py-4">
       <link rel="canonical" href={canonicalUrl} />
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbJsonLd) }} />
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(blogPostingJsonLd) }} />
 
-      <nav className="text-sm text-slate-600">
-        <Link href="/" className="underline">
+      {/* Breadcrumbs plus “léger” */}
+      <nav className="text-xs md:text-sm text-slate-600 flex flex-wrap items-center gap-2">
+        <Link href="/" className="underline underline-offset-2">
           Accueil
         </Link>
-        {" · "}
-        {page.category?.name ? <span>{crumbLabel}</span> : <Link href="/pages" className="underline">Articles</Link>}
+        <span className="text-slate-400">/</span>
+        <Link href="/pages" className="underline underline-offset-2">
+          Guides
+        </Link>
+        <span className="text-slate-400">/</span>
+        <span className="text-slate-700 font-medium line-clamp-1">{page.title}</span>
       </nav>
 
-      <header className="mt-4 space-y-4">
-        <h1 className="text-2xl md:text-3xl font-bold">{page.title}</h1>
-
-        {page.intro && <p className="text-base md:text-lg text-slate-700">{page.intro}</p>}
-
-        {heroSrc && (
-          <div className="overflow-hidden rounded-2xl border bg-muted">
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img
-              src={heroSrc}
-              alt={page.title}
-              className="w-full h-56 md:h-72 object-cover"
-            />
-          </div>
-        )}
-
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <div className="text-sm text-slate-600">
-            Publié le {page.createdAt.toISOString().slice(0, 10)}
-            {page.author?.name ? (
-              <>
-                {" "}
-                · par <span className="font-medium">{page.author.name}</span>
-              </>
-            ) : null}
-          </div>
-
-          <ShareButtons title={page.title} url={canonicalUrl} />
-        </div>
-
-        {adTop && (
-          <section className="mt-2">
-            <a
-              href={adTop.linkUrl ?? "#"}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="block rounded-2xl border bg-white overflow-hidden hover:shadow-card transition-shadow"
-            >
-              {adTop.imageUrl ? (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img src={adTop.imageUrl} alt={adTop.label ?? "Publicité"} className="w-full h-32 md:h-40 object-cover" />
-              ) : adTop.html ? (
-                <div dangerouslySetInnerHTML={{ __html: adTop.html }} />
-              ) : adTop.label ? (
-                <div className="p-3 text-sm text-slate-600">{adTop.label}</div>
+      {/* HERO */}
+      <header className="mt-4">
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+          <div className="lg:col-span-8 space-y-4">
+            <div className="inline-flex items-center gap-2">
+              <span className="text-xs font-semibold rounded-full border px-2.5 py-1 bg-white">
+                {kindLabel(page.kind)}
+              </span>
+              {page.category?.name ? (
+                <span className="text-xs text-slate-600">{page.category.name}</span>
               ) : null}
-            </a>
-          </section>
-        )}
+            </div>
+
+            <h1 className="text-2xl md:text-4xl font-bold tracking-tight text-slate-900">
+              {page.title}
+            </h1>
+
+            {page.intro ? (
+              <p className="text-base md:text-lg text-slate-700 leading-relaxed">
+                {page.intro}
+              </p>
+            ) : null}
+
+            <div className="flex flex-wrap items-center gap-3 text-sm text-slate-600">
+              <span>
+                Publié le <time dateTime={page.createdAt.toISOString()}>{formatDateISO(page.createdAt)}</time>
+              </span>
+              {page.author?.name ? (
+                <>
+                  <span className="text-slate-300">·</span>
+                  <span>
+                    par <span className="font-medium text-slate-800">{page.author.name}</span>
+                  </span>
+                </>
+              ) : null}
+            </div>
+
+            <div className="flex flex-wrap items-center gap-3">
+              <ShareButtons title={page.title} url={canonicalUrl} />
+              {toc.length > 0 ? (
+                <a
+                  href="#sommaire"
+                  className="text-sm font-medium rounded-full border px-3 py-1.5 bg-white hover:shadow-card transition-shadow"
+                >
+                  Aller au sommaire
+                </a>
+              ) : null}
+            </div>
+
+            {adTop && (
+              <section className="mt-2">
+                <div className="rounded-2xl border bg-white overflow-hidden">
+                  <a
+                    href={adTop.linkUrl ?? "#"}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="block hover:shadow-card transition-shadow"
+                  >
+                    {adTop.imageUrl ? (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img
+                        src={adTop.imageUrl}
+                        alt={adTop.label ?? "Publicité"}
+                        className="w-full h-28 md:h-36 object-cover"
+                      />
+                    ) : adTop.html ? (
+                      <div dangerouslySetInnerHTML={{ __html: adTop.html }} />
+                    ) : (
+                      <div className="p-3 text-xs text-slate-500">
+                        Emplacement publicité (haut de page)
+                      </div>
+                    )}
+                  </a>
+                </div>
+              </section>
+            )}
+          </div>
+
+          <div className="lg:col-span-4">
+            {heroSrc ? (
+              <div className="overflow-hidden rounded-3xl border bg-muted shadow-card">
+                <div className="aspect-[16/10]">
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img
+                    src={heroSrc}
+                    alt={page.title}
+                    className="h-full w-full object-cover"
+                  />
+                </div>
+              </div>
+            ) : (
+              <div className="rounded-3xl border bg-muted p-6 text-sm text-slate-600">
+                Illustration à venir
+              </div>
+            )}
+          </div>
+        </div>
       </header>
 
+      {/* BODY */}
       <div className="mt-8 grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
-        <article className="prose max-w-none lg:col-span-8 card" dangerouslySetInnerHTML={{ __html: html }} />
+        {/* Article */}
+        <article className="lg:col-span-8">
+          <div className="rounded-3xl border bg-white shadow-card">
+            <div className="p-5 md:p-8">
+              <div
+                className="prose prose-slate max-w-none prose-headings:scroll-mt-24 prose-a:underline prose-a:underline-offset-2"
+                dangerouslySetInnerHTML={{ __html: htmlWithIds }}
+              />
+            </div>
+          </div>
 
-        <aside className="lg:col-span-4 space-y-4">
+          {adInline && (
+            <section className="my-6">
+              <div className="rounded-2xl border bg-white overflow-hidden">
+                <a
+                  href={adInline.linkUrl ?? "#"}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="block hover:shadow-card transition-shadow"
+                >
+                  {adInline.imageUrl ? (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img
+                      src={adInline.imageUrl}
+                      alt={adInline.label ?? "Publicité"}
+                      className="w-full h-28 md:h-36 object-cover"
+                    />
+                  ) : adInline.html ? (
+                    <div dangerouslySetInnerHTML={{ __html: adInline.html }} />
+                  ) : (
+                    <div className="p-3 text-xs text-slate-500">
+                      Emplacement publicité (dans l’article)
+                    </div>
+                  )}
+                </a>
+              </div>
+            </section>
+          )}
+
+          <section className="mt-10">
+            <RelatedArticles currentSlug={page.slug} max={6} />
+          </section>
+
+          {latest3.length > 0 && (
+            <section className="mt-10">
+              <h2 className="text-lg md:text-xl font-semibold mb-3">Derniers articles</h2>
+              <ul className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                {latest3.map((a) => (
+                  <li key={a.id} className="rounded-2xl border bg-white overflow-hidden hover:shadow-card transition-shadow">
+                    <Link href={`/pages/${a.slug}`} className="block">
+                      <div className="aspect-[16/9] bg-muted">
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                        {a.thumbnail?.publicUrl || a.thumbnailUrl ? (
+                          <img
+                            src={a.thumbnail?.publicUrl ?? a.thumbnailUrl!}
+                            alt={a.title}
+                            className="h-full w-full object-cover"
+                            loading="lazy"
+                            decoding="async"
+                          />
+                        ) : null}
+                      </div>
+                      <div className="p-3">
+                        <div className="text-xs text-slate-500">{formatDateISO(a.createdAt)}</div>
+                        <h3 className="mt-1 text-sm font-semibold line-clamp-2">{a.title}</h3>
+                      </div>
+                    </Link>
+                  </li>
+                ))}
+              </ul>
+            </section>
+          )}
+
+          <section className="mt-10">
+            <Comments pageId={page.id} />
+          </section>
+
+          <div className="mt-8 flex flex-wrap items-center justify-between gap-3">
+            <ShareButtons title={page.title} url={canonicalUrl} />
+            {adBottom && (
+              <section className="w-full sm:w-auto sm:max-w-xs">
+                <div className="rounded-2xl border bg-white overflow-hidden">
+                  <a
+                    href={adBottom.linkUrl ?? "#"}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="block hover:shadow-card transition-shadow"
+                  >
+                    {adBottom.imageUrl ? (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img src={adBottom.imageUrl} alt={adBottom.label ?? "Publicité"} className="w-full h-24 object-cover" />
+                    ) : adBottom.html ? (
+                      <div dangerouslySetInnerHTML={{ __html: adBottom.html }} />
+                    ) : (
+                      <div className="p-3 text-xs text-slate-500">Emplacement publicité (bas)</div>
+                    )}
+                  </a>
+                </div>
+              </section>
+            )}
+          </div>
+        </article>
+
+        {/* Sidebar */}
+        <aside className="lg:col-span-4 space-y-4 lg:sticky lg:top-24">
+          {/* Sommaire */}
+          {toc.length > 0 && (
+            <div id="sommaire" className="rounded-3xl border bg-white shadow-card">
+              <div className="p-5">
+                <div className="flex items-center justify-between gap-2">
+                  <h2 className="text-base font-semibold">Sommaire</h2>
+                  <a href="#top" className="text-xs text-slate-500 underline underline-offset-2">
+                    Haut de page
+                  </a>
+                </div>
+
+                <nav className="mt-3">
+                  <ul className="space-y-2 text-sm">
+                    {toc.map((item) => (
+                      <li key={item.id} className={item.level === 3 ? "pl-3" : ""}>
+                        <a
+                          href={`#${item.id}`}
+                          className="text-slate-700 hover:text-slate-900 underline-offset-2 hover:underline"
+                        >
+                          {item.text}
+                        </a>
+                      </li>
+                    ))}
+                  </ul>
+                </nav>
+              </div>
+            </div>
+          )}
+
+          {/* Dernier article */}
           {lastArticle && (
-            <div className="card overflow-hidden">
-              <Link href={`/pages/${lastArticle.slug}`} className="block">
+            <div className="rounded-3xl border bg-white overflow-hidden shadow-card">
+              <Link href={`/pages/${lastArticle.slug}`} className="block hover:shadow-card transition-shadow">
                 <div className="aspect-[16/9] bg-muted">
                   {/* eslint-disable-next-line @next/next/no-img-element */}
                   {lastArticle.thumbnail?.publicUrl || lastArticle.thumbnailUrl ? (
@@ -255,115 +492,39 @@ export default async function PageDetail({ params }: { params: Params }) {
                   ) : null}
                 </div>
                 <div className="p-4">
-                  <div className="text-xs text-slate-500">Publié le {lastArticle.createdAt.toISOString().slice(0, 10)}</div>
+                  <div className="text-xs text-slate-500">À lire aussi · {formatDateISO(lastArticle.createdAt)}</div>
                   <h3 className="mt-1 text-base font-semibold">{lastArticle.title}</h3>
-                  {lastArticle.intro && <p className="mt-1 text-sm text-slate-600 line-clamp-2">{lastArticle.intro}</p>}
+                  {lastArticle.intro ? (
+                    <p className="mt-1 text-sm text-slate-600 line-clamp-3">{lastArticle.intro}</p>
+                  ) : null}
                 </div>
               </Link>
             </div>
           )}
 
+          {/* Pub sidebar */}
           {adSidebar && (
             <section>
-              <a
-                href={adSidebar.linkUrl ?? "#"}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="card block overflow-hidden hover:shadow-card transition-shadow"
-              >
-                {adSidebar.imageUrl ? (
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img src={adSidebar.imageUrl} alt={adSidebar.label ?? "Publicité"} className="w-full h-48 object-cover" />
-                ) : adSidebar.html ? (
-                  <div dangerouslySetInnerHTML={{ __html: adSidebar.html }} />
-                ) : adSidebar.label ? (
-                  <div className="p-3 text-sm text-slate-600">{adSidebar.label}</div>
-                ) : null}
-              </a>
+              <div className="rounded-3xl border bg-white overflow-hidden shadow-card">
+                <a
+                  href={adSidebar.linkUrl ?? "#"}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="block hover:shadow-card transition-shadow"
+                >
+                  {adSidebar.imageUrl ? (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img src={adSidebar.imageUrl} alt={adSidebar.label ?? "Publicité"} className="w-full h-48 object-cover" />
+                  ) : adSidebar.html ? (
+                    <div dangerouslySetInnerHTML={{ __html: adSidebar.html }} />
+                  ) : (
+                    <div className="p-4 text-xs text-slate-500">Emplacement publicité (sidebar)</div>
+                  )}
+                </a>
+              </div>
             </section>
           )}
         </aside>
-      </div>
-
-      {adInline && (
-        <section className="my-8">
-          <a
-            href={adInline.linkUrl ?? "#"}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="block card overflow-hidden hover:shadow-card transition-shadow"
-          >
-            {adInline.imageUrl ? (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img src={adInline.imageUrl} alt={adInline.label ?? "Publicité"} className="w-full h-32 md:h-40 object-cover" />
-            ) : adInline.html ? (
-              <div dangerouslySetInnerHTML={{ __html: adInline.html }} />
-            ) : adInline.label ? (
-              <div className="p-3 text-sm text-slate-600">{adInline.label}</div>
-            ) : null}
-          </a>
-        </section>
-      )}
-
-      <section className="mt-10">
-        <RelatedArticles currentSlug={page.slug} max={6} />
-      </section>
-
-      {latest3.length > 0 && (
-        <section className="mt-10">
-          <h2 className="text-xl font-semibold mb-3">Derniers articles</h2>
-          <ul className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-            {latest3.map((a) => (
-              <li key={a.id} className="card hover:shadow-card transition-shadow overflow-hidden">
-                <Link href={`/pages/${a.slug}`} className="block">
-                  <div className="aspect-[16/9] bg-muted">
-                    {/* eslint-disable-next-line @next/next/no-img-element */}
-                    {a.thumbnail?.publicUrl || a.thumbnailUrl ? (
-                      <img
-                        src={a.thumbnail?.publicUrl ?? a.thumbnailUrl!}
-                        alt={a.title}
-                        className="h-full w-full object-cover"
-                        loading="lazy"
-                        decoding="async"
-                      />
-                    ) : null}
-                  </div>
-                  <div className="p-3">
-                    <div className="text-xs text-slate-500">{a.createdAt.toISOString().slice(0, 10)}</div>
-                    <h3 className="mt-1 text-sm font-semibold line-clamp-2">{a.title}</h3>
-                  </div>
-                </Link>
-              </li>
-            ))}
-          </ul>
-        </section>
-      )}
-
-      <section className="mt-10">
-        <Comments pageId={page.id} />
-      </section>
-
-      <div className="mt-8 flex flex-wrap items-center justify-between gap-3">
-        <ShareButtons title={page.title} url={canonicalUrl} />
-        {adBottom && (
-          <section className="w-full sm:w-auto sm:max-w-xs">
-            <a
-              href={adBottom.linkUrl ?? "#"}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="block card overflow-hidden hover:shadow-card transition-shadow"
-            >
-              {adBottom.imageUrl ? (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img src={adBottom.imageUrl} alt={adBottom.label ?? "Publicité"} className="w-full h-24 object-cover" />
-              ) : adBottom.html ? (
-                <div dangerouslySetInnerHTML={{ __html: adBottom.html }} />
-              ) : adBottom.label ? (
-                <div className="p-3 text-sm text-slate-600">{adBottom.label}</div>
-              ) : null}
-            </a>
-          </section>
-        )}
       </div>
     </section>
   );
