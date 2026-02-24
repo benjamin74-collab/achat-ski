@@ -94,6 +94,9 @@ export default async function PageDetail({ params }: { params: Params }) {
   const bannerSrc = page.banner?.publicUrl ?? page.bannerUrl ?? null;
   const thumbSrc = page.thumbnail?.publicUrl ?? page.thumbnailUrl ?? null;
 
+  // ✅ Une seule image de header : banner si dispo, sinon thumbnail
+  const heroSrc = bannerSrc ?? thumbSrc;
+
   const [lastArticle, latest3] = await Promise.all([
     prisma.page.findFirst({
       where: { published: true, NOT: { id: page.id } },
@@ -165,8 +168,10 @@ export default async function PageDetail({ params }: { params: Params }) {
   const adInline = AD_CONFIG.page_inline;
   const adBottom = AD_CONFIG.page_bottom;
 
+  // ✅ IMPORTANT : le layout global contient déjà <main className="container-page ...">
+  // Donc ici on évite un deuxième <main> + container.
   return (
-    <main className="container-page py-8">
+    <section className="py-2 md:py-4">
       <link rel="canonical" href={canonicalUrl} />
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbJsonLd) }} />
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(blogPostingJsonLd) }} />
@@ -184,20 +189,14 @@ export default async function PageDetail({ params }: { params: Params }) {
 
         {page.intro && <p className="text-base md:text-lg text-slate-700">{page.intro}</p>}
 
-        {(thumbSrc || bannerSrc) && (
-          <div className="flex flex-col gap-3">
-            {thumbSrc && (
-              <div className="overflow-hidden rounded-2xl border bg-muted">
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src={thumbSrc} alt={page.title} className="w-full h-48 md:h-60 object-cover" />
-              </div>
-            )}
-            {bannerSrc && (
-              <div className="overflow-hidden rounded-2xl border bg-muted">
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src={bannerSrc} alt={page.title} className="w-full h-56 md:h-72 object-cover" />
-              </div>
-            )}
+        {heroSrc && (
+          <div className="overflow-hidden rounded-2xl border bg-muted">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src={heroSrc}
+              alt={page.title}
+              className="w-full h-56 md:h-72 object-cover"
+            />
           </div>
         )}
 
@@ -366,6 +365,6 @@ export default async function PageDetail({ params }: { params: Params }) {
           </section>
         )}
       </div>
-    </main>
+    </section>
   );
 }
