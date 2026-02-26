@@ -1,7 +1,9 @@
 // src/app/search/page.tsx
 import Link from "next/link";
+import { prisma } from "@/lib/prisma";
 import { searchProducts } from "@/lib/search";
 import { money } from "@/lib/format";
+import PriceRange from "@/components/search/PriceRange";
 
 export const runtime = "nodejs";
 
@@ -26,6 +28,25 @@ export default async function SearchPage({ searchParams }: { searchParams: SP })
   const minPriceCents = minPriceEuros != null ? minPriceEuros * 100 : null;
   const maxPriceCents = maxPriceEuros != null ? maxPriceEuros * 100 : null;
 
+  // ✅ Catégories dynamiques (depuis les produits)
+  const categoriesRaw = await prisma.product.findMany({
+    where: { category: { not: null } },
+    distinct: ["category"],
+    select: { category: true },
+  });
+  const categories = categoriesRaw
+    .map((c) => c.category)
+    .filter((v): v is string => Boolean(v && v.trim()))
+    .sort((a, b) => a.localeCompare(b, "fr"));
+
+  // ✅ Bornes prix dynamiques (depuis le catalogue)
+  const priceAgg = await prisma.product.aggregate({
+    _min: { minPriceCents: true },
+    _max: { minPriceCents: true },
+  });
+  const minBoundEuros = Math.floor(((priceAgg._min.minPriceCents ?? 0) as number) / 100);
+  const maxBoundEuros = Math.ceil(((priceAgg._max.minPriceCents ?? 300000) as number) / 100);
+
   const data = await searchProducts({
     q,
     page,
@@ -44,65 +65,65 @@ export default async function SearchPage({ searchParams }: { searchParams: SP })
       <h1 className="text-2xl font-semibold">Résultats {q ? <>pour “{q}”</> : null}</h1>
 
       {/* Filtres */}
-      <form className="mt-4 grid grid-cols-1 gap-3 md:grid-cols-6" action="/search" method="GET">
+      <form className="mt-4 grid grid-cols-1 gap-3 md:grid-cols-12" action="/search" method="GET">
         <input
           name="q"
           defaultValue={q}
           placeholder="Rechercher…"
-          className="md:col-span-2 rounded-xl border px-4 py-2"
+          className="md:col-span-6 rounded-xl border px-4 py-2"
         />
-        <select name="category" defaultValue={category ?? ""} className="rounded-xl border px-3 py-2">
+
+        <select name="category" defaultValue={category ?? ""} className="md:col-span-3 rounded-xl border px-3 py-2">
           <option value="">Toutes catégories</option>
-          <option value="skis-all-mountain">Skis All-Mountain</option>
-          <option value="skis-freeride">Skis Freeride</option>
-          <option value="skis-rando">Skis de rando</option>
-          <option value="fixations">Fixations</option>
-          <option value="chaussures">Chaussures</option>
+          {categories.map((c) => (
+            <option key={c} value={c}>
+              {c}
+            </option>
+          ))}
         </select>
-        <div className="flex items-center gap-2 rounded-xl border px-3 py-2">
-          <label className="text-sm text-neutral-600">Prix €</label>
-          <input
-            name="min"
-            type="number"
-            min={0}
-            defaultValue={minPriceEuros ?? ""}
-            placeholder="min"
-            className="w-20 rounded border px-2 py-1 text-sm"
-          />
-          <span className="text-neutral-400">—</span>
-          <input
-            name="max"
-            type="number"
-            min={0}
-            defaultValue={maxPriceEuros ?? ""}
-            placeholder="max"
-            className="w-20 rounded border px-2 py-1 text-sm"
-          />
-        </div>
+
         <select
           name="sort"
           defaultValue={sort ?? "relevance"}
-          className="rounded-xl border px-3 py-2"
+          className="md:col-span-3 rounded-xl border px-3 py-2"
           title="Trier"
         >
           <option value="relevance">Pertinence</option>
           <option value="price_asc">Prix croissant</option>
           <option value="price_desc">Prix décroissant</option>
         </select>
-        <label className="flex items-center justify-center gap-2 rounded-xl border px-3 py-2 text-sm">
+
+        {/* Prix : double curseur + inputs */}
+        <div className="md:col-span-8">
+          <PriceRange
+            minBound={minBoundEuros}
+            maxBound={maxBoundEuros}
+            initialMin={minPriceEuros}
+            initialMax={maxPriceEuros}
+          />
+        </div>
+
+        <label className="md:col-span-2 flex items-center justify-center gap-2 rounded-xl border px-3 py-2 text-sm">
           <input type="checkbox" name="stock" value="1" defaultChecked={inStockOnly} />
           En stock
         </label>
-        <button className="rounded-xl border px-4 py-2 md:col-span-1">Filtrer</button>
+
+        <button className="md:col-span-2 rounded-xl border px-4 py-2">Filtrer</button>
       </form>
 
       {/* Résumé filtres */}
       {hasFilters && (
         <div className="mt-3 text-sm text-neutral-600">
-          {category ? <>Catégorie: <b>{category}</b> · </> : null}
+          {category ? (
+            <>
+              Catégorie: <b>{category}</b> ·{" "}
+            </>
+          ) : null}
           {inStockOnly ? <>En stock · </> : null}
           {minPriceEuros != null || maxPriceEuros != null ? (
-            <>Prix: <b>{minPriceEuros ?? 0}</b>—<b>{maxPriceEuros ?? "∞"}</b> € · </>
+            <>
+              Prix: <b>{minPriceEuros ?? minBoundEuros}</b>—<b>{maxPriceEuros ?? maxBoundEuros}</b> € ·{" "}
+            </>
           ) : null}
           {data.total} produit{data.total > 1 ? "s" : ""} trouvé{data.total > 1 ? "s" : ""}.
         </div>
@@ -129,10 +150,7 @@ export default async function SearchPage({ searchParams }: { searchParams: SP })
                   </div>
                 </div>
                 <div className="mt-2">
-                  <Link
-                    href={`/p/${p.slug}`}
-                    className="inline-block rounded-xl border px-3 py-2 text-sm hover:shadow"
-                  >
+                  <Link href={`/p/${p.slug}`} className="inline-block rounded-xl border px-3 py-2 text-sm hover:shadow">
                     Voir le produit
                   </Link>
                 </div>
