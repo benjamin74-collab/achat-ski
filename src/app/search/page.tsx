@@ -32,32 +32,45 @@ export default async function SearchPage({ searchParams }: { searchParams: SP })
   // ✅ Catégories dynamiques (depuis la table backoffice)
   const cats = await prisma.category.findMany({
     select: { id: true, slug: true, name: true, parentId: true },
-    orderBy: [{ parentId: "asc" }, { name: "asc" }],
+    orderBy: [{ name: "asc" }],
   });
 
-  // build tree -> liste hiérarchisée (parents, enfants, petites-filles…)
-  const byParent = new Map<string | null, typeof cats>();
-  for (const c of cats) {
-    const key = (c.parentId as any) ?? null;
+  // ✅ build tree -> liste hiérarchisée sans "any" (parents, enfants, petites-filles…)
+  type CatRow = {
+    id: unknown;
+    slug: string;
+    name: string;
+    parentId: unknown | null;
+  };
+
+  const rows = cats as CatRow[];
+
+  // Map parentKey -> children[]
+  const byParent = new Map<string, CatRow[]>();
+  for (const c of rows) {
+    const key = c.parentId == null ? "" : String(c.parentId);
     const arr = byParent.get(key) ?? [];
     arr.push(c);
     byParent.set(key, arr);
   }
 
-  function walk(parentId: any, level: number, out: CategoryItem[]) {
-    const list = byParent.get(parentId ?? null) ?? [];
-    // tri sécurité
-    list.sort((a, b) => a.name.localeCompare(b.name, "fr"));
+  // tri sécurité (FR)
+  for (const arr of byParent.values()) {
+    arr.sort((a, b) => a.name.localeCompare(b.name, "fr"));
+  }
+
+  function walk(parentKey: string, level: number, out: CategoryItem[]) {
+    const list = byParent.get(parentKey) ?? [];
     for (const c of list) {
       out.push({ slug: c.slug, name: c.name, level });
-      walk(c.id as any, level + 1, out);
+      walk(String(c.id), level + 1, out);
     }
   }
 
   const categoryItems: CategoryItem[] = [];
-  walk(null, 0, categoryItems);
+  walk("", 0, categoryItems);
 
-  // ✅ Bornes prix “safe” (robustes) — on évite l’aggregate car le champ prix n’est pas minPriceCents chez toi
+  // ✅ Bornes prix “safe” (robustes)
   const minBoundEuros = 0;
   const maxBoundEuros = 3000;
 
@@ -104,12 +117,7 @@ export default async function SearchPage({ searchParams }: { searchParams: SP })
 
         {/* Prix : double curseur + inputs */}
         <div className="md:col-span-8">
-          <PriceRange
-            minBound={minBoundEuros}
-            maxBound={maxBoundEuros}
-            initialMin={minPriceEuros}
-            initialMax={maxPriceEuros}
-          />
+          <PriceRange minBound={minBoundEuros} maxBound={maxBoundEuros} initialMin={minPriceEuros} initialMax={maxPriceEuros} />
         </div>
 
         <label className="md:col-span-2 flex items-center justify-center gap-2 rounded-xl border px-3 py-2 text-sm">
@@ -154,9 +162,7 @@ export default async function SearchPage({ searchParams }: { searchParams: SP })
                 </div>
                 <div className="mt-1 text-right">
                   <div className="text-xs text-neutral-500">à partir de</div>
-                  <div className="text-lg font-semibold">
-                    {p.minPriceCents != null ? money(p.minPriceCents, "EUR") : "—"}
-                  </div>
+                  <div className="text-lg font-semibold">{p.minPriceCents != null ? money(p.minPriceCents, "EUR") : "—"}</div>
                 </div>
                 <div className="mt-2">
                   <Link href={`/p/${p.slug}`} className="inline-block rounded-xl border px-3 py-2 text-sm hover:shadow">
