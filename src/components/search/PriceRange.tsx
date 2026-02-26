@@ -37,27 +37,25 @@ export default function PriceRange({
   const [min, setMin] = useState(init.min);
   const [max, setMax] = useState(init.max);
 
-  // si l’URL change (navigation), on resync
+  // resync si navigation / URL change
   useEffect(() => {
     setMin(init.min);
     setMax(init.max);
   }, [init.min, init.max]);
 
-  // handlers
-  const onMinNumber = (v: number) => {
-    const next = clamp(v, safeMinBound, max);
-    setMin(next);
-  };
-  const onMaxNumber = (v: number) => {
-    const next = clamp(v, min, safeMaxBound);
-    setMax(next);
-  };
+  // % pour track
+  const range = Math.max(1, safeMaxBound - safeMinBound);
+  const leftPct = ((min - safeMinBound) / range) * 100;
+  const rightPct = 100 - ((max - safeMinBound) / range) * 100;
 
-  const onMinRange = (v: number) => {
+  // On met le "min thumb" au-dessus quand il est proche du max (sinon impossible à attraper)
+  const minOnTop = min > safeMaxBound - Math.ceil(range * 0.1);
+
+  const onMin = (v: number) => {
     const next = clamp(v, safeMinBound, max);
     setMin(next);
   };
-  const onMaxRange = (v: number) => {
+  const onMax = (v: number) => {
     const next = clamp(v, min, safeMaxBound);
     setMax(next);
   };
@@ -73,7 +71,7 @@ export default function PriceRange({
             min={safeMinBound}
             max={safeMaxBound}
             value={min}
-            onChange={(e) => onMinNumber(Number(e.target.value))}
+            onChange={(e) => onMin(Number(e.target.value))}
             className="w-24 rounded-lg border px-2 py-1 text-sm"
             aria-label="Prix minimum"
           />
@@ -83,36 +81,82 @@ export default function PriceRange({
             min={safeMinBound}
             max={safeMaxBound}
             value={max}
-            onChange={(e) => onMaxNumber(Number(e.target.value))}
+            onChange={(e) => onMax(Number(e.target.value))}
             className="w-24 rounded-lg border px-2 py-1 text-sm"
             aria-label="Prix maximum"
           />
         </div>
       </div>
 
-      {/* sliders */}
+      {/* Track + double thumbs */}
       <div className="mt-3">
-        <div className="relative h-6">
-          {/* range min */}
+        <div className="relative h-7">
+          {/* Track (gris) */}
+          <div className="absolute left-0 right-0 top-1/2 -translate-y-1/2 h-1.5 rounded-full bg-neutral-200" />
+
+          {/* Range sélectionné (bleu) */}
+          <div
+            className="absolute top-1/2 -translate-y-1/2 h-1.5 rounded-full bg-blue-600"
+            style={{ left: `${leftPct}%`, right: `${rightPct}%` }}
+          />
+
+          {/* Range inputs superposés
+              - pointer-events-none sur la piste (input)
+              - pointer-events-auto sur le thumb via CSS pseudo-element
+              => permet d’attraper le min même s’il est sous l’autre
+          */}
           <input
             type="range"
             min={safeMinBound}
             max={safeMaxBound}
             value={min}
-            onChange={(e) => onMinRange(Number(e.target.value))}
-            className="absolute inset-0 w-full"
+            onChange={(e) => onMin(Number(e.target.value))}
+            className={`absolute inset-0 w-full bg-transparent pointer-events-none appearance-none
+              ${minOnTop ? "z-30" : "z-20"}`}
             aria-label="Curseur prix minimum"
           />
-          {/* range max */}
           <input
             type="range"
             min={safeMinBound}
             max={safeMaxBound}
             value={max}
-            onChange={(e) => onMaxRange(Number(e.target.value))}
-            className="absolute inset-0 w-full"
+            onChange={(e) => onMax(Number(e.target.value))}
+            className={`absolute inset-0 w-full bg-transparent pointer-events-none appearance-none
+              ${minOnTop ? "z-20" : "z-30"}`}
             aria-label="Curseur prix maximum"
           />
+
+          {/* Styles thumbs (inline via global CSS utilitaire Tailwind-like) */}
+          <style jsx>{`
+            input[type="range"]::-webkit-slider-thumb {
+              -webkit-appearance: none;
+              appearance: none;
+              width: 18px;
+              height: 18px;
+              border-radius: 9999px;
+              background: white;
+              border: 2px solid rgb(37 99 235); /* blue-600 */
+              box-shadow: 0 1px 2px rgba(0,0,0,.12);
+              pointer-events: auto; /* IMPORTANT */
+              cursor: pointer;
+            }
+            input[type="range"]::-moz-range-thumb {
+              width: 18px;
+              height: 18px;
+              border-radius: 9999px;
+              background: white;
+              border: 2px solid rgb(37 99 235);
+              box-shadow: 0 1px 2px rgba(0,0,0,.12);
+              pointer-events: auto; /* IMPORTANT */
+              cursor: pointer;
+            }
+            input[type="range"]::-webkit-slider-runnable-track {
+              background: transparent;
+            }
+            input[type="range"]::-moz-range-track {
+              background: transparent;
+            }
+          `}</style>
         </div>
 
         <div className="flex items-center justify-between text-xs text-neutral-500">
