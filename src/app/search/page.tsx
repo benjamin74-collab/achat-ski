@@ -4,6 +4,7 @@ import { prisma } from "@/lib/prisma";
 import { searchProducts } from "@/lib/search";
 import { money } from "@/lib/format";
 import PriceRange from "@/components/search/PriceRange";
+import CategorySelect, { type CategoryItem } from "@/components/search/CategorySelect";
 
 export const runtime = "nodejs";
 
@@ -29,10 +30,32 @@ export default async function SearchPage({ searchParams }: { searchParams: SP })
   const maxPriceCents = maxPriceEuros != null ? maxPriceEuros * 100 : null;
 
   // ✅ Catégories dynamiques (depuis la table backoffice)
-  const categories = await prisma.category.findMany({
-    orderBy: { name: "asc" },
-    select: { slug: true, name: true },
+  const cats = await prisma.category.findMany({
+    select: { id: true, slug: true, name: true, parentId: true },
+    orderBy: [{ parentId: "asc" }, { name: "asc" }],
   });
+
+  // build tree -> liste hiérarchisée (parents, enfants, petites-filles…)
+  const byParent = new Map<string | null, typeof cats>();
+  for (const c of cats) {
+    const key = (c.parentId as any) ?? null;
+    const arr = byParent.get(key) ?? [];
+    arr.push(c);
+    byParent.set(key, arr);
+  }
+
+  function walk(parentId: any, level: number, out: CategoryItem[]) {
+    const list = byParent.get(parentId ?? null) ?? [];
+    // tri sécurité
+    list.sort((a, b) => a.name.localeCompare(b.name, "fr"));
+    for (const c of list) {
+      out.push({ slug: c.slug, name: c.name, level });
+      walk(c.id as any, level + 1, out);
+    }
+  }
+
+  const categoryItems: CategoryItem[] = [];
+  walk(null, 0, categoryItems);
 
   // ✅ Bornes prix “safe” (robustes) — on évite l’aggregate car le champ prix n’est pas minPriceCents chez toi
   const minBoundEuros = 0;
@@ -64,14 +87,9 @@ export default async function SearchPage({ searchParams }: { searchParams: SP })
           className="md:col-span-6 rounded-xl border px-4 py-2"
         />
 
-        <select name="category" defaultValue={category ?? ""} className="md:col-span-3 rounded-xl border px-3 py-2">
-          <option value="">Toutes catégories</option>
-          {categories.map((c) => (
-            <option key={c.slug} value={c.slug}>
-              {c.name}
-            </option>
-          ))}
-        </select>
+        <div className="md:col-span-3">
+          <CategorySelect items={categoryItems} defaultValue={category ?? ""} />
+        </div>
 
         <select
           name="sort"
