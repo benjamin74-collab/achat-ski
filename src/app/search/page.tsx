@@ -3,8 +3,9 @@ import Link from "next/link";
 import { prisma } from "@/lib/prisma";
 import { searchProducts } from "@/lib/search";
 import { money } from "@/lib/format";
-import PriceRange from "@/components/search/PriceRange";
 import CategorySelect, { type CategoryItem } from "@/components/search/CategorySelect";
+import PriceRangeInline from "@/components/search/PriceRangeInline";
+import SortSelect from "@/components/search/SortSelect";
 
 export const runtime = "nodejs";
 
@@ -16,32 +17,31 @@ function parseIntOrNull(v: string | undefined) {
   return Number.isFinite(n) ? Math.max(0, Math.floor(n)) : null;
 }
 
-type CatRow = {
-  id: unknown;
-  slug: string;
-  name: string;
-  parentId: unknown | null;
+type Sort = "relevance" | "price_asc" | "price_desc";
 
-  // champs "actif" possibles (selon ton schema) — optionnels
-  isActive?: boolean | null;
-  enabled?: boolean | null;
-  published?: boolean | null;
-  status?: string | null;
-};
+function isCategoryActiveUnknown(row: Record<string, unknown>): boolean {
+  // champs fréquents
+  const b1 = row["active"];
+  if (typeof b1 === "boolean") return b1;
 
-function isActiveCategory(c: CatRow): boolean {
-  if (typeof c.isActive === "boolean") return c.isActive;
-  if (typeof c.enabled === "boolean") return c.enabled;
-  if (typeof c.published === "boolean") return c.published;
+  const b2 = row["isActive"];
+  if (typeof b2 === "boolean") return b2;
 
-  // certains schémas utilisent status: "ACTIVE"/"INACTIVE" ou "PUBLISHED"/"DRAFT"
-  if (typeof c.status === "string") {
-    const s = c.status.toUpperCase();
-    if (s === "ACTIVE" || s === "ENABLED" || s === "PUBLISHED") return true;
-    if (s === "INACTIVE" || s === "DISABLED" || s === "DRAFT") return false;
+  const b3 = row["enabled"];
+  if (typeof b3 === "boolean") return b3;
+
+  const b4 = row["published"];
+  if (typeof b4 === "boolean") return b4;
+
+  // status enum/string : ACTIVE / INACTIVE / PUBLISHED / DRAFT ...
+  const s = row["status"];
+  if (typeof s === "string") {
+    const up = s.toUpperCase();
+    if (up === "ACTIVE" || up === "ENABLED" || up === "PUBLISHED") return true;
+    if (up === "INACTIVE" || up === "DISABLED" || up === "DRAFT") return false;
   }
 
-  // Si aucun champ n’existe : on ne filtre pas (comportement safe)
+  // Si on ne trouve rien : on ne filtre pas (safe)
   return true;
 }
 
@@ -49,8 +49,9 @@ export default async function SearchPage({ searchParams }: { searchParams: SP })
   const q = (searchParams?.q as string) ?? "";
   const page = Number((searchParams?.page as string) ?? "1") || 1;
   const category = (searchParams?.category as string) || undefined;
-  const inStockOnly = ((searchParams?.stock as string) ?? "").toLowerCase() === "1";
-  const sort = (searchParams?.sort as string) as "relevance" | "price_asc" | "price_desc" | undefined;
+
+  // tri (hors filtres)
+  const sort = ((searchParams?.sort as string) || "relevance") as Sort;
 
   // prix saisis en euros -> convertir en cents
   const minPriceEuros = parseIntOrNull(searchParams?.min as string | undefined);
@@ -58,36 +59,25 @@ export default async function SearchPage({ searchParams }: { searchParams: SP })
   const minPriceCents = minPriceEuros != null ? minPriceEuros * 100 : null;
   const maxPriceCents = maxPriceEuros != null ? maxPriceEuros * 100 : null;
 
-  // ✅ Catégories dynamiques (depuis la table backoffice)
-  // On sélectionne aussi des champs optionnels "actif" si présents (sinon ils seront undefined)
+  // ✅ Catégories dynamiques (on récupère tous les champs pour pouvoir filtrer "actif" si le champ existe)
   const catsRaw = await prisma.category.findMany({
-    select: {
-      id: true,
-      slug: true,
-      name: true,
-      parentId: true,
-      // ces champs peuvent ne pas exister dans Prisma -> donc on ne les met PAS ici
-      // on filtrera via un cast ci-dessous
-    },
     orderBy: [{ name: "asc" }],
   });
 
-  // Cast "safe" (pas de any) pour permettre le filtre optionnel
-  const cats = catsRaw as unknown as CatRow[];
-
-  // ✅ filtrer seulement les catégories actives si un flag existe
-  const catsFiltered = cats.filter(isActiveCategory);
+  // filtrage actif "robuste"
+  const cats = catsRaw.filter((c) => isCategoryActiveUnknown(c as unknown as Record<string, unknown>));
 
   // build tree -> liste hiérarchisée (parents, enfants, petites-filles…)
+  type CatRow = { id: unknown; slug: string; name: string; parentId: unknown | null };
+
+  const rows = cats as unknown as CatRow[];
   const byParent = new Map<string, CatRow[]>();
-  for (const c of catsFiltered) {
+  for (const c of rows) {
     const key = c.parentId == null ? "" : String(c.parentId);
     const arr = byParent.get(key) ?? [];
     arr.push(c);
     byParent.set(key, arr);
   }
-
-  // tri sécurité (FR)
   for (const arr of byParent.values()) {
     arr.sort((a, b) => a.name.localeCompare(b.name, "fr"));
   }
@@ -103,7 +93,7 @@ export default async function SearchPage({ searchParams }: { searchParams: SP })
   const categoryItems: CategoryItem[] = [];
   walk("", 0, categoryItems);
 
-  // ✅ Bornes prix “safe”
+  // bornes prix safe
   const minBoundEuros = 0;
   const maxBoundEuros = 3000;
 
@@ -112,59 +102,59 @@ export default async function SearchPage({ searchParams }: { searchParams: SP })
     page,
     pageSize: 24,
     category,
-    inStockOnly,
+    inStockOnly: false, // UI retirée pour le moment
     minPriceCents,
     maxPriceCents,
     sort: sort ?? "relevance",
   });
 
-  const hasFilters = Boolean(q || category || inStockOnly || minPriceEuros != null || maxPriceEuros != null);
+  const hasFilters = Boolean(q || category || minPriceEuros != null || maxPriceEuros != null);
 
   return (
     <main className="container mx-auto max-w-6xl px-4 py-6">
       <h1 className="text-2xl font-semibold">Résultats {q ? <>pour “{q}”</> : null}</h1>
 
-      {/* Filtres */}
-      <form className="mt-4 grid grid-cols-1 gap-3 md:grid-cols-12" action="/search" method="GET">
+      {/* Filtres (1 ligne desktop / stack mobile) */}
+      <form
+        className="mt-4 flex flex-col gap-3 md:flex-row md:items-center"
+        action="/search"
+        method="GET"
+      >
+        {/* conserver le tri dans l'URL quand on filtre */}
+        <input type="hidden" name="sort" value={sort} />
+
         <input
           name="q"
           defaultValue={q}
           placeholder="Rechercher…"
-          className="md:col-span-6 rounded-xl border px-4 py-2"
+          className="w-full md:flex-1 rounded-xl border px-4 py-2"
         />
 
-        <div className="md:col-span-3 relative z-40">
+        <div className="w-full md:w-[260px] relative z-40">
           <CategorySelect items={categoryItems} defaultValue={category ?? ""} />
         </div>
 
-        <select
-          name="sort"
-          defaultValue={sort ?? "relevance"}
-          className="md:col-span-3 rounded-xl border px-3 py-2"
-          title="Trier"
-        >
-          <option value="relevance">Pertinence</option>
-          <option value="price_asc">Prix croissant</option>
-          <option value="price_desc">Prix décroissant</option>
-        </select>
-
-        {/* Prix : double curseur + inputs */}
-        <div className="md:col-span-8">
-          <PriceRange minBound={minBoundEuros} maxBound={maxBoundEuros} initialMin={minPriceEuros} initialMax={maxPriceEuros} />
+        <div className="w-full md:flex-[0_0_520px]">
+          <PriceRangeInline
+            minBound={minBoundEuros}
+            maxBound={maxBoundEuros}
+            initialMin={minPriceEuros}
+            initialMax={maxPriceEuros}
+          />
         </div>
 
-        <label className="md:col-span-2 flex items-center justify-center gap-2 rounded-xl border px-3 py-2 text-sm">
-          <input type="checkbox" name="stock" value="1" defaultChecked={inStockOnly} />
-          En stock
-        </label>
-
         <button
-          className="md:col-span-2 rounded-xl px-4 py-2 font-medium text-white bg-neutral-900 hover:bg-neutral-800 transition
-                     focus:outline-none focus:ring-2 focus:ring-neutral-400"
+          className="w-full md:w-auto rounded-xl px-6 py-2.5 font-semibold text-white shadow-sm hover:brightness-95 transition"
+          style={{ backgroundColor: "rgb(var(--primary))" }}
         >
           Filtrer
         </button>
       </form>
+
+      {/* Tri (à droite, au-dessus des résultats) */}
+      <div className="mt-3 flex justify-end">
+        <SortSelect value={sort} />
+      </div>
 
       {/* Résumé filtres */}
       {hasFilters && (
@@ -174,7 +164,6 @@ export default async function SearchPage({ searchParams }: { searchParams: SP })
               Catégorie: <b>{category}</b> ·{" "}
             </>
           ) : null}
-          {inStockOnly ? <>En stock · </> : null}
           {minPriceEuros != null || maxPriceEuros != null ? (
             <>
               Prix: <b>{minPriceEuros ?? minBoundEuros}</b>—<b>{maxPriceEuros ?? maxBoundEuros}</b> € ·{" "}
@@ -184,7 +173,7 @@ export default async function SearchPage({ searchParams }: { searchParams: SP })
         </div>
       )}
 
-      {/* Résultats en grille */}
+      {/* Résultats */}
       {data.items.length === 0 ? (
         <p className="mt-6 text-neutral-600">Aucun produit ne correspond aux filtres.</p>
       ) : (
@@ -200,7 +189,9 @@ export default async function SearchPage({ searchParams }: { searchParams: SP })
                 </div>
                 <div className="mt-1 text-right">
                   <div className="text-xs text-neutral-500">à partir de</div>
-                  <div className="text-lg font-semibold">{p.minPriceCents != null ? money(p.minPriceCents, "EUR") : "—"}</div>
+                  <div className="text-lg font-semibold">
+                    {p.minPriceCents != null ? money(p.minPriceCents, "EUR") : "—"}
+                  </div>
                 </div>
                 <div className="mt-2">
                   <Link href={`/p/${p.slug}`} className="inline-block rounded-xl border px-3 py-2 text-sm hover:shadow">
@@ -221,7 +212,6 @@ export default async function SearchPage({ searchParams }: { searchParams: SP })
             const params = new URLSearchParams();
             if (q.trim()) params.set("q", q.trim());
             if (category) params.set("category", category);
-            if (inStockOnly) params.set("stock", "1");
             if (minPriceEuros != null) params.set("min", String(minPriceEuros));
             if (maxPriceEuros != null) params.set("max", String(maxPriceEuros));
             if (sort) params.set("sort", sort);
