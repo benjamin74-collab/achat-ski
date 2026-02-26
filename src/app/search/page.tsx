@@ -28,18 +28,14 @@ export default async function SearchPage({ searchParams }: { searchParams: SP })
   const minPriceCents = minPriceEuros != null ? minPriceEuros * 100 : null;
   const maxPriceCents = maxPriceEuros != null ? maxPriceEuros * 100 : null;
 
-  // ✅ Catégories dynamiques (depuis les produits)
-  const categoriesRaw = await prisma.product.findMany({
-    where: { category: { not: null } },
-    distinct: ["category"],
-    select: { category: true },
+  // Catégories dynamiques (depuis la table backoffice)
+  // On privilégie le slug pour la valeur du filtre (stable), et le nom pour l'affichage.
+  const categories = await prisma.category.findMany({
+    orderBy: { name: "asc" },
+    select: { slug: true, name: true },
   });
-  const categories = categoriesRaw
-    .map((c) => c.category)
-    .filter((v): v is string => Boolean(v && v.trim()))
-    .sort((a, b) => a.localeCompare(b, "fr"));
 
-  // ✅ Bornes prix dynamiques (depuis le catalogue)
+  // Bornes prix dynamiques (depuis le catalogue)
   const priceAgg = await prisma.product.aggregate({
     _min: { minPriceCents: true },
     _max: { minPriceCents: true },
@@ -76,8 +72,8 @@ export default async function SearchPage({ searchParams }: { searchParams: SP })
         <select name="category" defaultValue={category ?? ""} className="md:col-span-3 rounded-xl border px-3 py-2">
           <option value="">Toutes catégories</option>
           {categories.map((c) => (
-            <option key={c} value={c}>
-              {c}
+            <option key={c.slug} value={c.slug}>
+              {c.name}
             </option>
           ))}
         </select>
