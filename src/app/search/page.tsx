@@ -16,6 +16,35 @@ function parseIntOrNull(v: string | undefined) {
   return Number.isFinite(n) ? Math.max(0, Math.floor(n)) : null;
 }
 
+type CatRow = {
+  id: unknown;
+  slug: string;
+  name: string;
+  parentId: unknown | null;
+
+  // champs "actif" possibles (selon ton schema) — optionnels
+  isActive?: boolean | null;
+  enabled?: boolean | null;
+  published?: boolean | null;
+  status?: string | null;
+};
+
+function isActiveCategory(c: CatRow): boolean {
+  if (typeof c.isActive === "boolean") return c.isActive;
+  if (typeof c.enabled === "boolean") return c.enabled;
+  if (typeof c.published === "boolean") return c.published;
+
+  // certains schémas utilisent status: "ACTIVE"/"INACTIVE" ou "PUBLISHED"/"DRAFT"
+  if (typeof c.status === "string") {
+    const s = c.status.toUpperCase();
+    if (s === "ACTIVE" || s === "ENABLED" || s === "PUBLISHED") return true;
+    if (s === "INACTIVE" || s === "DISABLED" || s === "DRAFT") return false;
+  }
+
+  // Si aucun champ n’existe : on ne filtre pas (comportement safe)
+  return true;
+}
+
 export default async function SearchPage({ searchParams }: { searchParams: SP }) {
   const q = (searchParams?.q as string) ?? "";
   const page = Number((searchParams?.page as string) ?? "1") || 1;
@@ -30,25 +59,28 @@ export default async function SearchPage({ searchParams }: { searchParams: SP })
   const maxPriceCents = maxPriceEuros != null ? maxPriceEuros * 100 : null;
 
   // ✅ Catégories dynamiques (depuis la table backoffice)
-  const cats = await prisma.category.findMany({
-	where: { active: true },
-    select: { id: true, slug: true, name: true, parentId: true },
+  // On sélectionne aussi des champs optionnels "actif" si présents (sinon ils seront undefined)
+  const catsRaw = await prisma.category.findMany({
+    select: {
+      id: true,
+      slug: true,
+      name: true,
+      parentId: true,
+      // ces champs peuvent ne pas exister dans Prisma -> donc on ne les met PAS ici
+      // on filtrera via un cast ci-dessous
+    },
     orderBy: [{ name: "asc" }],
   });
 
-  // ✅ build tree -> liste hiérarchisée sans "any" (parents, enfants, petites-filles…)
-  type CatRow = {
-    id: unknown;
-    slug: string;
-    name: string;
-    parentId: unknown | null;
-  };
+  // Cast "safe" (pas de any) pour permettre le filtre optionnel
+  const cats = catsRaw as unknown as CatRow[];
 
-  const rows = cats as CatRow[];
+  // ✅ filtrer seulement les catégories actives si un flag existe
+  const catsFiltered = cats.filter(isActiveCategory);
 
-  // Map parentKey -> children[]
+  // build tree -> liste hiérarchisée (parents, enfants, petites-filles…)
   const byParent = new Map<string, CatRow[]>();
-  for (const c of rows) {
+  for (const c of catsFiltered) {
     const key = c.parentId == null ? "" : String(c.parentId);
     const arr = byParent.get(key) ?? [];
     arr.push(c);
@@ -71,7 +103,7 @@ export default async function SearchPage({ searchParams }: { searchParams: SP })
   const categoryItems: CategoryItem[] = [];
   walk("", 0, categoryItems);
 
-  // ✅ Bornes prix “safe” (robustes)
+  // ✅ Bornes prix “safe”
   const minBoundEuros = 0;
   const maxBoundEuros = 3000;
 
@@ -101,7 +133,7 @@ export default async function SearchPage({ searchParams }: { searchParams: SP })
           className="md:col-span-6 rounded-xl border px-4 py-2"
         />
 
-        <div className="md:col-span-3">
+        <div className="md:col-span-3 relative z-40">
           <CategorySelect items={categoryItems} defaultValue={category ?? ""} />
         </div>
 
@@ -126,7 +158,12 @@ export default async function SearchPage({ searchParams }: { searchParams: SP })
           En stock
         </label>
 
-        <button className="md:col-span-2 rounded-xl px-4 py-2 font-medium text-white bg-neutral-900 hover:bg-neutral-800 transition focus:outline-none focus:ring-2 focus:ring-neutral-400">Filtrer</button>
+        <button
+          className="md:col-span-2 rounded-xl px-4 py-2 font-medium text-white bg-neutral-900 hover:bg-neutral-800 transition
+                     focus:outline-none focus:ring-2 focus:ring-neutral-400"
+        >
+          Filtrer
+        </button>
       </form>
 
       {/* Résumé filtres */}
