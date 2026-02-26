@@ -28,20 +28,15 @@ export default async function SearchPage({ searchParams }: { searchParams: SP })
   const minPriceCents = minPriceEuros != null ? minPriceEuros * 100 : null;
   const maxPriceCents = maxPriceEuros != null ? maxPriceEuros * 100 : null;
 
-  // Catégories dynamiques (depuis la table backoffice)
-  // On privilégie le slug pour la valeur du filtre (stable), et le nom pour l'affichage.
+  // ✅ Catégories dynamiques (depuis la table backoffice)
   const categories = await prisma.category.findMany({
     orderBy: { name: "asc" },
     select: { slug: true, name: true },
   });
 
-  // Bornes prix dynamiques (depuis le catalogue)
-  const priceAgg = await prisma.product.aggregate({
-    _min: { minPriceCents: true },
-    _max: { minPriceCents: true },
-  });
-  const minBoundEuros = Math.floor(((priceAgg._min.minPriceCents ?? 0) as number) / 100);
-  const maxBoundEuros = Math.ceil(((priceAgg._max.minPriceCents ?? 300000) as number) / 100);
+  // ✅ Bornes prix “safe” (robustes) — on évite l’aggregate car le champ prix n’est pas minPriceCents chez toi
+  const minBoundEuros = 0;
+  const maxBoundEuros = 3000;
 
   const data = await searchProducts({
     q,
