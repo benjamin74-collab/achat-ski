@@ -31,6 +31,7 @@ export default async function SearchPage({ searchParams }: { searchParams: SP })
 
   // ✅ Catégories dynamiques (depuis la table backoffice)
   const cats = await prisma.category.findMany({
+	where: { active: true },
     select: { id: true, slug: true, name: true, parentId: true },
     orderBy: [{ name: "asc" }],
   });
@@ -125,7 +126,7 @@ export default async function SearchPage({ searchParams }: { searchParams: SP })
           En stock
         </label>
 
-        <button className="md:col-span-2 rounded-xl border px-4 py-2">Filtrer</button>
+        <button className="md:col-span-2 rounded-xl px-4 py-2 font-medium text-white bg-neutral-900 hover:bg-neutral-800 transition focus:outline-none focus:ring-2 focus:ring-neutral-400">Filtrer</button>
       </form>
 
       {/* Résumé filtres */}

@@ -74,7 +74,7 @@ export default function CategorySelect({
       </button>
 
       {open && (
-        <div className="absolute z-30 mt-2 w-full rounded-xl border bg-white shadow-lg overflow-hidden">
+        <div className="absolute z-50 mt-2 w-full rounded-xl border bg-white shadow-lg overflow-hidden">
           <ul role="listbox" className="max-h-72 overflow-auto">
             <li>
               <button

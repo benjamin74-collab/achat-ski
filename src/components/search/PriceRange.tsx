@@ -112,7 +112,7 @@ export default function PriceRange({
             value={min}
             onChange={(e) => onMin(Number(e.target.value))}
             className={`absolute inset-0 w-full bg-transparent pointer-events-none appearance-none
-              ${minOnTop ? "z-30" : "z-20"}`}
+              ${minOnTop ? "z-20" : "z-10"}`}
             aria-label="Curseur prix minimum"
           />
           <input
@@ -122,7 +122,7 @@ export default function PriceRange({
             value={max}
             onChange={(e) => onMax(Number(e.target.value))}
             className={`absolute inset-0 w-full bg-transparent pointer-events-none appearance-none
-              ${minOnTop ? "z-20" : "z-30"}`}
+              ${minOnTop ? "z-10" : "z-20"}`}
             aria-label="Curseur prix maximum"
           />
 
