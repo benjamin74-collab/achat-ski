@@ -7,6 +7,7 @@ import Providers from "@/components/Providers";
 import { getSiteConfig } from "@/config/site";
 import type { SiteConfig } from "@/config/site.types";
 import { getFontClasses, getFontFamilyVar } from "@/config/fonts";
+import CookieBanner from "@/components/cookies/CookieBanner";
 
 const siteConfig = getSiteConfig();
 
@@ -92,10 +93,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   const branding = getBranding(siteConfig);
 
   // charge uniquement les fonts nécessaires au site courant
-  const fontClasses = getFontClasses([
-    siteConfig.fonts.sans,
-    siteConfig.fonts.display,
-  ]);
+  const fontClasses = getFontClasses([siteConfig.fonts.sans, siteConfig.fonts.display]);
 
   return (
     <html
@@ -114,6 +112,9 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           <Header />
           <main className="container-page py-6">{children}</main>
           <Footer />
+
+          {/* ✅ Popin cookies globale (Axeptio-like) */}
+          <CookieBanner />
         </Providers>
       </body>
     </html>

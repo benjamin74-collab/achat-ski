@@ -16,6 +16,7 @@ const NAV: Item[] = [
   { href: "/admin/brands", label: "Marques", desc: "Ajouter, modifier, supprimer" },
   { href: "/admin/pages", label: "Pages", desc: "Pages statiques / blog" },
   { href: "/admin/media", label: "Médiathèque", desc: "Uploader & gérer les images" },
+  { href: "/admin/cookies", label: "Cookies (RGPD)", desc: "Consentement & liste des cookies" },
   { href: "/admin/design", label: "Design", desc: "Branding & homepage" },
   // on ajoutera “Menu builder” une fois la hiérarchie de catégories en place
 ];
@@ -24,15 +25,12 @@ export default function AdminSidebar() {
   const pathname = usePathname();
   const { data: session, status } = useSession();
 
-  const userLabel =
-    (session?.user?.name || session?.user?.email || "Compte admin") as string;
+  const userLabel = (session?.user?.name || session?.user?.email || "Compte admin") as string;
 
   return (
     <nav className="space-y-2">
       <div className="rounded-2xl border border-ring bg-white p-3 shadow-card">
-        <div className="px-2 py-1 text-xs font-semibold uppercase tracking-wide text-slate-500">
-          Administration
-        </div>
+        <div className="px-2 py-1 text-xs font-semibold uppercase tracking-wide text-slate-500">Administration</div>
         <ul className="mt-1">
           {NAV.map((item) => {
             const active = pathname === item.href || pathname?.startsWith(item.href + "/");
@@ -46,9 +44,7 @@ export default function AdminSidebar() {
                 >
                   <div className="text-sm font-medium">{item.label}</div>
                   {item.desc ? (
-                    <div className={`text-xs ${active ? "text-white/80" : "text-slate-500"}`}>
-                      {item.desc}
-                    </div>
+                    <div className={`text-xs ${active ? "text-white/80" : "text-slate-500"}`}>{item.desc}</div>
                   ) : null}
                 </Link>
               </li>
@@ -65,17 +61,13 @@ export default function AdminSidebar() {
 
       {/* Bloc compte + déconnexion (uniquement backoffice) */}
       <div className="rounded-2xl border border-ring bg-white p-3">
-        <div className="px-2 py-1 text-xs font-semibold uppercase tracking-wide text-slate-500">
-          Compte
-        </div>
+        <div className="px-2 py-1 text-xs font-semibold uppercase tracking-wide text-slate-500">Compte</div>
 
         {status === "loading" ? (
           <div className="mt-2 h-9 w-full rounded-lg bg-muted animate-pulse" />
         ) : (
           <div className="mt-2 space-y-2">
-            <div className="px-2 text-sm font-medium text-slate-800 truncate">
-              {userLabel}
-            </div>
+            <div className="px-2 text-sm font-medium text-slate-800 truncate">{userLabel}</div>
 
             <button
               type="button"
