@@ -517,3 +517,52 @@ model MediaAsset {
 enum MediaKind {
   IMAGE
 }
+
+/**
+ * -----------------------------
+ * COOKIES
+ * ------------------------------
+ */
+enum CookiePurpose {
+  ESSENTIAL
+  ANALYTICS
+  ADS
+  PERSONALIZATION
+}
+
+enum ConsentChoice {
+  ESSENTIAL
+  ALL
+}
+
+model CookieDefinition {
+  id          Int          @id @default(autoincrement())
+  siteId      String?      // null = tous sites, sinon "meilleur-ski" / "meilleur-robot" etc.
+  key         String       // ex: "_ga", "gclid", "ms_consent"
+  name        String       // ex: "Google Analytics"
+  provider    String?      // ex: "Google"
+  purpose     CookiePurpose @default(ESSENTIAL)
+  description String?
+  durationDays Int?        // ex: 395 (13 mois)
+  mandatory   Boolean      @default(false) // true = essentiel au site
+
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+
+  @@index([siteId])
+  @@index([purpose])
+  @@unique([siteId, key])
+}
+
+model CookieConsentLog {
+  id        String        @id @default(cuid())
+  siteId    String?
+  choice    ConsentChoice
+  version   String        // version du texte/paramétrage consentement
+  userAgent String?
+  path      String?
+  createdAt DateTime      @default(now())
+
+  @@index([siteId])
+  @@index([createdAt])
+}
