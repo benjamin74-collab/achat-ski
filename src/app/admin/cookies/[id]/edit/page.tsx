@@ -4,6 +4,7 @@ import Breadcrumbs from "@/components/Breadcrumbs";
 import CookieForm from "../../CookieForm";
 import { updateCookieDef, deleteCookieDef } from "../../actions";
 import { redirect } from "next/navigation";
+import type { CookiePurpose } from "@prisma/client";
 
 export default async function EditCookiePage({ params }: { params: { id: string } }) {
   const id = Number(params.id);
@@ -33,11 +34,19 @@ export default async function EditCookiePage({ params }: { params: { id: string 
 
   return (
     <div className="container-page py-8">
-      <Breadcrumbs items={[{ href: "/admin", label: "Admin" }, { href: "/admin/cookies", label: "Cookies" }, { label: `Éditer: ${item.name}` }]} />
+      <Breadcrumbs
+        items={[
+          { href: "/admin", label: "Admin" },
+          { href: "/admin/cookies", label: "Cookies" },
+          { label: `Éditer: ${item.name}` },
+        ]}
+      />
 
       <div className="flex items-center justify-between mb-4">
         <h1 className="text-xl font-bold">Éditer le cookie</h1>
-        <Link href="/admin/cookies" className="btn btn-ghost">Retour</Link>
+        <Link href="/admin/cookies" className="btn btn-ghost">
+          Retour
+        </Link>
       </div>
 
       <div className="card p-4">
@@ -47,7 +56,7 @@ export default async function EditCookiePage({ params }: { params: { id: string 
             key: item.key,
             name: item.name,
             provider: item.provider ?? null,
-            purpose: item.purpose as any,
+            purpose: item.purpose as CookiePurpose,
             description: item.description ?? null,
             durationDays: item.durationDays ?? null,
             mandatory: item.mandatory,

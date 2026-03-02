@@ -3,19 +3,42 @@
 
 import { prisma } from "@/lib/prisma";
 import { revalidatePath } from "next/cache";
+import type { CookiePurpose } from "@prisma/client";
+
+function toNullableString(v: FormDataEntryValue | null): string | null {
+  if (v == null) return null;
+  const s = String(v).trim();
+  return s ? s : null;
+}
+
+function toRequiredString(v: FormDataEntryValue | null, field: string): string {
+  const s = String(v ?? "").trim();
+  if (!s) throw new Error(`${field} requis`);
+  return s;
+}
+
+function toNullableInt(v: FormDataEntryValue | null): number | null {
+  const s = String(v ?? "").trim();
+  if (!s) return null;
+  const n = Number(s);
+  return Number.isFinite(n) ? Math.max(0, Math.floor(n)) : null;
+}
+
+function toPurpose(v: FormDataEntryValue | null): CookiePurpose {
+  const raw = String(v ?? "ESSENTIAL").trim();
+  const allowed: CookiePurpose[] = ["ESSENTIAL", "ANALYTICS", "ADS", "PERSONALIZATION"];
+  return (allowed.includes(raw as CookiePurpose) ? (raw as CookiePurpose) : "ESSENTIAL");
+}
 
 export async function createCookieDef(form: FormData) {
-  const siteId = (form.get("siteId") as string) || null;
-  const key = String(form.get("key") ?? "").trim();
-  const name = String(form.get("name") ?? "").trim();
-  const provider = (form.get("provider") as string) || null;
-  const purpose = String(form.get("purpose") ?? "ESSENTIAL");
-  const description = (form.get("description") as string) || null;
-  const durationDaysRaw = form.get("durationDays") as string;
-  const durationDays = durationDaysRaw ? Number(durationDaysRaw) : null;
+  const siteId = toNullableString(form.get("siteId"));
+  const key = toRequiredString(form.get("key"), "key");
+  const name = toRequiredString(form.get("name"), "name");
+  const provider = toNullableString(form.get("provider"));
+  const purpose = toPurpose(form.get("purpose"));
+  const description = toNullableString(form.get("description"));
+  const durationDays = toNullableInt(form.get("durationDays"));
   const mandatory = String(form.get("mandatory") ?? "") === "1";
-
-  if (!key || !name) throw new Error("key et name requis.");
 
   await prisma.cookieDefinition.create({
     data: {
@@ -23,9 +46,9 @@ export async function createCookieDef(form: FormData) {
       key,
       name,
       provider,
-      purpose: purpose as any,
+      purpose,
       description,
-      durationDays: Number.isFinite(durationDays as number) ? (durationDays as number) : null,
+      durationDays,
       mandatory,
     },
   });
@@ -34,17 +57,14 @@ export async function createCookieDef(form: FormData) {
 }
 
 export async function updateCookieDef(id: number, form: FormData) {
-  const siteId = (form.get("siteId") as string) || null;
-  const key = String(form.get("key") ?? "").trim();
-  const name = String(form.get("name") ?? "").trim();
-  const provider = (form.get("provider") as string) || null;
-  const purpose = String(form.get("purpose") ?? "ESSENTIAL");
-  const description = (form.get("description") as string) || null;
-  const durationDaysRaw = form.get("durationDays") as string;
-  const durationDays = durationDaysRaw ? Number(durationDaysRaw) : null;
+  const siteId = toNullableString(form.get("siteId"));
+  const key = toRequiredString(form.get("key"), "key");
+  const name = toRequiredString(form.get("name"), "name");
+  const provider = toNullableString(form.get("provider"));
+  const purpose = toPurpose(form.get("purpose"));
+  const description = toNullableString(form.get("description"));
+  const durationDays = toNullableInt(form.get("durationDays"));
   const mandatory = String(form.get("mandatory") ?? "") === "1";
-
-  if (!key || !name) throw new Error("key et name requis.");
 
   await prisma.cookieDefinition.update({
     where: { id },
@@ -53,9 +73,9 @@ export async function updateCookieDef(id: number, form: FormData) {
       key,
       name,
       provider,
-      purpose: purpose as any,
+      purpose,
       description,
-      durationDays: Number.isFinite(durationDays as number) ? (durationDays as number) : null,
+      durationDays,
       mandatory,
     },
   });

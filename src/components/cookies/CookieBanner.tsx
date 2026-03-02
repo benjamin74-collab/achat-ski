@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { CONSENT_COOKIE, CONSENT_MAX_AGE, CONSENT_VERSION, type Consent } from "@/lib/consent";
 
@@ -74,8 +75,8 @@ export default function CookieBanner() {
           <p className="mt-2 text-sm text-neutral-700 leading-relaxed">
             Nous utilisons des cookies <b>essentiels</b> au bon fonctionnement du site. Avec votre accord,
             nous pouvons également utiliser des cookies <b>optionnels</b> (mesure d’audience, personnalisation,
-            publicité) pour améliorer votre expérience et financer le service.
-            Vous pouvez modifier votre choix à tout moment.
+            publicité) pour améliorer votre expérience et financer le service. Vous pouvez modifier votre choix
+            à tout moment.
           </p>
 
           <div className="mt-4 flex flex-col sm:flex-row gap-2">
@@ -98,9 +99,9 @@ export default function CookieBanner() {
           </div>
 
           <div className="mt-3 flex items-center justify-between">
-            <a href="/politique-cookies" className="text-xs text-neutral-600 hover:underline">
+            <Link href="/politique-cookies" className="text-xs text-neutral-600 hover:underline">
               En savoir plus / Politique cookies
-            </a>
+            </Link>
             <button
               type="button"
               onClick={() => setOpen(false)}
