@@ -1,13 +1,23 @@
 // src/app/robots.txt/route.ts
+import { getSiteConfig } from "@/config/site";
+
 export const runtime = "edge";
 
-export function GET() {
+export function GET(req: Request) {
+  const siteConfig = getSiteConfig();
+
+  const origin = new URL(req.url).origin;
+  const base =
+    (siteConfig.domain?.replace(/\/+$/, "") ||
+      process.env.NEXT_PUBLIC_SITE_URL?.replace(/\/+$/, "") ||
+      origin);
+
   const body = `
 User-agent: *
 Allow: /
 Disallow: /admin/
 
-Sitemap: https://achat-ski.vercel.app/sitemap.xml
+Sitemap: ${base}/sitemap.xml
   `.trim();
 
   return new Response(body, {
@@ -17,4 +27,3 @@ Sitemap: https://achat-ski.vercel.app/sitemap.xml
     },
   });
 }
-
