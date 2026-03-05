@@ -8,6 +8,7 @@ import SortSelect from "../../components/SortSelect";
 import { totalCents } from "../../lib/format";
 import Breadcrumbs from "../../components/Breadcrumbs";
 import { sanitizeHtml } from "../../lib/sanitize";
+import { getCurrentSiteUrl } from "@/lib/currentSite";
 
 export const revalidate = 120;
 
@@ -58,7 +59,7 @@ export default async function CategoryPage({
   params: Promise<PageParams>;
   searchParams?: { [key: string]: string | string[] | undefined };
 }) {
-  const site = getSiteUrl();
+  const site = getCurrentSiteUrl();
 
   const { category } = await params;
   const parsed = parseSearchParams(searchParams);
@@ -321,7 +322,7 @@ export async function generateMetadata({ params }: { params: Promise<PageParams>
     };
   }
 
-  const site = getSiteUrl();
+  const site = getCurrentSiteUrl();
   const url = `${site}/${cat.slug}`;
 
   const title = cat.metaTitle || `${cat.name} — Meilleur-Ski`;

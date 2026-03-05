@@ -2,13 +2,17 @@
 import { notFound } from "next/navigation";
 import type { Metadata } from "next";
 import Link from "next/link";
+import type { PageKind } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { sanitizeHtml } from "@/lib/sanitize";
+import { getCurrentSiteId } from "@/lib/currentSite";
+import { getCurrentSiteUrl } from "@/lib/currentSite";
 import ShareButtons from "@/components/ShareButtons";
 import RelatedArticles from "@/components/RelatedArticles";
 import Comments from "@/components/Comments";
-import type { PageKind } from "@prisma/client";
-import { AD_CONFIG } from "@/config/ads";
+import AdsenseScript from "@/components/ads/AdsenseScript";
+import AdsenseUnit from "@/components/ads/AdsenseUnit";
+import { injectInlineAdMarker, splitHtmlByMarker } from "@/lib/ads";
 
 export const revalidate = 300;
 
@@ -49,7 +53,6 @@ function addHeadingIdsAndBuildToc(html: string): { html: string; toc: TocItem[] 
   const toc: TocItem[] = [];
   const used = new Map<string, number>();
 
-  // Capture <h2...>...</h2> and <h3...>...</h3>
   const out = html.replace(/<(h2|h3)([^>]*)>([\s\S]*?)<\/\1>/gi, (full, tag, attrs, inner) => {
     const level = tag.toLowerCase() === "h2" ? 2 : 3;
     const text = stripTags(String(inner));
@@ -64,7 +67,6 @@ function addHeadingIdsAndBuildToc(html: string): { html: string; toc: TocItem[] 
 
     toc.push({ id, text, level });
 
-    // If there's already an id, keep it; else inject ours
     if (/\sid\s*=\s*["'][^"']+["']/.test(attrs)) return full;
 
     return `<${tag}${attrs} id="${id}">${inner}</${tag}>`;
@@ -74,7 +76,6 @@ function addHeadingIdsAndBuildToc(html: string): { html: string; toc: TocItem[] 
 }
 
 function formatDateISO(d: Date) {
-  // YYYY-MM-DD
   return d.toISOString().slice(0, 10);
 }
 
@@ -93,21 +94,21 @@ export async function generateMetadata({ params }: { params: Params }): Promise<
       thumbnailUrl: true,
     },
   });
+
   if (!p) return { title: "Page introuvable" };
 
-  const site = getSiteUrl();
+  const site = getCurrentSiteUrl();
   const url = `${site}/pages/${p.slug}`;
 
-  const ogCandidate =
-    p.banner?.publicUrl
-      ? { url: p.banner.publicUrl, width: p.banner.width ?? undefined, height: p.banner.height ?? undefined }
-      : p.bannerUrl
+  const ogCandidate = p.banner?.publicUrl
+    ? { url: p.banner.publicUrl, width: p.banner.width ?? undefined, height: p.banner.height ?? undefined }
+    : p.bannerUrl
       ? { url: p.bannerUrl }
       : p.thumbnail?.publicUrl
-      ? { url: p.thumbnail.publicUrl, width: p.thumbnail.width ?? undefined, height: p.thumbnail.height ?? undefined }
-      : p.thumbnailUrl
-      ? { url: p.thumbnailUrl }
-      : undefined;
+        ? { url: p.thumbnail.publicUrl, width: p.thumbnail.width ?? undefined, height: p.thumbnail.height ?? undefined }
+        : p.thumbnailUrl
+          ? { url: p.thumbnailUrl }
+          : undefined;
 
   return {
     title: p.metaTitle ?? p.title,
@@ -124,17 +125,31 @@ export async function generateMetadata({ params }: { params: Params }): Promise<
 }
 
 export default async function PageDetail({ params }: { params: Params }) {
-  const site = getSiteUrl();
+  const site = getCurrentSiteUrl();
+  const siteId = getCurrentSiteId();
 
-  const page = await prisma.page.findFirst({
-    where: { slug: params.slug, published: true },
-    include: {
-      author: { select: { id: true, name: true } },
-      banner: { select: { publicUrl: true, width: true, height: true } },
-      thumbnail: { select: { publicUrl: true, width: true, height: true } },
-      category: { select: { id: true, name: true } },
-    },
-  });
+  const [page, adSettings] = await Promise.all([
+    prisma.page.findFirst({
+      where: { slug: params.slug, published: true },
+      include: {
+        author: { select: { id: true, name: true } },
+        banner: { select: { publicUrl: true, width: true, height: true } },
+        thumbnail: { select: { publicUrl: true, width: true, height: true } },
+        category: { select: { id: true, name: true } },
+      },
+    }),
+    prisma.adSettings.findUnique({
+      where: { siteId },
+      select: {
+        enabled: true,
+        adsenseClient: true,
+        slotPageTop: true,
+        slotPageInline: true,
+        slotPageSidebar: true,
+        slotPageBottom: true,
+      },
+    }),
+  ]);
 
   if (!page) return notFound();
 
@@ -144,9 +159,10 @@ export default async function PageDetail({ params }: { params: Params }) {
   const thumbSrc = page.thumbnail?.publicUrl ?? page.thumbnailUrl ?? null;
   const heroSrc = bannerSrc ?? thumbSrc;
 
-  // HTML + TOC
   const sanitized = sanitizeHtml(page.content || "");
-  const { html: htmlWithIds, toc } = addHeadingIdsAndBuildToc(sanitized);
+  const htmlWithAutoAd = injectInlineAdMarker(sanitized);
+  const { html: htmlWithIds, toc } = addHeadingIdsAndBuildToc(htmlWithAutoAd);
+  const { before: htmlBeforeAd, after: htmlAfterAd, hasMarker } = splitHtmlByMarker(htmlWithIds);
 
   const [lastArticle, latest3] = await Promise.all([
     prisma.page.findFirst({
@@ -179,10 +195,9 @@ export default async function PageDetail({ params }: { params: Params }) {
   const imagesForLd: string[] = [];
   if (page.banner?.publicUrl) imagesForLd.push(page.banner.publicUrl);
   else if (page.bannerUrl) imagesForLd.push(page.bannerUrl);
+
   if (page.thumbnail?.publicUrl) imagesForLd.push(page.thumbnail.publicUrl);
   else if (page.thumbnailUrl) imagesForLd.push(page.thumbnailUrl);
-
-  const crumbLabel = `${kindLabel(page.kind)}${page.category?.name ? ` ${page.category.name}` : ""}`;
 
   const breadcrumbJsonLd = {
     "@context": "https://schema.org",
@@ -213,21 +228,18 @@ export default async function PageDetail({ params }: { params: Params }) {
     },
   };
 
-  // Ads
-  const adTop = AD_CONFIG.page_top;
-  const adSidebar = AD_CONFIG.page_sidebar;
-  const adInline = AD_CONFIG.page_inline;
-  const adBottom = AD_CONFIG.page_bottom;
+  const hasAdsense =
+    !!adSettings?.enabled &&
+    !!adSettings.adsenseClient;
 
-  // ⚠️ Le layout global contient déjà <main className="container-page py-6"> {children} </main>
-  // Donc ici on évite un second container/main.
   return (
-    <section className="py-2 md:py-4">
+    <section id="top" className="py-2 md:py-4">
       <link rel="canonical" href={canonicalUrl} />
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbJsonLd) }} />
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(blogPostingJsonLd) }} />
 
-      {/* Breadcrumbs plus “léger” */}
+      {hasAdsense ? <AdsenseScript client={adSettings.adsenseClient!} /> : null}
+
       <nav className="text-xs md:text-sm text-slate-600 flex flex-wrap items-center gap-2">
         <Link href="/" className="underline underline-offset-2">
           Accueil
@@ -240,7 +252,6 @@ export default async function PageDetail({ params }: { params: Params }) {
         <span className="text-slate-700 font-medium line-clamp-1">{page.title}</span>
       </nav>
 
-      {/* HERO */}
       <header className="mt-4">
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
           <div className="lg:col-span-8 space-y-4">
@@ -288,34 +299,6 @@ export default async function PageDetail({ params }: { params: Params }) {
                 </a>
               ) : null}
             </div>
-
-            {adTop && (
-              <section className="mt-2">
-                <div className="rounded-2xl border bg-white overflow-hidden">
-                  <a
-                    href={adTop.linkUrl ?? "#"}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="block hover:shadow-card transition-shadow"
-                  >
-                    {adTop.imageUrl ? (
-                      // eslint-disable-next-line @next/next/no-img-element
-                      <img
-                        src={adTop.imageUrl}
-                        alt={adTop.label ?? "Publicité"}
-                        className="w-full h-28 md:h-36 object-cover"
-                      />
-                    ) : adTop.html ? (
-                      <div dangerouslySetInnerHTML={{ __html: adTop.html }} />
-                    ) : (
-                      <div className="p-3 text-xs text-slate-500">
-                        Emplacement publicité (haut de page)
-                      </div>
-                    )}
-                  </a>
-                </div>
-              </section>
-            )}
           </div>
 
           <div className="lg:col-span-4">
@@ -339,46 +322,39 @@ export default async function PageDetail({ params }: { params: Params }) {
         </div>
       </header>
 
-      {/* BODY */}
       <div className="mt-8 grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
-        {/* Article */}
         <article className="lg:col-span-8">
           <div className="rounded-3xl border bg-white shadow-card">
             <div className="p-5 md:p-8">
-              <div
-                className="prose prose-slate max-w-none prose-headings:scroll-mt-24 prose-a:underline prose-a:underline-offset-2"
-                dangerouslySetInnerHTML={{ __html: htmlWithIds }}
-              />
+              <div className="prose prose-slate max-w-none prose-headings:scroll-mt-24 prose-a:underline prose-a:underline-offset-2">
+				  <div dangerouslySetInnerHTML={{ __html: htmlBeforeAd }} />
+
+				  {hasAdsense && adSettings.slotPageInline && hasMarker ? (
+					<div className="not-prose my-6 rounded-2xl border bg-white p-3 md:p-4 overflow-hidden">
+					  <AdsenseUnit
+						client={adSettings.adsenseClient!}
+						slot={adSettings.slotPageInline}
+					  />
+					</div>
+				  ) : null}
+
+				  {htmlAfterAd ? (
+					<div dangerouslySetInnerHTML={{ __html: htmlAfterAd }} />
+				  ) : null}
+				</div>
             </div>
           </div>
 
-          {adInline && (
+          {hasAdsense && adSettings.slotPageInline ? (
             <section className="my-6">
-              <div className="rounded-2xl border bg-white overflow-hidden">
-                <a
-                  href={adInline.linkUrl ?? "#"}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="block hover:shadow-card transition-shadow"
-                >
-                  {adInline.imageUrl ? (
-                    // eslint-disable-next-line @next/next/no-img-element
-                    <img
-                      src={adInline.imageUrl}
-                      alt={adInline.label ?? "Publicité"}
-                      className="w-full h-28 md:h-36 object-cover"
-                    />
-                  ) : adInline.html ? (
-                    <div dangerouslySetInnerHTML={{ __html: adInline.html }} />
-                  ) : (
-                    <div className="p-3 text-xs text-slate-500">
-                      Emplacement publicité (dans l’article)
-                    </div>
-                  )}
-                </a>
+              <div className="rounded-2xl border bg-white p-3 md:p-4 overflow-hidden">
+                <AdsenseUnit
+                  client={adSettings.adsenseClient!}
+                  slot={adSettings.slotPageInline}
+                />
               </div>
             </section>
-          )}
+          ) : null}
 
           <section className="mt-10">
             <RelatedArticles currentSlug={page.slug} max={6} />
@@ -389,7 +365,10 @@ export default async function PageDetail({ params }: { params: Params }) {
               <h2 className="text-lg md:text-xl font-semibold mb-3">Derniers articles</h2>
               <ul className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                 {latest3.map((a) => (
-                  <li key={a.id} className="rounded-2xl border bg-white overflow-hidden hover:shadow-card transition-shadow">
+                  <li
+                    key={a.id}
+                    className="rounded-2xl border bg-white overflow-hidden hover:shadow-card transition-shadow"
+                  >
                     <Link href={`/pages/${a.slug}`} className="block">
                       <div className="aspect-[16/9] bg-muted">
                         {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -420,33 +399,21 @@ export default async function PageDetail({ params }: { params: Params }) {
 
           <div className="mt-8 flex flex-wrap items-center justify-between gap-3">
             <ShareButtons title={page.title} url={canonicalUrl} />
-            {adBottom && (
-              <section className="w-full sm:w-auto sm:max-w-xs">
-                <div className="rounded-2xl border bg-white overflow-hidden">
-                  <a
-                    href={adBottom.linkUrl ?? "#"}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="block hover:shadow-card transition-shadow"
-                  >
-                    {adBottom.imageUrl ? (
-                      // eslint-disable-next-line @next/next/no-img-element
-                      <img src={adBottom.imageUrl} alt={adBottom.label ?? "Publicité"} className="w-full h-24 object-cover" />
-                    ) : adBottom.html ? (
-                      <div dangerouslySetInnerHTML={{ __html: adBottom.html }} />
-                    ) : (
-                      <div className="p-3 text-xs text-slate-500">Emplacement publicité (bas)</div>
-                    )}
-                  </a>
+
+            {hasAdsense && adSettings.slotPageBottom ? (
+              <section className="w-full">
+                <div className="rounded-2xl border bg-white p-3 md:p-4 overflow-hidden">
+                  <AdsenseUnit
+                    client={adSettings.adsenseClient!}
+                    slot={adSettings.slotPageBottom}
+                  />
                 </div>
               </section>
-            )}
+            ) : null}
           </div>
         </article>
 
-        {/* Sidebar */}
         <aside className="lg:col-span-4 space-y-4 lg:sticky lg:top-24">
-          {/* Sommaire */}
           {toc.length > 0 && (
             <div id="sommaire" className="rounded-3xl border bg-white shadow-card">
               <div className="p-5">
@@ -475,7 +442,6 @@ export default async function PageDetail({ params }: { params: Params }) {
             </div>
           )}
 
-          {/* Dernier article */}
           {lastArticle && (
             <div className="rounded-3xl border bg-white overflow-hidden shadow-card">
               <Link href={`/pages/${lastArticle.slug}`} className="block hover:shadow-card transition-shadow">
@@ -502,28 +468,16 @@ export default async function PageDetail({ params }: { params: Params }) {
             </div>
           )}
 
-          {/* Pub sidebar */}
-          {adSidebar && (
+          {hasAdsense && adSettings.slotPageSidebar ? (
             <section>
-              <div className="rounded-3xl border bg-white overflow-hidden shadow-card">
-                <a
-                  href={adSidebar.linkUrl ?? "#"}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="block hover:shadow-card transition-shadow"
-                >
-                  {adSidebar.imageUrl ? (
-                    // eslint-disable-next-line @next/next/no-img-element
-                    <img src={adSidebar.imageUrl} alt={adSidebar.label ?? "Publicité"} className="w-full h-48 object-cover" />
-                  ) : adSidebar.html ? (
-                    <div dangerouslySetInnerHTML={{ __html: adSidebar.html }} />
-                  ) : (
-                    <div className="p-4 text-xs text-slate-500">Emplacement publicité (sidebar)</div>
-                  )}
-                </a>
+              <div className="rounded-3xl border bg-white p-3 md:p-4 overflow-hidden shadow-card">
+                <AdsenseUnit
+                  client={adSettings.adsenseClient!}
+                  slot={adSettings.slotPageSidebar}
+                />
               </div>
             </section>
-          )}
+          ) : null}
         </aside>
       </div>
     </section>

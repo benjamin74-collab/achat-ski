@@ -1,6 +1,7 @@
 // src/app/pages/page.tsx
 /* eslint-disable @next/next/no-img-element */
 import Link from "next/link";
+import { getCurrentSiteUrl } from "@/lib/currentSite";
 import { prisma } from "@/lib/prisma";
 
 export const revalidate = 300;
@@ -14,7 +15,7 @@ function getSiteUrl() {
 }
 
 export default async function PagesIndex() {
-  const site = getSiteUrl();
+  const site = getCurrentSiteUrl();
   const canonicalUrl = `${site}/pages`;
 
   const pages = await prisma.page.findMany({

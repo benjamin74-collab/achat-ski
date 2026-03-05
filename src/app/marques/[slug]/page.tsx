@@ -4,6 +4,7 @@ import Breadcrumbs from "@/components/Breadcrumbs";
 import { sanitizeHtml } from "@/lib/sanitize";
 import { totalCents } from "@/lib/format";
 import ProductCard from "@/components/ProductCard";
+import { getCurrentSiteUrl } from "@/lib/currentSite";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -35,7 +36,7 @@ export async function generateMetadata({ params }: { params: { slug: string } })
 
   if (!brand) return { title: "Marque introuvable — Meilleur-Ski" };
 
-  const site = getSiteUrl();
+  const site = getCurrentSiteUrl();
   const url = `${site}/marques/${brand.slug}`;
 
   const title =
@@ -57,7 +58,7 @@ export async function generateMetadata({ params }: { params: { slug: string } })
 }
 
 export default async function BrandPage({ params }: { params: { slug: string } }) {
-  const site = getSiteUrl();
+  const site = getCurrentSiteUrl();
 
   const brand = await prisma.brand.findUnique({
     where: { slug: params.slug },

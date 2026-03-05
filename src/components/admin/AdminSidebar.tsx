@@ -18,6 +18,7 @@ const NAV: Item[] = [
   { href: "/admin/media", label: "Médiathèque", desc: "Uploader & gérer les images" },
   { href: "/admin/cookies", label: "Cookies (RGPD)", desc: "Consentement & liste des cookies" },
   { href: "/admin/design", label: "Design", desc: "Branding & homepage" },
+  { href: "/admin/monetization/adsense", label: "Adsense", desc: "Publicité de Google" },
   // on ajoutera “Menu builder” une fois la hiérarchie de catégories en place
 ];
 

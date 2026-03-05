@@ -566,3 +566,29 @@ model CookieConsentLog {
   @@index([siteId])
   @@index([createdAt])
 }
+
+/**
+ * -----------------------------
+ * ADSENSE
+ * ------------------------------
+ */
+model AdSettings {
+  id            Int      @id @default(autoincrement())
+  siteId        String   @unique // "meilleur-ski" | "meilleur-robot" | etc.
+
+  enabled       Boolean  @default(false)
+
+  // Adsense
+  adsenseClient String?  // ex: "ca-pub-1234567890"
+
+  // Slots (1 par emplacement)
+  slotPageTop     String?
+  slotPageInline  String?
+  slotPageSidebar String?
+  slotPageBottom  String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([siteId])
+}

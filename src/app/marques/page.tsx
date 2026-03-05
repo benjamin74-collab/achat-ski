@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { prisma } from "@/lib/prisma";
 import Breadcrumbs from "@/components/Breadcrumbs";
+import { getCurrentSiteUrl } from "@/lib/currentSite";
 
 export const revalidate = 300;
 
@@ -13,7 +14,7 @@ function getSiteUrl() {
 }
 
 export default async function BrandsDirectoryPage() {
-  const site = getSiteUrl();
+  const site = getCurrentSiteUrl();
   const canonicalUrl = `${site}/marques`;
 
   const brands = await prisma.brand.findMany({
