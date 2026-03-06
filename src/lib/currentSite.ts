@@ -7,8 +7,8 @@ import { headers } from "next/headers";
  * - supprime le www
  * - met en minuscule
  */
-export function getCurrentHost(): string {
-  const h = headers();
+export async function getCurrentHost(): Promise<string> {
+  const h = await headers();
 
   const hostHeader =
     h.get("x-forwarded-host") ||
@@ -39,13 +39,9 @@ export function getSiteIdFromHost(host: string): string {
     }
   }
 
-  // fallback heuristique
   if (host.includes("meilleur-robot")) return "meilleur-robot";
 
-  if (
-    host.includes("meilleur-ski") ||
-    host.includes("achat-ski")
-  ) {
+  if (host.includes("meilleur-ski") || host.includes("achat-ski")) {
     return "meilleur-ski";
   }
 
@@ -55,22 +51,17 @@ export function getSiteIdFromHost(host: string): string {
 /**
  * Site courant basé sur le host HTTP
  */
-export function getCurrentSiteId(): string {
-  const host = getCurrentHost();
+export async function getCurrentSiteId(): Promise<string> {
+  const host = await getCurrentHost();
   return getSiteIdFromHost(host);
 }
 
 /**
  * URL complète du site courant
- * (utile pour canonical SEO)
+ * utile pour canonical SEO
  */
-export function getCurrentSiteUrl(): string {
-  const host = getCurrentHost();
-
-  const protocol =
-    process.env.NODE_ENV === "development"
-      ? "http"
-      : "https";
-
+export async function getCurrentSiteUrl(): Promise<string> {
+  const host = await getCurrentHost();
+  const protocol = process.env.NODE_ENV === "development" ? "http" : "https";
   return `${protocol}://${host}`;
 }

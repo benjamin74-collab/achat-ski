@@ -59,7 +59,7 @@ export default async function CategoryPage({
   params: Promise<PageParams>;
   searchParams?: { [key: string]: string | string[] | undefined };
 }) {
-  const site = getCurrentSiteUrl();
+  const site = await getCurrentSiteUrl();
 
   const { category } = await params;
   const parsed = parseSearchParams(searchParams);
@@ -322,7 +322,7 @@ export async function generateMetadata({ params }: { params: Promise<PageParams>
     };
   }
 
-  const site = getCurrentSiteUrl();
+  const site = await getCurrentSiteUrl();
   const url = `${site}/${cat.slug}`;
 
   const title = cat.metaTitle || `${cat.name} — Meilleur-Ski`;

@@ -14,7 +14,7 @@ function getSiteUrl() {
 }
 
 export default async function BrandsDirectoryPage() {
-  const site = getCurrentSiteUrl();
+  const site = await getCurrentSiteUrl();
   const canonicalUrl = `${site}/marques`;
 
   const brands = await prisma.brand.findMany({

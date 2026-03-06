@@ -97,7 +97,7 @@ export async function generateMetadata({ params }: { params: Params }): Promise<
 
   if (!p) return { title: "Page introuvable" };
 
-  const site = getCurrentSiteUrl();
+  const site = await getCurrentSiteUrl();
   const url = `${site}/pages/${p.slug}`;
 
   const ogCandidate = p.banner?.publicUrl
@@ -125,8 +125,8 @@ export async function generateMetadata({ params }: { params: Params }): Promise<
 }
 
 export default async function PageDetail({ params }: { params: Params }) {
-  const site = getCurrentSiteUrl();
-  const siteId = getCurrentSiteId();
+  const site = await getCurrentSiteUrl();
+  const siteId = await getCurrentSiteId();
 
   const [page, adSettings] = await Promise.all([
     prisma.page.findFirst({

@@ -5,7 +5,7 @@ import { getSiteConfig } from "@/config/site";
 import { saveAdsenseSettings } from "@/app/actions/adsense";
 
 export default async function AdminAdsensePage() {
-  const siteId = getCurrentSiteId();
+  const siteId = await getCurrentSiteId();
   const siteConfig = getSiteConfig(siteId);
 
   const settings = await prisma.adSettings.findUnique({

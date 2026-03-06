@@ -36,7 +36,7 @@ export async function generateMetadata({ params }: { params: { slug: string } })
 
   if (!brand) return { title: "Marque introuvable — Meilleur-Ski" };
 
-  const site = getCurrentSiteUrl();
+  const site = await getCurrentSiteUrl();
   const url = `${site}/marques/${brand.slug}`;
 
   const title =
@@ -58,7 +58,7 @@ export async function generateMetadata({ params }: { params: { slug: string } })
 }
 
 export default async function BrandPage({ params }: { params: { slug: string } }) {
-  const site = getCurrentSiteUrl();
+  const site = await getCurrentSiteUrl();
 
   const brand = await prisma.brand.findUnique({
     where: { slug: params.slug },
