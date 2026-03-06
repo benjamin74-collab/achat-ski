@@ -1,28 +1,24 @@
-// src/app/marques/[slug]/page.tsx
 import { prisma } from "@/lib/prisma";
 import Breadcrumbs from "@/components/Breadcrumbs";
 import { sanitizeHtml } from "@/lib/sanitize";
 import { totalCents } from "@/lib/format";
 import ProductCard from "@/components/ProductCard";
-import { getCurrentSiteUrl } from "@/lib/currentSite";
+import { getCurrentSiteUrl, getCurrentSiteId } from "@/lib/currentSite";
+import { getSiteConfig } from "@/config/site";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 export const revalidate = 300;
-
-function getSiteUrl() {
-  const env = process.env.NEXT_PUBLIC_SITE_URL;
-  if (env) return env.replace(/\/+$/, "");
-  const vercel = process.env.VERCEL_URL;
-  if (vercel) return `https://${vercel}`.replace(/\/+$/, "");
-  return "https://meilleur-ski.com";
-}
 
 function stripHtml(s: string) {
   return s.replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim();
 }
 
 export async function generateMetadata({ params }: { params: { slug: string } }) {
+  const siteId = await getCurrentSiteId();
+  const siteConfig = getSiteConfig(siteId);
+  const site = await getCurrentSiteUrl();
+
   const brand = await prisma.brand.findUnique({
     where: { slug: params.slug },
     select: {
@@ -31,29 +27,33 @@ export async function generateMetadata({ params }: { params: { slug: string } })
       description: true,
       metaTitle: true,
       metaDescription: true,
+      active: true,
     },
   });
 
-  if (!brand) return { title: "Marque introuvable — Meilleur-Ski" };
+  if (!brand || !brand.active) {
+    return {
+      title: `Marque introuvable — ${siteConfig.name}`,
+    };
+  }
 
-  const site = await getCurrentSiteUrl();
   const url = `${site}/marques/${brand.slug}`;
 
   const title =
-    (brand.metaTitle && brand.metaTitle.trim()) ||
-    `${brand.name} — Tests, prix et produits`;
+    brand.metaTitle ||
+    `${brand.name} : produits, prix et comparatif`;
 
   const description =
-    (brand.metaDescription && brand.metaDescription.trim()) ||
+    brand.metaDescription ||
     (brand.description
       ? stripHtml(brand.description).slice(0, 160)
-      : `Produits ${brand.name} : tests, prix, comparatifs.`);
+      : `Découvre les produits ${brand.name} et compare les prix.`);
 
   return {
     title,
     description,
     alternates: { canonical: url },
-    openGraph: { title, url, description },
+    openGraph: { title, description, url },
   };
 }
 
@@ -71,12 +71,7 @@ export default async function BrandPage({ params }: { params: { slug: string } }
   if (!brand || !brand.active) {
     return (
       <div className="container-page py-8">
-        <Breadcrumbs
-          items={[
-            { href: "/", label: "Accueil" },
-            { href: "/marques", label: "Marques" },
-          ]}
-        />
+        <Breadcrumbs items={[{ href: "/", label: "Accueil" }]} />
         <h1 className="text-xl font-semibold">Marque introuvable</h1>
       </div>
     );
@@ -101,6 +96,7 @@ export default async function BrandPage({ params }: { params: { slug: string } }
 
   const productsWithPrice = products.map((p) => {
     const allOffers = p.skus.flatMap((s) => s.offers);
+
     const minTotal =
       allOffers.length > 0
         ? allOffers.reduce<number>((min, o) => {
@@ -112,63 +108,9 @@ export default async function BrandPage({ params }: { params: { slug: string } }
     return { ...p, minTotal };
   });
 
-  const breadcrumbJsonLd = {
-    "@context": "https://schema.org",
-    "@type": "BreadcrumbList",
-    itemListElement: [
-      { "@type": "ListItem", position: 1, name: "Accueil", item: `${site}/` },
-      { "@type": "ListItem", position: 2, name: "Marques", item: `${site}/marques` },
-      { "@type": "ListItem", position: 3, name: brand.name, item: canonicalUrl },
-    ],
-  };
-
-  const organizationJsonLd = {
-    "@context": "https://schema.org",
-    "@type": "Organization",
-    name: brand.name,
-    url: canonicalUrl,
-    ...(logo ? { logo } : {}),
-    ...(brand.websiteUrl ? { sameAs: [brand.websiteUrl] } : {}),
-  };
-
-  const itemListJsonLd = {
-    "@context": "https://schema.org",
-    "@type": "ItemList",
-    name: `Produits ${brand.name}`,
-    numberOfItems: productsWithPrice.length,
-    itemListElement: productsWithPrice.map((p, idx) => {
-      const title = [p.brand ?? brand.name, p.model, p.season].filter(Boolean).join(" ");
-      const url = `${site}/p/${p.slug}`;
-      const lowPrice = typeof p.minTotal === "number" ? (p.minTotal / 100).toFixed(2) : undefined;
-
-      return {
-        "@type": "ListItem",
-        position: idx + 1,
-        url,
-        item: {
-          "@type": "Product",
-          name: title,
-          url,
-          ...(lowPrice
-            ? {
-                offers: {
-                  "@type": "AggregateOffer",
-                  priceCurrency: "EUR",
-                  lowPrice,
-                },
-              }
-            : {}),
-        },
-      };
-    }),
-  };
-
   return (
     <div className="container-page py-8">
       <link rel="canonical" href={canonicalUrl} />
-      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbJsonLd) }} />
-      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(organizationJsonLd) }} />
-      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(itemListJsonLd) }} />
 
       <Breadcrumbs
         items={[
@@ -178,80 +120,77 @@ export default async function BrandPage({ params }: { params: { slug: string } }
         ]}
       />
 
-      {/* Bannière */}
-      {banner ? (
-        <section className="mt-4 overflow-hidden rounded-2xl border border-ring bg-surface/60 shadow-card">
-          {/* eslint-disable-next-line @next/next/no-img-element */}
+      {banner && (
+        <section className="mt-4 rounded-2xl overflow-hidden border border-ring">
           <img
             src={banner}
             alt={brand.banner?.alt ?? `Bannière ${brand.name}`}
-            className="h-[160px] w-full object-cover sm:h-[220px]"
-            loading="lazy"
-            decoding="async"
+            className="w-full h-[220px] object-cover"
           />
         </section>
-      ) : null}
+      )}
 
-      {/* En-tête marque */}
-      <header className="mt-4 card p-4 flex items-center gap-4">
-        {logo ? (
-          // eslint-disable-next-line @next/next/no-img-element
+      <header className="mt-5 card p-5 flex items-center gap-4">
+        {logo && (
           <img
             src={logo}
             alt={brand.logo?.alt ?? `${brand.name} logo`}
-            width={64}
-            height={64}
-            className="h-16 w-16 rounded-xl border border-ring bg-white object-contain p-2"
-            loading="lazy"
-            decoding="async"
+            width={72}
+            height={72}
+            className="h-16 w-16 object-contain border border-ring rounded-xl bg-white p-2"
           />
-        ) : (
-          <div className="h-16 w-16 rounded-xl border border-ring bg-muted flex items-center justify-center text-xs text-slate-500">
-            Logo
-          </div>
         )}
 
-        <div className="min-w-0">
-          <h1 className="text-xl font-bold">{brand.name}</h1>
-          <div className="mt-1 flex flex-wrap items-center gap-3">
-            {brand.websiteUrl ? (
-              <a className="text-sm text-blue-600 underline" href={brand.websiteUrl} target="_blank" rel="noreferrer">
-                Site officiel
-              </a>
-            ) : null}
-            <span className="text-xs text-slate-500">•</span>
-            <span className="text-xs text-slate-600">Marque</span>
-          </div>
+        <div>
+          <h1 className="text-2xl font-bold">{brand.name}</h1>
+
+          {brand.websiteUrl && (
+            <a
+              href={brand.websiteUrl}
+              target="_blank"
+              rel="noreferrer"
+              className="text-sm text-blue-600 underline"
+            >
+              Site officiel
+            </a>
+          )}
         </div>
       </header>
 
-      {/* Description */}
-      {brand.description ? (
-        <section className="rounded-2xl border border-ring bg-surface/60 p-5 shadow-card my-4">
-          <article className="prose max-w-none" dangerouslySetInnerHTML={{ __html: sanitizeHtml(brand.description) }} />
+      {brand.description && (
+        <section className="rounded-2xl border border-ring bg-surface/60 p-5 shadow-card my-6">
+          <article
+            className="prose max-w-none"
+            dangerouslySetInnerHTML={{ __html: sanitizeHtml(brand.description) }}
+          />
         </section>
-      ) : null}
+      )}
 
-      {/* Produits */}
-      <section className="mt-6">
-        <h2 className="text-lg font-semibold mb-3">Produits {brand.name}</h2>
+      <section>
+        <h2 className="text-lg font-semibold mb-4">Produits {brand.name}</h2>
+
         {productsWithPrice.length ? (
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
             {productsWithPrice.map((p) => {
-              const cardTitle = [p.brand ?? brand.name, p.model, p.season].filter(Boolean).join(" ");
+              const title = [p.brand ?? brand.name, p.model, p.season]
+                .filter(Boolean)
+                .join(" ");
+
               return (
                 <ProductCard
                   key={p.id}
                   href={`/p/${p.slug}`}
-                  title={cardTitle}
-                  subtitle={p.category?.name ?? undefined}
+                  title={title}
+                  subtitle={p.category?.name}
                   minPriceCents={p.minTotal ?? null}
                 />
               );
             })}
           </div>
         ) : (
-          <p className="text-neutral-600">Aucun produit associé pour le moment.</p>
+          <p className="text-neutral-600">
+            Aucun produit associé pour le moment.
+          </p>
         )}
       </section>
     </div>
