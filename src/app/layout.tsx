@@ -1,39 +1,27 @@
-// src/app/layout.tsx
 import type { Metadata, Viewport } from "next";
 import "./globals.css";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
 import Providers from "@/components/Providers";
+import CookieBanner from "@/components/cookies/CookieBanner";
+import TrackingScripts from "@/components/tracking/TrackingScripts";
+import { prisma } from "@/lib/prisma";
 import { getSiteConfig } from "@/config/site";
 import type { SiteConfig } from "@/config/site.types";
 import { getFontClasses, getFontFamilyVar } from "@/config/fonts";
-import CookieBanner from "@/components/cookies/CookieBanner";
+import { getCurrentSiteId, getCurrentSiteUrl } from "@/lib/currentSite";
 
-const siteConfig = getSiteConfig();
-
-const siteUrl =
-  siteConfig.domain?.replace(/\/+$/, "") ??
-  process.env.NEXT_PUBLIC_SITE_URL?.replace(/\/+$/, "") ??
-  (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : "https://meilleur-ski.com");
-
-/**
- * Metadata dynamique par site
- */
 export async function generateMetadata(): Promise<Metadata> {
-  const isRobot = siteConfig.id === "meilleur-robot";
-
-  const title = isRobot
-    ? "Meilleur Robot — Comparez les meilleurs robots au meilleur prix"
-    : "Meilleur Ski — Comparez les prix du matériel de ski";
-
-  const description = isRobot
-    ? "Comparez les robots aspirateurs, tondeuses, cuisine et plus : prix, avis et guides pour bien choisir."
-    : "Comparez les prix des skis, fixations et chaussures chez nos marchands partenaires.";
+  const siteId = await getCurrentSiteId();
+  const siteConfig = getSiteConfig(siteId);
+  const siteUrl = await getCurrentSiteUrl();
 
   return {
     metadataBase: new URL(siteUrl),
-    title,
-    description,
+    title: `${siteConfig.name} — Comparez les meilleurs produits au meilleur prix`,
+    description:
+      siteConfig.tagline ||
+      `Comparez les meilleurs produits sur ${siteConfig.name}.`,
     robots: { index: false, follow: false },
     alternates: {
       canonical: siteUrl,
@@ -66,16 +54,31 @@ function getBranding(cfg: SiteConfig): {
   logoAlt: string;
 } {
   return {
-    name: cfg.name || "Meilleur Ski",
+    name: cfg.name || "Meilleur X",
     tagline: cfg.tagline || "Comparer & gagner",
     logoSrc: cfg.brand?.logoSrc || "",
-    logoAlt: cfg.brand?.logoAlt || cfg.name || "Meilleur Ski",
+    logoAlt: cfg.brand?.logoAlt || cfg.name || "Meilleur X",
   };
 }
 
-export default function RootLayout({ children }: { children: React.ReactNode }) {
+export default async function RootLayout({ children }: { children: React.ReactNode }) {
+  const siteId = await getCurrentSiteId();
+  const siteConfig = getSiteConfig(siteId);
+
+  const tracking = await prisma.trackingSettings.findUnique({
+    where: { siteId },
+    select: {
+      enabledAnalytics: true,
+      enabledAds: true,
+      enabledGtm: true,
+      ga4MeasurementId: true,
+      googleAdsId: true,
+      googleAdsConversionLabel: true,
+      gtmContainerId: true,
+    },
+  });
+
   const cssVars: CSSVars = {
-    // couleurs
     "--primary": hexToRgbTriplet(siteConfig.colors.primary),
     "--secondary": hexToRgbTriplet(siteConfig.colors.secondary),
     "--accent": hexToRgbTriplet(siteConfig.colors.accent),
@@ -84,15 +87,11 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     "--muted": hexToRgbTriplet(siteConfig.colors.muted),
     "--muted-foreground": hexToRgbTriplet(siteConfig.colors.mutedForeground),
     "--border": hexToRgbTriplet(siteConfig.colors.border),
-
-    // fonts (tokens)
     "--font-sans": getFontFamilyVar(siteConfig.fonts.sans),
     "--font-display": getFontFamilyVar(siteConfig.fonts.display),
   };
 
   const branding = getBranding(siteConfig);
-
-  // charge uniquement les fonts nécessaires au site courant
   const fontClasses = getFontClasses([siteConfig.fonts.sans, siteConfig.fonts.display]);
 
   return (
@@ -109,11 +108,19 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     >
       <body className="min-h-screen bg-white text-ink antialiased" suppressHydrationWarning>
         <Providers>
+          <TrackingScripts
+            enabledAnalytics={tracking?.enabledAnalytics}
+            enabledAds={tracking?.enabledAds}
+            enabledGtm={tracking?.enabledGtm}
+            ga4MeasurementId={tracking?.ga4MeasurementId}
+            googleAdsId={tracking?.googleAdsId}
+            googleAdsConversionLabel={tracking?.googleAdsConversionLabel}
+            gtmContainerId={tracking?.gtmContainerId}
+          />
+
           <Header />
           <main className="container-page py-6">{children}</main>
           <Footer />
-
-          {/* ✅ Popin cookies globale (Axeptio-like) */}
           <CookieBanner />
         </Providers>
       </body>

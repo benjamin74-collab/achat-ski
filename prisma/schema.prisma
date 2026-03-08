@@ -592,3 +592,22 @@ model AdSettings {
 
   @@index([siteId])
 }
+
+model TrackingSettings {
+  id                       Int      @id @default(autoincrement())
+  siteId                   String   @unique
+
+  enabledAnalytics         Boolean  @default(false)
+  enabledAds               Boolean  @default(false)
+  enabledGtm               Boolean  @default(false)
+
+  ga4MeasurementId         String?  // ex: G-XXXXXXXXXX
+  googleAdsId              String?  // ex: AW-123456789
+  googleAdsConversionLabel String?  // ex: AbCdEfGhIjKlMnOpQr
+  gtmContainerId           String?  // ex: GTM-XXXXXXX
+
+  createdAt                DateTime @default(now())
+  updatedAt                DateTime @updatedAt
+
+  @@index([siteId])
+}
