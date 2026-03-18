@@ -24,9 +24,11 @@ type TopBrand = {
 function isString(v: unknown): v is string {
   return typeof v === "string";
 }
+
 function isBool(v: unknown): v is boolean {
   return typeof v === "boolean";
 }
+
 function isArray(v: unknown): v is unknown[] {
   return Array.isArray(v);
 }
@@ -38,7 +40,13 @@ function parseCategoryTiles(v: unknown): CategoryTile[] {
     if (typeof item !== "object" || item === null) continue;
     const o = item as Record<string, unknown>;
     if (isString(o.slug) && isString(o.title) && isString(o.desc) && isString(o.cta) && isString(o.img)) {
-      out.push({ slug: o.slug, title: o.title, desc: o.desc, cta: o.cta, img: o.img });
+      out.push({
+        slug: o.slug,
+        title: o.title,
+        desc: o.desc,
+        cta: o.cta,
+        img: o.img,
+      });
     }
   }
   return out;
@@ -51,7 +59,11 @@ function parseTopBrands(v: unknown): TopBrand[] {
     if (typeof item !== "object" || item === null) continue;
     const o = item as Record<string, unknown>;
     if (isString(o.name) && isString(o.slug) && isString(o.logo)) {
-      out.push({ name: o.name, slug: o.slug, logo: o.logo });
+      out.push({
+        name: o.name,
+        slug: o.slug,
+        logo: o.logo,
+      });
     }
   }
   return out;
@@ -60,98 +72,54 @@ function parseTopBrands(v: unknown): TopBrand[] {
 export default async function HomePage() {
   const siteConfig = getSiteConfig();
   const site = siteConfig.domain.replace(/\/+$/, "");
-  const isSki = siteConfig.id === "meilleur-ski";
 
-  // ✅ Chargement DB (par site)
   const settings = await prisma.siteSettings.findUnique({
     where: { siteId: siteConfig.id },
   });
 
-  // ------------------- Fallbacks -------------------
-  const fallbackHeroTitle = isSki ? "Le comparateur des passionnés de ski" : `Le comparateur ${siteConfig.name}`;
-  const fallbackHeroHighlight = isSki ? "comparateur" : siteConfig.name;
-  const fallbackHeroSubtitle = isSki
-    ? "Comparez les prix, consultez les tests et les avis pour trouver le matériel parfait."
-    : "Configurez la homepage depuis Admin → Design (titres, sections, contenus).";
+  const home = siteConfig.home;
 
-  const fallbackCategoryTiles: CategoryTile[] = isSki
-    ? [
-        {
-          slug: "skis-all-mountain",
-          title: "Skis All-Mountain",
-          desc: "Le meilleur compromis piste / hors-piste pour 80% des skieurs.",
-          cta: "Comparer les All-Mountain",
-          img: "/categories/skis-all-mountain.jpg",
-        },
-        {
-          slug: "skis-freeride",
-          title: "Skis Freeride",
-          desc: "Flottaison et stabilité : l’outil parfait quand il a neigé.",
-          cta: "Voir les Freeride",
-          img: "/categories/skis-freeride.jpg",
-        },
-        {
-          slug: "skis-rando",
-          title: "Skis de rando",
-          desc: "Léger à la montée, sûr à la descente : optimise ton set-up.",
-          cta: "Explorer la rando",
-          img: "/categories/skis-rando.jpg",
-        },
-        {
-          slug: "fixations",
-          title: "Fixations",
-          desc: "Alpine, rando, hybrides : compare les offres et la compatibilité.",
-          cta: "Comparer les fixations",
-          img: "/categories/fixations.jpg",
-        },
-        {
-          slug: "chaussures",
-          title: "Chaussures",
-          desc: "Confort et précision : le choix n°1 pour progresser.",
-          cta: "Trouver ses chaussures",
-          img: "/categories/chaussures.jpg",
-        },
-      ]
-    : [];
+  // ------------------- Fallbacks depuis config site -------------------
+  const fallbackHeroTitle = home?.hero?.title ?? `Le comparateur ${siteConfig.name}`;
+  const fallbackHeroHighlight = home?.hero?.highlight ?? siteConfig.name;
+  const fallbackHeroSubtitle =
+    home?.hero?.subtitle ?? "Configurez la homepage depuis Admin → Design (titres, sections, contenus).";
 
-  const fallbackTopBrands: TopBrand[] = isSki
-    ? [
-        {
-          name: "Rossignol",
-          slug: "rossignol",
-          logo: "https://logos-marques.com/wp-content/uploads/2023/01/Rossignol-emblem.png",
-        },
-        {
-          name: "Salomon",
-          slug: "salomon",
-          logo: "https://upload.wikimedia.org/wikipedia/commons/8/8a/Salomon_group_logo.png",
-        },
-        {
-          name: "Head",
-          slug: "head",
-          logo: "https://www.head.com/HeadV2Logo-iGF.svg",
-        },
-        {
-          name: "Black Crows",
-          slug: "black-crows",
-          logo: "https://upload.wikimedia.org/wikipedia/commons/e/eb/Logo_Black_Crows.svg",
-        },
-        {
-          name: "Atomic",
-          slug: "atomic",
-          logo: "https://upload.wikimedia.org/wikipedia/commons/0/04/Atomic_ski_logo.png",
-        },
-      ]
-    : [];
+  const fallbackCategoryTiles: CategoryTile[] = (home?.categoryTiles ?? [])
+    .filter((item): item is { slug: string; title: string; desc: string; cta: string; img?: string } =>
+      Boolean(item.slug && item.title && item.desc && item.cta && item.img)
+    )
+    .map((item) => ({
+      slug: item.slug,
+      title: item.title,
+      desc: item.desc,
+      cta: item.cta,
+      img: item.img as string,
+    }));
 
-  // ------------------- Valeurs finales (DB -> fallback) -------------------
+  const fallbackTopBrands: TopBrand[] = (home?.topBrands ?? [])
+    .filter((item): item is { name: string; slug: string; logo?: string } =>
+      Boolean(item.name && item.slug && item.logo)
+    )
+    .map((item) => ({
+      name: item.name,
+      slug: item.slug,
+      logo: item.logo as string,
+    }));
+
+  // ------------------- Valeurs finales (DB -> fallback config) -------------------
   const heroTitle = settings?.heroTitle ?? fallbackHeroTitle;
   const heroHighlight = settings?.heroHighlight ?? fallbackHeroHighlight;
   const heroSubtitle = settings?.heroSubtitle ?? fallbackHeroSubtitle;
 
-  const showCategories = isBool(settings?.showCategories) ? settings.showCategories : true;
-  const showLatestGuides = isBool(settings?.showLatestGuides) ? settings.showLatestGuides : true;
-  const showTopBrands = isBool(settings?.showTopBrands) ? settings.showTopBrands : true;
+  const showCategories =
+    isBool(settings?.showCategories) ? settings.showCategories : (home?.sections?.categories ?? true);
+
+  const showLatestGuides =
+    isBool(settings?.showLatestGuides) ? settings.showLatestGuides : (home?.sections?.latestGuides ?? true);
+
+  const showTopBrands =
+    isBool(settings?.showTopBrands) ? settings.showTopBrands : (home?.sections?.topBrands ?? true);
 
   const categoryTiles = (() => {
     const parsed = parseCategoryTiles(settings?.categoryTiles);
@@ -190,8 +158,6 @@ export default async function HomePage() {
     ],
   };
 
-  // ✅ Ne charge les contenus que si la section est active
-  // IMPORTANT : on affiche TOUT (GUIDE/ARTICLE/COMPARATIF) sinon ton bloc reste vide.
   const latestArticles = showLatestGuides
     ? await prisma.page.findMany({
         where: {
@@ -245,11 +211,13 @@ export default async function HomePage() {
               Rechercher
               <ArrowRight className="h-4 w-4" />
             </Link>
+
             {showCategories ? (
               <Link href="#categories" className="btn-outline w-full sm:w-auto">
                 Explorer
               </Link>
             ) : null}
+
             <Link href="/pages" className="btn-outline w-full sm:w-auto">
               Guides
             </Link>
@@ -317,6 +285,7 @@ export default async function HomePage() {
               {latestArticles.map((p) => {
                 const thumb = p.thumbnail?.publicUrl || p.thumbnailUrl || null;
                 const date = p.updatedAt ?? p.createdAt;
+
                 return (
                   <li key={p.id} className="rounded-2xl border border-ring bg-white hover:shadow-card transition">
                     <Link href={`/pages/${p.slug}`} className="block">
@@ -327,6 +296,7 @@ export default async function HomePage() {
                           <div className="h-full w-full bg-gradient-to-br from-muted to-white" />
                         )}
                       </div>
+
                       <div className="p-4">
                         <h3 className="text-base font-semibold text-ink line-clamp-2">{p.title}</h3>
                         {p.intro ? <p className="text-sm text-slate-600 mt-1 line-clamp-2">{p.intro}</p> : null}
@@ -366,12 +336,7 @@ export default async function HomePage() {
                     title={b.name}
                   >
                     <div className="aspect-[4/3] w-full overflow-hidden rounded-xl bg-muted/40 flex items-center justify-center">
-                      <img
-                        src={b.logo}
-                        alt={b.name}
-                        className="max-h-14 sm:max-h-16 w-auto object-contain"
-                        loading="lazy"
-                      />
+                      <img src={b.logo} alt={b.name} className="max-h-14 sm:max-h-16 w-auto object-contain" loading="lazy" />
                     </div>
                     <div className="mt-2 text-center text-sm font-medium text-ink group-hover:underline">{b.name}</div>
                   </Link>
