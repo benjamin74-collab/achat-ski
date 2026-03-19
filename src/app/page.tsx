@@ -21,6 +21,12 @@ type TopBrand = {
   logo: string;
 };
 
+type HeroCta = {
+  label: string;
+  href: string;
+  variant?: "primary" | "outline" | "secondary" | "accent";
+};
+
 function isString(v: unknown): v is string {
   return typeof v === "string";
 }
@@ -69,6 +75,30 @@ function parseTopBrands(v: unknown): TopBrand[] {
   return out;
 }
 
+function parseHeroCtas(v: unknown): HeroCta[] {
+  if (!isArray(v)) return [];
+  const out: HeroCta[] = [];
+  for (const item of v) {
+    if (typeof item !== "object" || item === null) continue;
+    const o = item as Record<string, unknown>;
+    if (isString(o.label) && isString(o.href)) {
+      out.push({
+        label: o.label,
+        href: o.href,
+        variant: isString(o.variant) ? o.variant : undefined,
+      });
+    }
+  }
+  return out;
+}
+
+function ctaClass(variant?: string) {
+  if (variant === "outline") return "btn-outline";
+  if (variant === "secondary") return "btn-outline";
+  if (variant === "accent") return "btn";
+  return "btn";
+}
+
 export default async function HomePage() {
   const siteConfig = getSiteConfig();
   const site = siteConfig.domain.replace(/\/+$/, "");
@@ -84,6 +114,17 @@ export default async function HomePage() {
   const fallbackHeroHighlight = home?.hero?.highlight ?? siteConfig.name;
   const fallbackHeroSubtitle =
     home?.hero?.subtitle ?? "Configurez la homepage depuis Admin → Design (titres, sections, contenus).";
+
+  const fallbackHeroCtas: HeroCta[] =
+    home?.hero?.ctas?.map((cta) => ({
+      label: cta.label,
+      href: cta.href,
+      variant: cta.variant,
+    })) ?? [
+      { label: "Rechercher", href: "/search", variant: "primary" },
+      { label: "Explorer", href: "#categories", variant: "outline" },
+      { label: "Guides", href: "/pages", variant: "outline" },
+    ];
 
   const fallbackCategoryTiles: CategoryTile[] = (home?.categoryTiles ?? [])
     .filter((item): item is { slug: string; title: string; desc: string; cta: string; img?: string } =>
@@ -120,6 +161,12 @@ export default async function HomePage() {
 
   const showTopBrands =
     isBool(settings?.showTopBrands) ? settings.showTopBrands : (home?.sections?.topBrands ?? true);
+
+  const heroCtas = (() => {
+    const parsed = parseHeroCtas(settings?.heroCtas);
+    if (parsed.length) return parsed;
+    return fallbackHeroCtas;
+  })();
 
   const categoryTiles = (() => {
     const parsed = parseCategoryTiles(settings?.categoryTiles);
@@ -206,22 +253,20 @@ export default async function HomePage() {
             {heroSubtitle}
           </p>
 
-          <div className="mt-7 sm:mt-9 flex flex-col sm:flex-row items-center justify-center gap-3 px-3 sm:px-0">
-            <Link href="/search" className="btn w-full sm:w-auto">
-              Rechercher
-              <ArrowRight className="h-4 w-4" />
-            </Link>
-
-            {showCategories ? (
-              <Link href="#categories" className="btn-outline w-full sm:w-auto">
-                Explorer
-              </Link>
-            ) : null}
-
-            <Link href="/pages" className="btn-outline w-full sm:w-auto">
-              Guides
-            </Link>
-          </div>
+          {heroCtas.length ? (
+            <div className="mt-7 sm:mt-9 flex flex-col sm:flex-row items-center justify-center gap-3 px-3 sm:px-0">
+              {heroCtas.map((cta) => (
+                <Link
+                  key={`${cta.href}-${cta.label}`}
+                  href={cta.href}
+                  className={`${ctaClass(cta.variant)} w-full sm:w-auto`}
+                >
+                  {cta.label}
+                  {cta.variant === "primary" || !cta.variant ? <ArrowRight className="h-4 w-4" /> : null}
+                </Link>
+              ))}
+            </div>
+          ) : null}
         </div>
       </section>
 
@@ -240,7 +285,7 @@ export default async function HomePage() {
               {categoryTiles.map((c) => (
                 <li key={c.slug} className="group">
                   <Link
-                    href={`/${c.slug}`}
+                    href={`/c/${c.slug}`}
                     className="block card overflow-hidden hover:shadow-card transition"
                     aria-label={`Voir la catégorie ${c.title}`}
                   >
@@ -336,7 +381,12 @@ export default async function HomePage() {
                     title={b.name}
                   >
                     <div className="aspect-[4/3] w-full overflow-hidden rounded-xl bg-muted/40 flex items-center justify-center">
-                      <img src={b.logo} alt={b.name} className="max-h-14 sm:max-h-16 w-auto object-contain" loading="lazy" />
+                      <img
+                        src={b.logo}
+                        alt={b.name}
+                        className="max-h-14 sm:max-h-16 w-auto object-contain"
+                        loading="lazy"
+                      />
                     </div>
                     <div className="mt-2 text-center text-sm font-medium text-ink group-hover:underline">{b.name}</div>
                   </Link>

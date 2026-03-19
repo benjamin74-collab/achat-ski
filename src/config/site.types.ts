@@ -5,7 +5,7 @@ export type FontKey = "inter" | "manrope" | "plusJakarta";
 export type BrandTokens = {
   logoSrc: string; // ex: "/brands/meilleur-ski/logo.svg"
   logoAlt: string; // ex: "Meilleur Ski"
-  faviconSrc?: string; // ex: "/brands/meilleur-ski/favicon.ico" (optionnel)
+  faviconSrc?: string; // ex: "/brands/meilleur-ski/favicon.ico"
 };
 
 export type ColorTokens = {
@@ -23,8 +23,8 @@ export type ColorTokens = {
 };
 
 export type FontTokens = {
-  sans: FontKey; // font principale (texte)
-  display: FontKey; // font “titres”
+  sans: FontKey;
+  display: FontKey;
 };
 
 export type HomeCta = {
@@ -34,7 +34,7 @@ export type HomeCta = {
 };
 
 export type HomeTile = {
-  slug: string; // url interne => "/{slug}"
+  slug: string; // slug catégorie utilisé pour "/c/{slug}"
   title: string;
   desc: string;
   cta: string;
@@ -43,20 +43,19 @@ export type HomeTile = {
 
 export type HomeBrand = {
   name: string;
-  slug: string; // url interne => "/marques/{slug}" (ou autre selon ton site)
+  slug: string; // url marque => "/marques/{slug}"
   logo?: string; // url logo externe ou interne
 };
 
 export type HomeConfig = {
   hero?: {
     title: string;
-    highlight?: string; // mot/segment à surligner (optionnel)
+    highlight?: string;
     subtitle?: string;
     ctas?: HomeCta[];
   };
 
   sections?: {
-    // Permet de rendre les sites VRAIMENT différents sans dupliquer le code
     categories?: boolean;
     latestGuides?: boolean;
     topBrands?: boolean;
@@ -67,16 +66,15 @@ export type HomeConfig = {
 };
 
 export type SiteConfig = {
-  id: string; // ex: "meilleur-ski"
-  name: string; // ex: "Meilleur Ski"
-  domain: string; // ex: "https://meilleur-ski.com"
-
-  tagline?: string; // ex: "Comparer & gagner"
+  id: string;
+  name: string;
+  domain: string;
+  tagline?: string;
 
   brand: BrandTokens;
   colors: ColorTokens;
   fonts: FontTokens;
 
-  // ✅ Contenu home spécifique au site
+  // ✅ contenu home spécifique au site
   home?: HomeConfig;
 };
