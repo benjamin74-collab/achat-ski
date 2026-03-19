@@ -21,10 +21,12 @@ type TopBrand = {
   logo: string;
 };
 
+type HeroCtaVariant = "primary" | "outline" | "secondary" | "accent";
+
 type HeroCta = {
   label: string;
   href: string;
-  variant?: "primary" | "outline" | "secondary" | "accent";
+  variant?: HeroCtaVariant;
 };
 
 function isString(v: unknown): v is string {
@@ -37,6 +39,10 @@ function isBool(v: unknown): v is boolean {
 
 function isArray(v: unknown): v is unknown[] {
   return Array.isArray(v);
+}
+
+function isHeroCtaVariant(v: unknown): v is HeroCtaVariant {
+  return v === "primary" || v === "outline" || v === "secondary" || v === "accent";
 }
 
 function parseCategoryTiles(v: unknown): CategoryTile[] {
@@ -85,14 +91,14 @@ function parseHeroCtas(v: unknown): HeroCta[] {
       out.push({
         label: o.label,
         href: o.href,
-        variant: isString(o.variant) ? o.variant : undefined,
+        variant: isHeroCtaVariant(o.variant) ? o.variant : undefined,
       });
     }
   }
   return out;
 }
 
-function ctaClass(variant?: string) {
+function ctaClass(variant?: HeroCtaVariant) {
   if (variant === "outline") return "btn-outline";
   if (variant === "secondary") return "btn-outline";
   if (variant === "accent") return "btn";
@@ -127,8 +133,9 @@ export default async function HomePage() {
     ];
 
   const fallbackCategoryTiles: CategoryTile[] = (home?.categoryTiles ?? [])
-    .filter((item): item is { slug: string; title: string; desc: string; cta: string; img?: string } =>
-      Boolean(item.slug && item.title && item.desc && item.cta && item.img)
+    .filter(
+      (item): item is { slug: string; title: string; desc: string; cta: string; img?: string } =>
+        Boolean(item.slug && item.title && item.desc && item.cta && item.img),
     )
     .map((item) => ({
       slug: item.slug,
@@ -139,9 +146,7 @@ export default async function HomePage() {
     }));
 
   const fallbackTopBrands: TopBrand[] = (home?.topBrands ?? [])
-    .filter((item): item is { name: string; slug: string; logo?: string } =>
-      Boolean(item.name && item.slug && item.logo)
-    )
+    .filter((item): item is { name: string; slug: string; logo?: string } => Boolean(item.name && item.slug && item.logo))
     .map((item) => ({
       name: item.name,
       slug: item.slug,
@@ -153,14 +158,13 @@ export default async function HomePage() {
   const heroHighlight = settings?.heroHighlight ?? fallbackHeroHighlight;
   const heroSubtitle = settings?.heroSubtitle ?? fallbackHeroSubtitle;
 
-  const showCategories =
-    isBool(settings?.showCategories) ? settings.showCategories : (home?.sections?.categories ?? true);
+  const showCategories = isBool(settings?.showCategories) ? settings.showCategories : (home?.sections?.categories ?? true);
 
-  const showLatestGuides =
-    isBool(settings?.showLatestGuides) ? settings.showLatestGuides : (home?.sections?.latestGuides ?? true);
+  const showLatestGuides = isBool(settings?.showLatestGuides)
+    ? settings.showLatestGuides
+    : (home?.sections?.latestGuides ?? true);
 
-  const showTopBrands =
-    isBool(settings?.showTopBrands) ? settings.showTopBrands : (home?.sections?.topBrands ?? true);
+  const showTopBrands = isBool(settings?.showTopBrands) ? settings.showTopBrands : (home?.sections?.topBrands ?? true);
 
   const heroCtas = (() => {
     const parsed = parseHeroCtas(settings?.heroCtas);
@@ -232,7 +236,6 @@ export default async function HomePage() {
     <main className="pb-20">
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(homeJsonLd) }} />
 
-      {/* ---------------- HERO ---------------- */}
       <section className="relative overflow-hidden py-14 md:py-20 text-center bg-gradient-to-b from-white to-muted/60">
         <div className="container-page relative z-10">
           <h1 className="text-3xl sm:text-4xl md:text-5xl font-bold leading-tight text-ink tracking-tight">
@@ -256,11 +259,7 @@ export default async function HomePage() {
           {heroCtas.length ? (
             <div className="mt-7 sm:mt-9 flex flex-col sm:flex-row items-center justify-center gap-3 px-3 sm:px-0">
               {heroCtas.map((cta) => (
-                <Link
-                  key={`${cta.href}-${cta.label}`}
-                  href={cta.href}
-                  className={`${ctaClass(cta.variant)} w-full sm:w-auto`}
-                >
+                <Link key={`${cta.href}-${cta.label}`} href={cta.href} className={`${ctaClass(cta.variant)} w-full sm:w-auto`}>
                   {cta.label}
                   {cta.variant === "primary" || !cta.variant ? <ArrowRight className="h-4 w-4" /> : null}
                 </Link>
@@ -270,7 +269,6 @@ export default async function HomePage() {
         </div>
       </section>
 
-      {/* ---------------- CATEGORIES ---------------- */}
       {showCategories ? (
         <section id="categories" className="mt-12 md:mt-16 container-page">
           <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-2">
@@ -315,7 +313,6 @@ export default async function HomePage() {
         </section>
       ) : null}
 
-      {/* ---------------- DERNIERS ARTICLES ---------------- */}
       {showLatestGuides ? (
         <section className="mt-14 md:mt-18 container-page">
           <div className="flex items-center justify-between gap-3">
@@ -360,7 +357,6 @@ export default async function HomePage() {
         </section>
       ) : null}
 
-      {/* ---------------- TOP MARQUES ---------------- */}
       {showTopBrands ? (
         <section className="mt-14 md:mt-18 container-page">
           <div className="flex items-center justify-between gap-3">
@@ -381,12 +377,7 @@ export default async function HomePage() {
                     title={b.name}
                   >
                     <div className="aspect-[4/3] w-full overflow-hidden rounded-xl bg-muted/40 flex items-center justify-center">
-                      <img
-                        src={b.logo}
-                        alt={b.name}
-                        className="max-h-14 sm:max-h-16 w-auto object-contain"
-                        loading="lazy"
-                      />
+                      <img src={b.logo} alt={b.name} className="max-h-14 sm:max-h-16 w-auto object-contain" loading="lazy" />
                     </div>
                     <div className="mt-2 text-center text-sm font-medium text-ink group-hover:underline">{b.name}</div>
                   </Link>
