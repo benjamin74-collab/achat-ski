@@ -115,7 +115,6 @@ export default async function HomePage() {
 
   const home = siteConfig.home;
 
-  // ------------------- Fallbacks depuis config site -------------------
   const fallbackHeroTitle = home?.hero?.title ?? `Le comparateur ${siteConfig.name}`;
   const fallbackHeroHighlight = home?.hero?.highlight ?? siteConfig.name;
   const fallbackHeroSubtitle =
@@ -153,7 +152,6 @@ export default async function HomePage() {
       logo: item.logo as string,
     }));
 
-  // ------------------- Valeurs finales (DB -> fallback config) -------------------
   const heroTitle = settings?.heroTitle ?? fallbackHeroTitle;
   const heroHighlight = settings?.heroHighlight ?? fallbackHeroHighlight;
   const heroSubtitle = settings?.heroSubtitle ?? fallbackHeroSubtitle;
@@ -184,31 +182,6 @@ export default async function HomePage() {
     return fallbackTopBrands;
   })();
 
-  // ------------------- JSON-LD -------------------
-  const homeJsonLd = {
-    "@context": "https://schema.org",
-    "@graph": [
-      {
-        "@type": "Organization",
-        "@id": `${site}/#organization`,
-        name: settings?.name ?? siteConfig.name,
-        url: site,
-      },
-      {
-        "@type": "WebSite",
-        "@id": `${site}/#website`,
-        url: site,
-        name: settings?.name ?? siteConfig.name,
-        publisher: { "@id": `${site}/#organization` },
-        potentialAction: {
-          "@type": "SearchAction",
-          target: `${site}/search?q={search_term_string}`,
-          "query-input": "required name=search_term_string",
-        },
-      },
-    ],
-  };
-
   const latestArticles = showLatestGuides
     ? await prisma.page.findMany({
         where: {
@@ -231,6 +204,88 @@ export default async function HomePage() {
     : [];
 
   const fmt = new Intl.DateTimeFormat("fr-FR", { dateStyle: "medium" });
+
+  const homeJsonLd = {
+    "@context": "https://schema.org",
+    "@graph": [
+      {
+        "@type": "Organization",
+        "@id": `${site}/#organization`,
+        name: settings?.name ?? siteConfig.name,
+        url: site,
+      },
+      {
+        "@type": "WebSite",
+        "@id": `${site}/#website`,
+        url: site,
+        name: settings?.name ?? siteConfig.name,
+        publisher: { "@id": `${site}/#organization` },
+        potentialAction: {
+          "@type": "SearchAction",
+          target: `${site}/search?q={search_term_string}`,
+          "query-input": "required name=search_term_string",
+        },
+      },
+      {
+        "@type": "WebPage",
+        "@id": `${site}/#homepage`,
+        url: site,
+        name: settings?.name ?? siteConfig.name,
+        description: heroSubtitle,
+        isPartOf: { "@id": `${site}/#website` },
+        about: [
+          ...(showCategories
+            ? categoryTiles.map((c) => ({
+                "@type": "Thing",
+                name: c.title,
+                url: `${site}/c/${c.slug}`,
+              }))
+            : []),
+          ...(showTopBrands
+            ? topBrands.map((b) => ({
+                "@type": "Brand",
+                name: b.name,
+                url: `${site}/marques/${b.slug}`,
+              }))
+            : []),
+        ],
+      },
+      ...(showCategories && categoryTiles.length
+        ? [
+            {
+              "@type": "ItemList",
+              "@id": `${site}/#popular-categories`,
+              name: "Catégories populaires",
+              itemListOrder: "https://schema.org/ItemListOrderAscending",
+              numberOfItems: categoryTiles.length,
+              itemListElement: categoryTiles.map((c, index) => ({
+                "@type": "ListItem",
+                position: index + 1,
+                name: c.title,
+                url: `${site}/c/${c.slug}`,
+              })),
+            },
+          ]
+        : []),
+      ...(showTopBrands && topBrands.length
+        ? [
+            {
+              "@type": "ItemList",
+              "@id": `${site}/#top-brands`,
+              name: "Top marques",
+              itemListOrder: "https://schema.org/ItemListOrderAscending",
+              numberOfItems: topBrands.length,
+              itemListElement: topBrands.map((b, index) => ({
+                "@type": "ListItem",
+                position: index + 1,
+                name: b.name,
+                url: `${site}/marques/${b.slug}`,
+              })),
+            },
+          ]
+        : []),
+    ],
+  };
 
   return (
     <main className="pb-20">
@@ -377,7 +432,12 @@ export default async function HomePage() {
                     title={b.name}
                   >
                     <div className="aspect-[4/3] w-full overflow-hidden rounded-xl bg-muted/40 flex items-center justify-center">
-                      <img src={b.logo} alt={b.name} className="max-h-14 sm:max-h-16 w-auto object-contain" loading="lazy" />
+                      <img
+                        src={b.logo}
+                        alt={b.name}
+                        className="max-h-14 sm:max-h-16 w-auto object-contain"
+                        loading="lazy"
+                      />
                     </div>
                     <div className="mt-2 text-center text-sm font-medium text-ink group-hover:underline">{b.name}</div>
                   </Link>
