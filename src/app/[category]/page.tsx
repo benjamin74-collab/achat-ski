@@ -71,6 +71,9 @@ export default async function CategoryPage({
   const cat = await prisma.category.findUnique({
     where: { slug: category },
     include: {
+      parent: {
+        select: { slug: true, name: true },
+      },
       children: {
         where: { published: true, isInMenu: true },
         orderBy: [{ order: "asc" }, { name: "asc" }],
@@ -174,19 +177,44 @@ export default async function CategoryPage({
     cat.intro?.trim() ||
     `Compare les meilleurs produits de la catégorie ${cat.name}, consulte les prix disponibles et découvre les références proposées par les marchands partenaires.`;
 
+  const breadcrumbItems = [
+    { "@type": "ListItem", position: 1, name: "Accueil", item: `${site}/` },
+    { "@type": "ListItem", position: 2, name: "Catégories", item: `${site}/#categories` },
+    ...(cat.parent
+      ? [
+          {
+            "@type": "ListItem",
+            position: 3,
+            name: cat.parent.name,
+            item: `${site}/${cat.parent.slug}`,
+          },
+          {
+            "@type": "ListItem",
+            position: 4,
+            name: cat.name,
+            item: canonicalUrl,
+          },
+        ]
+      : [
+          {
+            "@type": "ListItem",
+            position: 3,
+            name: cat.name,
+            item: canonicalUrl,
+          },
+        ]),
+  ];
+
   const breadcrumbJsonLd = {
     "@context": "https://schema.org",
     "@type": "BreadcrumbList",
-    itemListElement: [
-      { "@type": "ListItem", position: 1, name: "Accueil", item: `${site}/` },
-      { "@type": "ListItem", position: 2, name: "Catégories", item: `${site}/#categories` },
-      { "@type": "ListItem", position: 3, name: cat.name, item: canonicalUrl },
-    ],
+    itemListElement: breadcrumbItems,
   };
 
   const itemListJsonLd = {
     "@context": "https://schema.org",
     "@type": "ItemList",
+    "@id": `${canonicalUrl}#itemlist`,
     name: `Produits — ${cat.name}`,
     itemListOrder:
       sort === "price-asc"
@@ -199,6 +227,7 @@ export default async function CategoryPage({
       const title = [p.brand, p.model, p.season].filter(Boolean).join(" ");
       const url = `${site}/p/${p.slug}`;
       const lowPrice = typeof p.minTotal === "number" ? (p.minTotal / 100).toFixed(2) : undefined;
+      const highPrice = typeof p.maxTotal === "number" ? (p.maxTotal / 100).toFixed(2) : undefined;
 
       return {
         "@type": "ListItem",
@@ -208,12 +237,15 @@ export default async function CategoryPage({
           "@type": "Product",
           name: title,
           url,
+          category: cat.name,
           ...(lowPrice
             ? {
                 offers: {
                   "@type": "AggregateOffer",
                   priceCurrency: "EUR",
                   lowPrice,
+                  ...(highPrice ? { highPrice } : {}),
+                  offerCount: p.offerCount,
                 },
               }
             : {}),
@@ -222,12 +254,55 @@ export default async function CategoryPage({
     }),
   };
 
+  const webPageJsonLd = {
+    "@context": "https://schema.org",
+    "@type": "WebPage",
+    "@id": `${canonicalUrl}#webpage`,
+    url: canonicalUrl,
+    name: cat.metaTitle ?? cat.name,
+    description: cat.metaDescription ?? introText,
+    isPartOf: {
+      "@type": "WebSite",
+      "@id": `${site}/#website`,
+      url: site,
+    },
+    breadcrumb: {
+      "@id": `${canonicalUrl}#breadcrumb`,
+    },
+    mainEntity: {
+      "@id": `${canonicalUrl}#collection`,
+    },
+    about: [
+      {
+        "@type": "Thing",
+        name: cat.name,
+        url: canonicalUrl,
+      },
+      ...cat.children.map((sc) => ({
+        "@type": "Thing",
+        name: sc.name,
+        url: `${site}/${sc.slug}`,
+      })),
+    ],
+  };
+
   const collectionJsonLd = {
     "@context": "https://schema.org",
     "@type": "CollectionPage",
+    "@id": `${canonicalUrl}#collection`,
     name: cat.name,
     description: cat.metaDescription ?? cat.intro ?? `Comparatif et prix pour ${cat.name}.`,
     url: canonicalUrl,
+    isPartOf: {
+      "@type": "WebSite",
+      "@id": `${site}/#website`,
+    },
+    breadcrumb: {
+      "@id": `${canonicalUrl}#breadcrumb`,
+    },
+    mainEntity: {
+      "@id": `${canonicalUrl}#itemlist`,
+    },
   };
 
   const faqItems = [
@@ -251,6 +326,7 @@ export default async function CategoryPage({
   const faqJsonLd = {
     "@context": "https://schema.org",
     "@type": "FAQPage",
+    "@id": `${canonicalUrl}#faq`,
     mainEntity: faqItems.map((item) => ({
       "@type": "Question",
       name: item.q,
@@ -265,6 +341,7 @@ export default async function CategoryPage({
     <div className="container-page py-8">
       <link rel="canonical" href={canonicalUrl} />
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbJsonLd) }} />
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(webPageJsonLd) }} />
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(collectionJsonLd) }} />
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(itemListJsonLd) }} />
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(faqJsonLd) }} />
@@ -281,6 +358,7 @@ export default async function CategoryPage({
             items={[
               { href: "/", label: "Accueil" },
               { label: "Catégories", href: "/#categories" },
+              ...(cat.parent ? [{ label: cat.parent.name, href: `/${cat.parent.slug}` }] : []),
               { label: cat.name },
             ]}
           />
@@ -355,12 +433,12 @@ export default async function CategoryPage({
               <ul className="mt-4 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
                 {cat.children.map((sc) => (
                   <li key={sc.id}>
-                    <a
+                    <Link
                       href={`/${sc.slug}`}
                       className="block rounded-2xl border border-ring bg-muted/20 px-4 py-4 font-medium text-slate-900 transition hover:bg-muted/40"
                     >
                       {sc.name}
-                    </a>
+                    </Link>
                   </li>
                 ))}
               </ul>
