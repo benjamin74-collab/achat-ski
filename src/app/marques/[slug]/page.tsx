@@ -1,3 +1,5 @@
+// src/app/marques/[slug]/page.tsx
+import Link from "next/link";
 import { prisma } from "@/lib/prisma";
 import Breadcrumbs from "@/components/Breadcrumbs";
 import { sanitizeHtml } from "@/lib/sanitize";
@@ -39,9 +41,7 @@ export async function generateMetadata({ params }: { params: { slug: string } })
 
   const url = `${site}/marques/${brand.slug}`;
 
-  const title =
-    brand.metaTitle ||
-    `${brand.name} : produits, prix et comparatif`;
+  const title = brand.metaTitle || `${brand.name} : produits, prix et comparatif`;
 
   const description =
     brand.metaDescription ||
@@ -54,6 +54,11 @@ export async function generateMetadata({ params }: { params: { slug: string } })
     description,
     alternates: { canonical: url },
     openGraph: { title, description, url },
+    twitter: {
+      card: "summary_large_image",
+      title,
+      description,
+    },
   };
 }
 
@@ -87,7 +92,7 @@ export default async function BrandPage({ params }: { params: { slug: string } }
       OR: [{ brandId: brand.id }, { brand: brand.name }],
     },
     include: {
-      category: { select: { name: true } },
+      category: { select: { name: true, slug: true } },
       skus: { include: { offers: true } },
     },
     take: 60,
@@ -105,12 +110,148 @@ export default async function BrandPage({ params }: { params: { slug: string } }
           }, Number.POSITIVE_INFINITY)
         : null;
 
-    return { ...p, minTotal };
+    const maxTotal =
+      allOffers.length > 0
+        ? allOffers.reduce<number>((max, o) => {
+            const t = totalCents(o.priceCents, o.shippingCents ?? 0);
+            return Math.max(max, t);
+          }, 0)
+        : null;
+
+    return { ...p, minTotal, maxTotal, offerCount: allOffers.length };
   });
+
+  const pageDescription =
+    brand.metaDescription ||
+    (brand.description
+      ? stripHtml(brand.description).slice(0, 220)
+      : `Découvre les produits ${brand.name}, compare les prix et explore les références disponibles.`);
+
+  const breadcrumbJsonLd = {
+    "@context": "https://schema.org",
+    "@type": "BreadcrumbList",
+    "@id": `${canonicalUrl}#breadcrumb`,
+    itemListElement: [
+      { "@type": "ListItem", position: 1, name: "Accueil", item: `${site}/` },
+      { "@type": "ListItem", position: 2, name: "Marques", item: `${site}/marques` },
+      { "@type": "ListItem", position: 3, name: brand.name, item: canonicalUrl },
+    ],
+  };
+
+  const brandJsonLd = {
+    "@context": "https://schema.org",
+    "@type": "Brand",
+    "@id": `${canonicalUrl}#brand`,
+    name: brand.name,
+    url: canonicalUrl,
+    ...(logo ? { logo } : {}),
+    ...(brand.websiteUrl ? { sameAs: [brand.websiteUrl] } : {}),
+    ...(pageDescription ? { description: pageDescription } : {}),
+  };
+
+  const itemListJsonLd = {
+    "@context": "https://schema.org",
+    "@type": "ItemList",
+    "@id": `${canonicalUrl}#itemlist`,
+    name: `Produits ${brand.name}`,
+    itemListOrder: "http://schema.org/ItemListUnordered",
+    numberOfItems: productsWithPrice.length,
+    itemListElement: productsWithPrice.map((p, index) => {
+      const title = [p.brand ?? brand.name, p.model, p.season].filter(Boolean).join(" ");
+      const url = `${site}/p/${p.slug}`;
+      const lowPrice = typeof p.minTotal === "number" && Number.isFinite(p.minTotal) ? (p.minTotal / 100).toFixed(2) : undefined;
+      const highPrice = typeof p.maxTotal === "number" && Number.isFinite(p.maxTotal) ? (p.maxTotal / 100).toFixed(2) : undefined;
+
+      return {
+        "@type": "ListItem",
+        position: index + 1,
+        url,
+        item: {
+          "@type": "Product",
+          name: title,
+          url,
+          brand: {
+            "@type": "Brand",
+            name: brand.name,
+            url: canonicalUrl,
+          },
+          ...(p.category?.name ? { category: p.category.name } : {}),
+          ...(lowPrice
+            ? {
+                offers: {
+                  "@type": "AggregateOffer",
+                  priceCurrency: "EUR",
+                  lowPrice,
+                  ...(highPrice ? { highPrice } : {}),
+                  offerCount: p.offerCount,
+                },
+              }
+            : {}),
+        },
+      };
+    }),
+  };
+
+  const webPageJsonLd = {
+    "@context": "https://schema.org",
+    "@type": "WebPage",
+    "@id": `${canonicalUrl}#webpage`,
+    url: canonicalUrl,
+    name: brand.metaTitle || `${brand.name} : produits, prix et comparatif`,
+    description: pageDescription,
+    isPartOf: {
+      "@type": "WebSite",
+      "@id": `${site}/#website`,
+      url: site,
+    },
+    breadcrumb: {
+      "@id": `${canonicalUrl}#breadcrumb`,
+    },
+    mainEntity: {
+      "@id": `${canonicalUrl}#brand`,
+    },
+    about: [
+      {
+        "@type": "Brand",
+        name: brand.name,
+        url: canonicalUrl,
+      },
+      ...productsWithPrice.slice(0, 12).map((p) => ({
+        "@type": "Thing",
+        name: [p.brand ?? brand.name, p.model, p.season].filter(Boolean).join(" "),
+        url: `${site}/p/${p.slug}`,
+      })),
+    ],
+  };
+
+  const collectionJsonLd = {
+    "@context": "https://schema.org",
+    "@type": "CollectionPage",
+    "@id": `${canonicalUrl}#collection`,
+    name: `Produits ${brand.name}`,
+    description: pageDescription,
+    url: canonicalUrl,
+    isPartOf: {
+      "@type": "WebSite",
+      "@id": `${site}/#website`,
+    },
+    breadcrumb: {
+      "@id": `${canonicalUrl}#breadcrumb`,
+    },
+    mainEntity: {
+      "@id": `${canonicalUrl}#itemlist`,
+    },
+  };
 
   return (
     <div className="container-page py-8">
       <link rel="canonical" href={canonicalUrl} />
+
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbJsonLd) }} />
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(brandJsonLd) }} />
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(webPageJsonLd) }} />
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(collectionJsonLd) }} />
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(itemListJsonLd) }} />
 
       <Breadcrumbs
         items={[
@@ -172,9 +313,7 @@ export default async function BrandPage({ params }: { params: { slug: string } }
         {productsWithPrice.length ? (
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
             {productsWithPrice.map((p) => {
-              const title = [p.brand ?? brand.name, p.model, p.season]
-                .filter(Boolean)
-                .join(" ");
+              const title = [p.brand ?? brand.name, p.model, p.season].filter(Boolean).join(" ");
 
               return (
                 <ProductCard
@@ -188,9 +327,7 @@ export default async function BrandPage({ params }: { params: { slug: string } }
             })}
           </div>
         ) : (
-          <p className="text-neutral-600">
-            Aucun produit associé pour le moment.
-          </p>
+          <p className="text-neutral-600">Aucun produit associé pour le moment.</p>
         )}
       </section>
     </div>
