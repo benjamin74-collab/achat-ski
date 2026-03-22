@@ -4,6 +4,7 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { notFound } from "next/navigation";
 import Link from "next/link";
+import { deleteCategory } from "@/app/actions/categories";
 
 export default async function AdminCategoriesPage() {
   const session = await getServerSession(authOptions);
@@ -68,10 +69,31 @@ export default async function AdminCategoriesPage() {
                   {c.published ? "✅" : "❌"}
                 </td>
                 <td className="border border-ring px-3 py-2 text-right">{c.order}</td>
-                <td className="border border-ring px-3 py-2 text-right">
-                  <Link href={`/admin/categories/${c.slug}`} className="underline">
-                    Modifier
-                  </Link>
+                <td className="border border-ring px-3 py-2">
+                  <div className="flex items-center justify-end gap-3">
+                    <Link href={`/admin/categories/${c.slug}`} className="underline">
+                      Modifier
+                    </Link>
+
+                    <form
+                      action={async () => {
+                        "use server";
+                        await deleteCategory(c.slug);
+                      }}
+                    >
+                      <button
+                        type="submit"
+                        className="text-red-600 underline hover:text-red-700"
+                        onClick={(e) => {
+                          if (!confirm(`Supprimer la catégorie "${c.name}" ?`)) {
+                            e.preventDefault();
+                          }
+                        }}
+                      >
+                        Supprimer
+                      </button>
+                    </form>
+                  </div>
                 </td>
               </tr>
             ))}
