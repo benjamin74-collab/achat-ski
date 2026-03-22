@@ -84,11 +84,6 @@ export default async function AdminCategoriesPage() {
                       <button
                         type="submit"
                         className="text-red-600 underline hover:text-red-700"
-                        onClick={(e) => {
-                          if (!confirm(`Supprimer la catégorie "${c.name}" ?`)) {
-                            e.preventDefault();
-                          }
-                        }}
                       >
                         Supprimer
                       </button>

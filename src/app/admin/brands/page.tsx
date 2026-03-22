@@ -66,11 +66,6 @@ export default async function AdminBrandsPage() {
                       <button
                         type="submit"
                         className="text-red-600 underline hover:text-red-700"
-                        onClick={(e) => {
-                          if (!confirm(`Supprimer la marque "${b.name}" ?`)) {
-                            e.preventDefault();
-                          }
-                        }}
                       >
                         Supprimer
                       </button>

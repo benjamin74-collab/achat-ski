@@ -57,7 +57,6 @@ export default async function AdminPages() {
               <tr key={r.id} className="border-t">
                 <td className="py-2">
                   {thumb ? (
-                    // eslint-disable-next-line @next/next/no-img-element
                     <img
                       src={thumb}
                       alt=""
@@ -90,11 +89,6 @@ export default async function AdminPages() {
                       <button
                         type="submit"
                         className="text-red-600 underline hover:text-red-700"
-                        onClick={(e) => {
-                          if (!confirm(`Supprimer la page "${r.title}" ?`)) {
-                            e.preventDefault();
-                          }
-                        }}
                       >
                         Supprimer
                       </button>
