@@ -20,7 +20,6 @@ function parseIntOrNull(v: string | undefined) {
 type Sort = "relevance" | "price_asc" | "price_desc";
 
 function isCategoryActiveUnknown(row: Record<string, unknown>): boolean {
-  // champs fréquents
   const b1 = row["active"];
   if (typeof b1 === "boolean") return b1;
 
@@ -33,7 +32,6 @@ function isCategoryActiveUnknown(row: Record<string, unknown>): boolean {
   const b4 = row["published"];
   if (typeof b4 === "boolean") return b4;
 
-  // status enum/string : ACTIVE / INACTIVE / PUBLISHED / DRAFT ...
   const s = row["status"];
   if (typeof s === "string") {
     const up = s.toUpperCase();
@@ -41,7 +39,29 @@ function isCategoryActiveUnknown(row: Record<string, unknown>): boolean {
     if (up === "INACTIVE" || up === "DISABLED" || up === "DRAFT") return false;
   }
 
-  // Si on ne trouve rien : on ne filtre pas (safe)
+  return true;
+}
+
+function isBrandActiveUnknown(row: Record<string, unknown>): boolean {
+  const b1 = row["active"];
+  if (typeof b1 === "boolean") return b1;
+
+  const b2 = row["isActive"];
+  if (typeof b2 === "boolean") return b2;
+
+  const b3 = row["enabled"];
+  if (typeof b3 === "boolean") return b3;
+
+  const b4 = row["published"];
+  if (typeof b4 === "boolean") return b4;
+
+  const s = row["status"];
+  if (typeof s === "string") {
+    const up = s.toUpperCase();
+    if (up === "ACTIVE" || up === "ENABLED" || up === "PUBLISHED") return true;
+    if (up === "INACTIVE" || up === "DISABLED" || up === "DRAFT") return false;
+  }
+
   return true;
 }
 
@@ -49,25 +69,19 @@ export default async function SearchPage({ searchParams }: { searchParams: SP })
   const q = (searchParams?.q as string) ?? "";
   const page = Number((searchParams?.page as string) ?? "1") || 1;
   const category = (searchParams?.category as string) || undefined;
-
-  // tri (hors filtres)
   const sort = ((searchParams?.sort as string) || "relevance") as Sort;
 
-  // prix saisis en euros -> convertir en cents
   const minPriceEuros = parseIntOrNull(searchParams?.min as string | undefined);
   const maxPriceEuros = parseIntOrNull(searchParams?.max as string | undefined);
   const minPriceCents = minPriceEuros != null ? minPriceEuros * 100 : null;
   const maxPriceCents = maxPriceEuros != null ? maxPriceEuros * 100 : null;
 
-  // ✅ Catégories dynamiques (on récupère tous les champs pour pouvoir filtrer "actif" si le champ existe)
   const catsRaw = await prisma.category.findMany({
     orderBy: [{ name: "asc" }],
   });
 
-  // filtrage actif "robuste"
   const cats = catsRaw.filter((c) => isCategoryActiveUnknown(c as unknown as Record<string, unknown>));
 
-  // build tree -> liste hiérarchisée (parents, enfants, petites-filles…)
   type CatRow = { id: unknown; slug: string; name: string; parentId: unknown | null };
 
   const rows = cats as unknown as CatRow[];
@@ -93,7 +107,6 @@ export default async function SearchPage({ searchParams }: { searchParams: SP })
   const categoryItems: CategoryItem[] = [];
   walk("", 0, categoryItems);
 
-  // bornes prix safe
   const minBoundEuros = 0;
   const maxBoundEuros = 3000;
 
@@ -102,25 +115,54 @@ export default async function SearchPage({ searchParams }: { searchParams: SP })
     page,
     pageSize: 24,
     category,
-    inStockOnly: false, // UI retirée pour le moment
+    inStockOnly: false,
     minPriceCents,
     maxPriceCents,
     sort: sort ?? "relevance",
   });
 
+  const brandsRaw =
+    q.trim().length > 0
+      ? await prisma.brand.findMany({
+          where: {
+            OR: [
+              { name: { contains: q.trim(), mode: "insensitive" } },
+              { slug: { contains: q.trim(), mode: "insensitive" } },
+            ],
+          },
+          orderBy: [{ name: "asc" }],
+          take: 8,
+          select: {
+            id: true,
+            name: true,
+            slug: true,
+            description: true,
+            active: true,
+          },
+        })
+      : [];
+
+  const brands = brandsRaw
+    .filter((b) => isBrandActiveUnknown(b as unknown as Record<string, unknown>))
+    .map((b) => ({
+      id: b.id,
+      name: b.name,
+      slug: b.slug,
+      description: b.description,
+    }));
+
   const hasFilters = Boolean(q || category || minPriceEuros != null || maxPriceEuros != null);
+  const totalResults = data.total + brands.length;
 
   return (
     <main className="container mx-auto max-w-6xl px-4 py-6">
       <h1 className="text-2xl font-semibold">Résultats {q ? <>pour “{q}”</> : null}</h1>
 
-      {/* Filtres (1 ligne desktop / stack mobile) */}
       <form
         className="mt-4 flex flex-col gap-3 md:flex-row md:items-center"
         action="/search"
         method="GET"
       >
-        {/* conserver le tri dans l'URL quand on filtre */}
         <input type="hidden" name="sort" value={sort} />
 
         <input
@@ -151,12 +193,10 @@ export default async function SearchPage({ searchParams }: { searchParams: SP })
         </button>
       </form>
 
-      {/* Tri (à droite, au-dessus des résultats) */}
       <div className="mt-3 flex justify-end">
         <SortSelect value={sort} />
       </div>
 
-      {/* Résumé filtres */}
       {hasFilters && (
         <div className="mt-3 text-sm text-neutral-600">
           {category ? (
@@ -169,42 +209,99 @@ export default async function SearchPage({ searchParams }: { searchParams: SP })
               Prix: <b>{minPriceEuros ?? minBoundEuros}</b>—<b>{maxPriceEuros ?? maxBoundEuros}</b> € ·{" "}
             </>
           ) : null}
-          {data.total} produit{data.total > 1 ? "s" : ""} trouvé{data.total > 1 ? "s" : ""}.
+          {brands.length} marque{brands.length > 1 ? "s" : ""} et {data.total} produit{data.total > 1 ? "s" : ""} trouvé{totalResults > 1 ? "s" : ""}.
         </div>
       )}
 
-      {/* Résultats */}
-      {data.items.length === 0 ? (
-        <p className="mt-6 text-neutral-600">Aucun produit ne correspond aux filtres.</p>
-      ) : (
-        <ul className="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {data.items.map((p) => (
-            <li key={p.id} className="rounded-2xl border p-4 hover:shadow-sm transition">
-              <div className="flex flex-col gap-2">
-                <Link href={`/p/${p.slug}`} className="text-lg font-medium hover:underline truncate">
-                  {[p.brand, p.model, p.season].filter(Boolean).join(" ")}
-                </Link>
-                <div className="text-sm text-neutral-600">
-                  {p.category ?? "—"} · {p.offerCount} offre{p.offerCount > 1 ? "s" : ""}
-                </div>
-                <div className="mt-1 text-right">
-                  <div className="text-xs text-neutral-500">à partir de</div>
-                  <div className="text-lg font-semibold">
-                    {p.minPriceCents != null ? money(p.minPriceCents, "EUR") : "—"}
+      {brands.length > 0 && (
+        <section className="mt-6">
+          <div className="mb-3 flex items-center gap-2">
+            <h2 className="text-lg font-semibold">Marques</h2>
+            <span className="rounded-full bg-violet-100 px-2.5 py-1 text-xs font-medium text-violet-700">
+              Résultats marque
+            </span>
+          </div>
+
+          <ul className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            {brands.map((brand) => (
+              <li
+                key={brand.id}
+                className="rounded-2xl border border-violet-200 bg-violet-50/60 p-4 hover:shadow-sm transition"
+              >
+                <div className="flex flex-col gap-3">
+                  <div className="flex items-center justify-between gap-3">
+                    <span className="inline-flex w-fit rounded-full bg-violet-600 px-2.5 py-1 text-xs font-semibold text-white">
+                      Marque
+                    </span>
+                  </div>
+
+                  <Link
+                    href={`/marques/${brand.slug}`}
+                    className="text-lg font-semibold text-violet-900 hover:underline"
+                  >
+                    {brand.name}
+                  </Link>
+
+                  <p className="text-sm text-violet-900/80">
+                    {brand.description?.trim()
+                      ? `${brand.description.replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim().slice(0, 140)}${brand.description.replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim().length > 140 ? "…" : ""}`
+                      : "Accéder à la page dédiée de cette marque."}
+                  </p>
+
+                  <div className="mt-1">
+                    <Link
+                      href={`/marques/${brand.slug}`}
+                      className="inline-block rounded-xl border border-violet-300 bg-white px-3 py-2 text-sm font-medium text-violet-800 hover:shadow"
+                    >
+                      Voir la marque
+                    </Link>
                   </div>
                 </div>
-                <div className="mt-2">
-                  <Link href={`/p/${p.slug}`} className="inline-block rounded-xl border px-3 py-2 text-sm hover:shadow">
-                    Voir le produit
-                  </Link>
-                </div>
-              </div>
-            </li>
-          ))}
-        </ul>
+              </li>
+            ))}
+          </ul>
+        </section>
       )}
 
-      {/* Pagination */}
+      <section className="mt-8">
+        <div className="mb-3 flex items-center gap-2">
+          <h2 className="text-lg font-semibold">Produits</h2>
+          <span className="rounded-full bg-neutral-100 px-2.5 py-1 text-xs font-medium text-neutral-600">
+            Résultats produit
+          </span>
+        </div>
+
+        {data.items.length === 0 ? (
+          <p className="text-neutral-600">Aucun produit ne correspond aux filtres.</p>
+        ) : (
+          <ul className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            {data.items.map((p) => (
+              <li key={p.id} className="rounded-2xl border p-4 hover:shadow-sm transition">
+                <div className="flex flex-col gap-2">
+                  <Link href={`/p/${p.slug}`} className="text-lg font-medium hover:underline truncate">
+                    {[p.brand, p.model, p.season].filter(Boolean).join(" ")}
+                  </Link>
+                  <div className="text-sm text-neutral-600">
+                    {p.category ?? "—"} · {p.offerCount} offre{p.offerCount > 1 ? "s" : ""}
+                  </div>
+                  <div className="mt-1 text-right">
+                    <div className="text-xs text-neutral-500">à partir de</div>
+                    <div className="text-lg font-semibold">
+                      {p.minPriceCents != null ? money(p.minPriceCents, "EUR") : "—"}
+                    </div>
+                  </div>
+                  <div className="mt-2">
+                    <Link href={`/p/${p.slug}`} className="inline-block rounded-xl border px-3 py-2 text-sm hover:shadow">
+                      Voir le produit
+                    </Link>
+                  </div>
+                </div>
+              </li>
+            ))}
+          </ul>
+        )}
+      </section>
+
       {data.totalPages > 1 && (
         <nav className="mt-8 flex items-center justify-center gap-2">
           {Array.from({ length: data.totalPages }).map((_, i) => {

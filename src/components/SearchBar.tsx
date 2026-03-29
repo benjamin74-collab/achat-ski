@@ -3,7 +3,11 @@
 import { useEffect, useMemo, useRef, useState, useTransition } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 
-type Suggestion = { label: string; href: string };
+type Suggestion = {
+  label: string;
+  href: string;
+  kind?: "product" | "brand";
+};
 
 export default function SearchBar({ placeholder = "Rechercher un produit…" }: { placeholder?: string }) {
   const sp = useSearchParams();
@@ -18,7 +22,6 @@ export default function SearchBar({ placeholder = "Rechercher un produit…" }: 
   const abortRef = useRef<AbortController | null>(null);
   const boxRef = useRef<HTMLDivElement>(null);
 
-  // debounce navigation -> toujours /search
   const debouncedPush = useMemo(() => {
     let t: ReturnType<typeof setTimeout> | null = null;
     return (v: string) => {
@@ -32,7 +35,6 @@ export default function SearchBar({ placeholder = "Rechercher un produit…" }: 
     };
   }, [router]);
 
-  // fetch suggestions (debounced)
   const debouncedSuggest = useMemo(() => {
     let t: ReturnType<typeof setTimeout> | null = null;
     return (v: string) => {
@@ -62,7 +64,6 @@ export default function SearchBar({ placeholder = "Rechercher un produit…" }: 
     };
   }, []);
 
-  // fermer le menu si clic à l’extérieur
   useEffect(() => {
     const onClick = (e: MouseEvent) => {
       if (!boxRef.current) return;
@@ -119,8 +120,6 @@ export default function SearchBar({ placeholder = "Rechercher un produit…" }: 
         }}
         placeholder={placeholder}
         className="w-full rounded-xl border px-4 py-3 text-base outline-none focus:ring-2 focus:ring-blue-500"
-//        aria-autocomplete="list"
-//        aria-expanded={open}
         aria-controls="search-suggest"
         aria-activedescendant={open ? `search-suggest-${active}` : undefined}
       />
@@ -130,21 +129,46 @@ export default function SearchBar({ placeholder = "Rechercher un produit…" }: 
       )}
 
       {open && items.length > 0 && (
-        <ul id="search-suggest" role="listbox" className="absolute z-20 mt-2 w-full overflow-hidden rounded-xl border bg-white shadow-lg">
-          {items.map((s, i) => (
-            <li
-              key={`${s.href}-${i}`}
-              id={`search-suggest-${i}`}
-              role="option"
-              aria-selected={i === active}
-              className={`cursor-pointer px-4 py-2 text-sm ${i === active ? "bg-blue-50" : "hover:bg-gray-50"}`}
-              onMouseEnter={() => setActive(i)}
-              onMouseDown={(e) => e.preventDefault()}
-              onClick={() => { setOpen(false); window.location.href = s.href; }}
-            >
-              {s.label}
-            </li>
-          ))}
+        <ul
+          id="search-suggest"
+          role="listbox"
+          className="absolute z-20 mt-2 w-full overflow-hidden rounded-xl border bg-white shadow-lg"
+        >
+          {items.map((s, i) => {
+            const isBrand = s.kind === "brand";
+            return (
+              <li
+                key={`${s.href}-${i}`}
+                id={`search-suggest-${i}`}
+                role="option"
+                aria-selected={i === active}
+                className={`cursor-pointer px-4 py-3 text-sm ${
+                  i === active ? "bg-blue-50" : "hover:bg-gray-50"
+                } ${isBrand ? "bg-violet-50/60" : ""}`}
+                onMouseEnter={() => setActive(i)}
+                onMouseDown={(e) => e.preventDefault()}
+                onClick={() => {
+                  setOpen(false);
+                  window.location.href = s.href;
+                }}
+              >
+                <div className="flex items-center justify-between gap-3">
+                  <span className={`truncate ${isBrand ? "font-semibold text-violet-900" : "text-gray-900"}`}>
+                    {s.label}
+                  </span>
+                  <span
+                    className={`shrink-0 rounded-full px-2 py-0.5 text-[11px] font-medium ${
+                      isBrand
+                        ? "bg-violet-600 text-white"
+                        : "bg-gray-100 text-gray-600"
+                    }`}
+                  >
+                    {isBrand ? "Marque" : "Produit"}
+                  </span>
+                </div>
+              </li>
+            );
+          })}
           <li
             className="border-t px-4 py-2 text-sm text-blue-700 cursor-pointer hover:bg-gray-50"
             onMouseDown={(e) => e.preventDefault()}
