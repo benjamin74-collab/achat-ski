@@ -15,8 +15,11 @@
     "db:migrate:deploy": "prisma migrate deploy",
     "db:generate": "prisma generate",
     "prisma:push": "prisma db push",
+
     "prisma:seed": "tsx prisma/seed.ts",
-	"prisma:seed:design": "tsx prisma/seed-design.ts"
+    "prisma:seed:design": "tsx prisma/seed-design.ts",
+
+	"prisma:seed:rando": "tsx prisma/seed-categories-ski-rando.ts"
   },
   "dependencies": {
     "@next-auth/prisma-adapter": "^1.0.7",

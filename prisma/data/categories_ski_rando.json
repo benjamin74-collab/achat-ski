@@ -1,0 +1,188 @@
+[
+  {
+    "slug": "ski-randonnee",
+    "name": "Ski de randonnée",
+    "parentSlug": null,
+    "level": 1
+  },
+  {
+    "slug": "skis-randonnee",
+    "name": "Skis de randonnée",
+    "parentSlug": "ski-randonnee",
+    "level": 2
+  },
+  {
+    "slug": "skis-randonnee-legers",
+    "name": "Skis rando légers",
+    "parentSlug": "skis-randonnee",
+    "level": 3
+  },
+  {
+    "slug": "skis-freerando",
+    "name": "Skis freerando",
+    "parentSlug": "skis-randonnee",
+    "level": 3
+  },
+  {
+    "slug": "packs-ski-randonnee",
+    "name": "Packs ski randonnée",
+    "parentSlug": "ski-randonnee",
+    "level": 2
+  },
+  {
+    "slug": "packs-ski-freerando",
+    "name": "Packs ski freerando",
+    "parentSlug": "ski-randonnee",
+    "level": 2
+  },
+  {
+    "slug": "fixations-ski-randonnee",
+    "name": "Fixations ski randonnée",
+    "parentSlug": "ski-randonnee",
+    "level": 2
+  },
+  {
+    "slug": "fixations-inserts",
+    "name": "Fixations inserts",
+    "parentSlug": "fixations-ski-randonnee",
+    "level": 3
+  },
+  {
+    "slug": "fixations-hybrides",
+    "name": "Fixations hybrides",
+    "parentSlug": "fixations-ski-randonnee",
+    "level": 3
+  },
+  {
+    "slug": "fixations-chassis",
+    "name": "Fixations châssis",
+    "parentSlug": "fixations-ski-randonnee",
+    "level": 3
+  },
+  {
+    "slug": "couteaux-ski-rando",
+    "name": "Couteaux ski rando",
+    "parentSlug": "ski-randonnee",
+    "level": 2
+  },
+  {
+    "slug": "freins-leash-ski-rando",
+    "name": "Freins & leash ski rando",
+    "parentSlug": "ski-randonnee",
+    "level": 2
+  },
+  {
+    "slug": "chaussures-ski-randonnee",
+    "name": "Chaussures ski randonnée",
+    "parentSlug": "ski-randonnee",
+    "level": 2
+  },
+  {
+    "slug": "chaussures-ski-rando-legeres",
+    "name": "Chaussures rando légères",
+    "parentSlug": "chaussures-ski-randonnee",
+    "level": 3
+  },
+  {
+    "slug": "chaussures-freerando",
+    "name": "Chaussures freerando",
+    "parentSlug": "chaussures-ski-randonnee",
+    "level": 3
+  },
+  {
+    "slug": "accessoires-chaussures-ski-rando",
+    "name": "Accessoires chaussures rando",
+    "parentSlug": "chaussures-ski-randonnee",
+    "level": 3
+  },
+  {
+    "slug": "peaux-phoque",
+    "name": "Peaux de phoque",
+    "parentSlug": "ski-randonnee",
+    "level": 2
+  },
+  {
+    "slug": "peaux-avec-colle",
+    "name": "Peaux avec colle",
+    "parentSlug": "peaux-phoque",
+    "level": 3
+  },
+  {
+    "slug": "peaux-sans-colle",
+    "name": "Peaux sans colle",
+    "parentSlug": "peaux-phoque",
+    "level": 3
+  },
+  {
+    "slug": "batons-ski-randonnee",
+    "name": "Bâtons ski randonnée",
+    "parentSlug": "ski-randonnee",
+    "level": 2
+  },
+  {
+    "slug": "batons-ski-rando-telescopiques",
+    "name": "Bâtons télescopiques",
+    "parentSlug": "batons-ski-randonnee",
+    "level": 3
+  },
+  {
+    "slug": "securite-avalanche",
+    "name": "Sécurité avalanche",
+    "parentSlug": "ski-randonnee",
+    "level": 2
+  },
+  {
+    "slug": "dva-arva",
+    "name": "DVA / ARVA",
+    "parentSlug": "securite-avalanche",
+    "level": 3
+  },
+  {
+    "slug": "pelles-avalanche",
+    "name": "Pelles avalanche",
+    "parentSlug": "securite-avalanche",
+    "level": 3
+  },
+  {
+    "slug": "sondes-avalanche",
+    "name": "Sondes avalanche",
+    "parentSlug": "securite-avalanche",
+    "level": 3
+  },
+  {
+    "slug": "sacs-airbag",
+    "name": "Sacs airbag",
+    "parentSlug": "securite-avalanche",
+    "level": 3
+  },
+  {
+    "slug": "ski-alpinisme",
+    "name": "Ski alpinisme",
+    "parentSlug": "ski-randonnee",
+    "level": 2
+  },
+  {
+    "slug": "crampons-alpinisme",
+    "name": "Crampons",
+    "parentSlug": "ski-alpinisme",
+    "level": 3
+  },
+  {
+    "slug": "piolets",
+    "name": "Piolets",
+    "parentSlug": "ski-alpinisme",
+    "level": 3
+  },
+  {
+    "slug": "harnais-alpinisme",
+    "name": "Harnais",
+    "parentSlug": "ski-alpinisme",
+    "level": 3
+  },
+  {
+    "slug": "casques-alpinisme",
+    "name": "Casques alpinisme",
+    "parentSlug": "ski-alpinisme",
+    "level": 3
+  }
+]

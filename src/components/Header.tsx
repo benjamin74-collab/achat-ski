@@ -4,23 +4,13 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import Logo from "./Logo";
-import { useSession, signIn } from "next-auth/react";
-import type { Role } from "@prisma/client";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 
 type NavItem = {
   id: number;
   name: string;
   slug: string;
   children: NavItem[];
-};
-
-type SessionUser = {
-  name?: string | null;
-  email?: string | null;
-  role?: Role;
-  image?: string | null; // NextAuth
-  avatarUrl?: string | null; // custom éventuel
 };
 
 function IconMenu(props: React.SVGProps<SVGSVGElement>) {
@@ -30,6 +20,7 @@ function IconMenu(props: React.SVGProps<SVGSVGElement>) {
     </svg>
   );
 }
+
 function IconClose(props: React.SVGProps<SVGSVGElement>) {
   return (
     <svg viewBox="0 0 24 24" fill="none" aria-hidden="true" {...props}>
@@ -37,6 +28,7 @@ function IconClose(props: React.SVGProps<SVGSVGElement>) {
     </svg>
   );
 }
+
 function IconSearch(props: React.SVGProps<SVGSVGElement>) {
   return (
     <svg viewBox="0 0 24 24" fill="none" aria-hidden="true" {...props}>
@@ -53,34 +45,13 @@ function getSearchPlaceholder(siteId: string | undefined) {
 
 export default function Header() {
   const pathname = usePathname();
-  const { data: session, status } = useSession();
 
-  const user = (session?.user as SessionUser | undefined) ?? undefined;
-  const role: Role = user?.role ?? "USER";
-  const isAdmin = role === "ADMIN";
-  const profileHref = isAdmin ? "/admin" : "/me";
-  const profileLabel = isAdmin ? "Admin" : "Mon profil";
-
-  const avatarUrl = user?.image ?? user?.avatarUrl ?? null;
-
-  const initials = useMemo(() => {
-    const n = user?.name || user?.email || "";
-    return n
-      .split(/[^\p{L}\p{N}]+/u)
-      .filter(Boolean)
-      .slice(0, 2)
-      .map((s) => s[0]?.toUpperCase())
-      .join("");
-  }, [user?.name, user?.email]);
-
-  // ✅ Placeholder dynamique
   const [searchPlaceholder, setSearchPlaceholder] = useState("Rechercher…");
   useEffect(() => {
     const siteId = document.documentElement.dataset.siteId;
     setSearchPlaceholder(getSearchPlaceholder(siteId));
   }, []);
 
-  // --- Menu catégories dynamique ---
   const [navItems, setNavItems] = useState<NavItem[]>([]);
   useEffect(() => {
     let aborted = false;
@@ -101,13 +72,11 @@ export default function Header() {
 
   const topLevel = navItems;
 
-  // --- Mobile menu ---
   const [mobileOpen, setMobileOpen] = useState(false);
   useEffect(() => {
     setMobileOpen(false);
   }, [pathname]);
 
-  // Empêche le scroll quand drawer ouvert
   useEffect(() => {
     if (!mobileOpen) return;
     const prev = document.body.style.overflow;
@@ -124,7 +93,6 @@ export default function Header() {
         : "text-ink/80 hover:text-ink hover:bg-brand-500/10"
     }`;
 
-  // Accordéon mobile (parents ouverts)
   const [openIds, setOpenIds] = useState<Record<number, boolean>>({});
   useEffect(() => {
     if (!mobileOpen) setOpenIds({});
@@ -165,35 +133,6 @@ export default function Header() {
             </div>
 
             <div className="ml-auto flex items-center gap-2">
-              {status === "loading" ? (
-                <div className="h-9 w-24 rounded-lg bg-muted animate-pulse" />
-              ) : session ? (
-                <Link
-                  href={profileHref}
-                  className="inline-flex items-center gap-2 rounded-lg border border-ring bg-white px-3 py-2 text-sm text-ink hover:bg-muted"
-                >
-                  {avatarUrl ? (
-                    // eslint-disable-next-line @next/next/no-img-element
-                    <img
-                      src={avatarUrl}
-                      alt={user?.name ?? "Avatar"}
-                      className="h-6 w-6 rounded-full object-cover"
-                      loading="lazy"
-                      decoding="async"
-                    />
-                  ) : (
-                    <span className="inline-flex h-6 w-6 items-center justify-center rounded-full bg-brand-500 text-white text-xs font-semibold">
-                      {initials || "ME"}
-                    </span>
-                  )}
-                  <span className="hidden sm:inline max-w-[12ch] truncate">{profileLabel}</span>
-                </Link>
-              ) : (
-                <button onClick={() => signIn(undefined, { callbackUrl: "/admin" })} className="btn">
-                  Se connecter
-                </button>
-              )}
-
               <button
                 type="button"
                 className="lg:hidden inline-flex items-center justify-center h-10 w-10 rounded-xl border border-ring bg-white hover:bg-muted"
@@ -289,8 +228,6 @@ export default function Header() {
               })}
             </div>
           </nav>
-
-          <div className="lg:hidden text-xs text-slate-500">Menu : utilisez le bouton ☰</div>
         </div>
       </div>
 
@@ -311,34 +248,6 @@ export default function Header() {
             </div>
 
             <div className="p-4 space-y-4">
-              <div className="rounded-2xl border border-ring bg-muted p-3">
-                {status === "loading" ? (
-                  <div className="h-9 w-24 rounded-lg bg-white animate-pulse" />
-                ) : session ? (
-                  <Link href={profileHref} className="inline-flex items-center gap-2 text-sm text-ink">
-                    {avatarUrl ? (
-                      // eslint-disable-next-line @next/next/no-img-element
-                      <img
-                        src={avatarUrl}
-                        alt={user?.name ?? "Avatar"}
-                        className="h-7 w-7 rounded-full object-cover"
-                        loading="lazy"
-                        decoding="async"
-                      />
-                    ) : (
-                      <span className="inline-flex h-7 w-7 items-center justify-center rounded-full bg-brand-500 text-white text-xs font-semibold">
-                        {initials || "ME"}
-                      </span>
-                    )}
-                    <span className="font-medium">{profileLabel}</span>
-                  </Link>
-                ) : (
-                  <button onClick={() => signIn(undefined, { callbackUrl: "/admin" })} className="btn w-full">
-                    Se connecter
-                  </button>
-                )}
-              </div>
-
               <div className="space-y-1">
                 <Link href="/pages" className={`block ${navLinkClass(Boolean(pathname?.startsWith("/pages")))}`}>
                   Guides

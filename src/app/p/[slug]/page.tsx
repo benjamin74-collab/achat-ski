@@ -8,23 +8,15 @@ import { money } from "@/lib/format";
 import type { Metadata } from "next";
 import type { Prisma } from "@prisma/client";
 import { slugify } from "@/lib/slug";
-import { getCurrentSiteUrl, getCurrentSiteId } from "@/lib/currentSite";
-import { getSiteConfig } from "@/config/site";
+import { getCurrentSiteUrl } from "@/lib/currentSite";
 
 export const runtime = "nodejs";
 export const revalidate = 60;
 
 type PageProps = { params: Promise<{ slug: string }> };
 
-function stripHtml(s: string) {
-  return s.replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim();
-}
-
 export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }): Promise<Metadata> {
   const { slug } = await params;
-
-  const siteId = await getCurrentSiteId();
-  const siteConfig = getSiteConfig(siteId);
   const site = await getCurrentSiteUrl();
 
   const p = await prisma.product.findUnique({
@@ -45,7 +37,7 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
   const url = `${site}/p/${p.slug}`;
   const desc =
     p.description?.trim() ||
-    `Compare les prix ${name} chez les meilleurs marchands partenaires, consulte les tests et les avis disponibles.`;
+    `Compare les prix de ${name} chez les meilleurs marchands partenaires et consulte les tests disponibles.`;
 
   return {
     title: `${name} — meilleur prix`,
@@ -93,20 +85,6 @@ export default async function ProductPage({ params }: PageProps) {
             },
           },
         },
-      },
-      reviews: {
-        select: {
-          id: true,
-          rating: true,
-          title: true,
-          body: true,
-          authorName: true,
-          sourceName: true,
-          sourceUrl: true,
-          createdAt: true,
-        },
-        orderBy: { createdAt: "desc" },
-        take: 10,
       },
       tests: {
         where: { status: "APPROVED" },
@@ -192,11 +170,6 @@ export default async function ProductPage({ params }: PageProps) {
   });
 
   const canonicalUrl = `${site}/p/${product.slug}`;
-
-  const reviewCount = product.reviews.length;
-  const averageRating =
-    reviewCount > 0 ? product.reviews.reduce((sum, r) => sum + r.rating, 0) / reviewCount : null;
-
   const tests = product.tests;
 
   type CategoryAgg = {
@@ -253,30 +226,10 @@ export default async function ProductPage({ params }: PageProps) {
     ? Math.max(...offersFlat.map((o) => (o.priceCents + (o.shippingCents ?? 0)) / 100))
     : undefined;
 
-  const reviewJsonLd =
-    reviewCount > 0
-      ? product.reviews.slice(0, 3).map((r) => ({
-          "@type": "Review",
-          author: {
-            "@type": "Person",
-            name: r.authorName || r.sourceName || "Utilisateur",
-          },
-          datePublished: r.createdAt.toISOString(),
-          name: r.title || `${title} — avis`,
-          reviewBody: r.body,
-          reviewRating: {
-            "@type": "Rating",
-            ratingValue: r.rating,
-            bestRating: 5,
-            worstRating: 1,
-          },
-        }))
-      : undefined;
-
   const desc = product.description?.trim() ?? null;
   const pageDescription =
     desc ||
-    `Compare les prix ${title}, consulte les avis, les tests et les offres disponibles chez les marchands partenaires.`;
+    `Compare les prix de ${title}, consulte les tests et découvre les offres disponibles chez les marchands partenaires.`;
 
   const breadcrumbJsonLd = {
     "@context": "https://schema.org",
@@ -351,18 +304,6 @@ export default async function ProductPage({ params }: PageProps) {
                 },
         }
       : {}),
-    ...(averageRating != null
-      ? {
-          aggregateRating: {
-            "@type": "AggregateRating",
-            ratingValue: Number(averageRating.toFixed(2)),
-            reviewCount,
-            bestRating: 5,
-            worstRating: 1,
-          },
-        }
-      : {}),
-    ...(reviewJsonLd ? { review: reviewJsonLd } : {}),
   } satisfies Record<string, unknown>;
 
   const webPageJsonLd = {
@@ -430,12 +371,6 @@ export default async function ProductPage({ params }: PageProps) {
         <div className="lg:col-span-5">
           <div className="aspect-[4/3] w-full overflow-hidden rounded-2xl border bg-muted" />
           <p className="mt-2 text-xs text-neutral-500">Photo à venir (marque / feed partenaire).</p>
-
-          <div className="mt-4 space-y-2">
-            <Link href={`/me/reviews/new?slug=${encodeURIComponent(product.slug)}`} className="btn">
-              ✍️ Je souhaite donner un avis sur ce produit
-            </Link>
-          </div>
         </div>
 
         <div className="lg:col-span-7">
@@ -451,15 +386,6 @@ export default async function ProductPage({ params }: PageProps) {
               product.Brand?.name ?? product.brand ?? "—"
             )}
           </div>
-
-          {averageRating != null && reviewCount > 0 && (
-            <div className="mt-2 flex items-center gap-2 text-sm text-neutral-700">
-              <StarRating value={averageRating} />
-              <span>
-                {averageRating.toFixed(1)} / 5 · {reviewCount} avis
-              </span>
-            </div>
-          )}
 
           <div className="mt-3 rounded-xl border p-4">
             <div className="text-sm text-neutral-500">à partir de</div>
@@ -501,41 +427,6 @@ export default async function ProductPage({ params }: PageProps) {
                   <p key={i}>{para.trim()}</p>
                 ))}
               </div>
-            </section>
-          )}
-
-          {reviewCount > 0 && (
-            <section className="mt-8">
-              <h2 className="text-lg font-semibold">Avis</h2>
-              <ul className="mt-3 space-y-3">
-                {product.reviews.map((r) => (
-                  <li key={r.id} className="rounded-xl border p-3">
-                    <div className="flex items-center justify-between">
-                      <div className="font-medium">
-                        {r.title || "Avis"}
-                        <span className="ml-2 inline-flex items-center gap-1 text-sm text-neutral-600">
-                          <StarRating value={r.rating} />
-                          <span>{r.rating}/5</span>
-                        </span>
-                      </div>
-                      <div className="text-xs text-neutral-500">
-                        {r.sourceName ? r.sourceName : r.authorName || "Utilisateur"} · {r.createdAt.toISOString().slice(0, 10)}
-                      </div>
-                    </div>
-                    {r.body ? <p className="mt-2 text-sm text-neutral-700">{r.body}</p> : null}
-                    {r.sourceUrl ? (
-                      <a
-                        href={r.sourceUrl}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="mt-2 inline-block text-xs underline text-neutral-600"
-                      >
-                        Voir la source
-                      </a>
-                    ) : null}
-                  </li>
-                ))}
-              </ul>
             </section>
           )}
 
