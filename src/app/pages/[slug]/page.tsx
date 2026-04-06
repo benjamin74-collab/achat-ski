@@ -5,8 +5,7 @@ import Link from "next/link";
 import type { PageKind } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { sanitizeHtml } from "@/lib/sanitize";
-import { getCurrentSiteId } from "@/lib/currentSite";
-import { getCurrentSiteUrl } from "@/lib/currentSite";
+import { getCurrentSiteId, getCurrentSiteUrl } from "@/lib/currentSite";
 import ShareButtons from "@/components/ShareButtons";
 import RelatedArticles from "@/components/RelatedArticles";
 import Comments from "@/components/Comments";
@@ -17,14 +16,6 @@ import { injectInlineAdMarker, splitHtmlByMarker } from "@/lib/ads";
 export const revalidate = 300;
 
 type Params = { slug: string };
-
-function getSiteUrl() {
-  const env = process.env.NEXT_PUBLIC_SITE_URL;
-  if (env) return env.replace(/\/+$/, "");
-  const vercel = process.env.VERCEL_URL;
-  if (vercel) return `https://${vercel}`.replace(/\/+$/, "");
-  return "https://meilleur-ski.com";
-}
 
 function kindLabel(k?: PageKind) {
   if (k === "GUIDE") return "Guide";
@@ -136,6 +127,7 @@ export default async function PageDetail({ params }: { params: Params }) {
         banner: { select: { publicUrl: true, width: true, height: true } },
         thumbnail: { select: { publicUrl: true, width: true, height: true } },
         category: { select: { id: true, name: true } },
+        guideCategory: { select: { id: true, name: true, slug: true } },
       },
     }),
     prisma.adSettings.findUnique({
@@ -199,14 +191,37 @@ export default async function PageDetail({ params }: { params: Params }) {
   if (page.thumbnail?.publicUrl) imagesForLd.push(page.thumbnail.publicUrl);
   else if (page.thumbnailUrl) imagesForLd.push(page.thumbnailUrl);
 
+  const breadcrumbItems = [
+    { "@type": "ListItem", position: 1, name: "Accueil", item: `${site}/` },
+    { "@type": "ListItem", position: 2, name: "Guides", item: `${site}/pages` },
+  ];
+
+  if (page.guideCategory?.name) {
+    breadcrumbItems.push({
+      "@type": "ListItem",
+      position: 3,
+      name: page.guideCategory.name,
+      item: `${site}/pages#${page.guideCategory.slug}`,
+    });
+    breadcrumbItems.push({
+      "@type": "ListItem",
+      position: 4,
+      name: page.title,
+      item: canonicalUrl,
+    });
+  } else {
+    breadcrumbItems.push({
+      "@type": "ListItem",
+      position: 3,
+      name: page.title,
+      item: canonicalUrl,
+    });
+  }
+
   const breadcrumbJsonLd = {
     "@context": "https://schema.org",
     "@type": "BreadcrumbList",
-    itemListElement: [
-      { "@type": "ListItem", position: 1, name: "Accueil", item: `${site}/` },
-      { "@type": "ListItem", position: 2, name: "Guides", item: `${site}/pages` },
-      { "@type": "ListItem", position: 3, name: page.title, item: canonicalUrl },
-    ],
+    itemListElement: breadcrumbItems,
   };
 
   const blogPostingJsonLd = {
@@ -228,9 +243,7 @@ export default async function PageDetail({ params }: { params: Params }) {
     },
   };
 
-  const hasAdsense =
-    !!adSettings?.enabled &&
-    !!adSettings.adsenseClient;
+  const hasAdsense = !!adSettings?.enabled && !!adSettings.adsenseClient;
 
   return (
     <section id="top" className="py-2 md:py-4">
@@ -248,6 +261,14 @@ export default async function PageDetail({ params }: { params: Params }) {
         <Link href="/pages" className="underline underline-offset-2">
           Guides
         </Link>
+        {page.guideCategory?.name ? (
+          <>
+            <span className="text-slate-400">/</span>
+            <Link href={`/pages#${page.guideCategory.slug}`} className="underline underline-offset-2">
+              {page.guideCategory.name}
+            </Link>
+          </>
+        ) : null}
         <span className="text-slate-400">/</span>
         <span className="text-slate-700 font-medium line-clamp-1">{page.title}</span>
       </nav>
@@ -255,10 +276,15 @@ export default async function PageDetail({ params }: { params: Params }) {
       <header className="mt-4">
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
           <div className="lg:col-span-8 space-y-4">
-            <div className="inline-flex items-center gap-2">
+            <div className="inline-flex flex-wrap items-center gap-2">
               <span className="text-xs font-semibold rounded-full border px-2.5 py-1 bg-white">
                 {kindLabel(page.kind)}
               </span>
+              {page.guideCategory?.name ? (
+                <span className="text-xs font-medium rounded-full border px-2.5 py-1 bg-white text-slate-700">
+                  {page.guideCategory.name}
+                </span>
+              ) : null}
               {page.category?.name ? (
                 <span className="text-xs text-slate-600">{page.category.name}</span>
               ) : null}
@@ -305,7 +331,6 @@ export default async function PageDetail({ params }: { params: Params }) {
             {heroSrc ? (
               <div className="overflow-hidden rounded-3xl border bg-muted shadow-card">
                 <div className="aspect-[16/10]">
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
                   <img
                     src={heroSrc}
                     alt={page.title}
@@ -327,21 +352,21 @@ export default async function PageDetail({ params }: { params: Params }) {
           <div className="rounded-3xl border bg-white shadow-card">
             <div className="p-5 md:p-8">
               <div className="prose prose-slate max-w-none prose-headings:scroll-mt-24 prose-a:underline prose-a:underline-offset-2">
-				  <div dangerouslySetInnerHTML={{ __html: htmlBeforeAd }} />
+                <div dangerouslySetInnerHTML={{ __html: htmlBeforeAd }} />
 
-				  {hasAdsense && adSettings.slotPageInline && hasMarker ? (
-					<div className="not-prose my-6 rounded-2xl border bg-white p-3 md:p-4 overflow-hidden">
-					  <AdsenseUnit
-						client={adSettings.adsenseClient!}
-						slot={adSettings.slotPageInline}
-					  />
-					</div>
-				  ) : null}
+                {hasAdsense && adSettings.slotPageInline && hasMarker ? (
+                  <div className="not-prose my-6 rounded-2xl border bg-white p-3 md:p-4 overflow-hidden">
+                    <AdsenseUnit
+                      client={adSettings.adsenseClient!}
+                      slot={adSettings.slotPageInline}
+                    />
+                  </div>
+                ) : null}
 
-				  {htmlAfterAd ? (
-					<div dangerouslySetInnerHTML={{ __html: htmlAfterAd }} />
-				  ) : null}
-				</div>
+                {htmlAfterAd ? (
+                  <div dangerouslySetInnerHTML={{ __html: htmlAfterAd }} />
+                ) : null}
+              </div>
             </div>
           </div>
 
@@ -371,7 +396,6 @@ export default async function PageDetail({ params }: { params: Params }) {
                   >
                     <Link href={`/pages/${a.slug}`} className="block">
                       <div className="aspect-[16/9] bg-muted">
-                        {/* eslint-disable-next-line @next/next/no-img-element */}
                         {a.thumbnail?.publicUrl || a.thumbnailUrl ? (
                           <img
                             src={a.thumbnail?.publicUrl ?? a.thumbnailUrl!}
@@ -446,7 +470,6 @@ export default async function PageDetail({ params }: { params: Params }) {
             <div className="rounded-3xl border bg-white overflow-hidden shadow-card">
               <Link href={`/pages/${lastArticle.slug}`} className="block hover:shadow-card transition-shadow">
                 <div className="aspect-[16/9] bg-muted">
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
                   {lastArticle.thumbnail?.publicUrl || lastArticle.thumbnailUrl ? (
                     <img
                       src={lastArticle.thumbnail?.publicUrl ?? lastArticle.thumbnailUrl!}

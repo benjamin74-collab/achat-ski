@@ -15,11 +15,12 @@ export async function POST(req: Request) {
   }
 
   const fd = await req.formData();
-  const title = String(fd.get("title") || "");
+
+  const title = String(fd.get("title") || "").trim();
   const slug = slugify(String(fd.get("slug") || title));
 
   const intro = (fd.get("intro") as string) || null;
-  const content = sanitizeHtml(((fd.get("content") as string) || ""));
+  const content = sanitizeHtml((fd.get("content") as string) || "");
   const metaTitle = ((fd.get("metaTitle") as string) || "").trim() || null;
   const metaDescription = ((fd.get("metaDescription") as string) || "").trim() || null;
   const published = fd.get("published") === "on";
@@ -29,22 +30,38 @@ export async function POST(req: Request) {
     .map((s) => s.trim())
     .filter(Boolean);
 
-  // nouveaux champs
   const kindStr = String(fd.get("kind") || "ARTICLE").toUpperCase();
-  const kind: PageKind = ["GUIDE", "COMPARATIF", "ARTICLE"].includes(kindStr) ? (kindStr as PageKind) : "ARTICLE";
+  const kind: PageKind = ["GUIDE", "COMPARATIF", "ARTICLE"].includes(kindStr)
+    ? (kindStr as PageKind)
+    : "ARTICLE";
 
   const categoryIdRaw = fd.get("categoryId");
-  const categoryId = categoryIdRaw ? Number(String(categoryIdRaw)) : null;
+  const categoryId =
+    categoryIdRaw && String(categoryIdRaw).trim() !== ""
+      ? Number(String(categoryIdRaw))
+      : null;
 
-  // Fallbacks URL si pas d’asset
+  const guideCategoryIdRaw = fd.get("guideCategoryId");
+  const guideCategoryId =
+    guideCategoryIdRaw && String(guideCategoryIdRaw).trim() !== ""
+      ? Number(String(guideCategoryIdRaw))
+      : null;
+
   const thumbnailUrl = ((fd.get("thumbnailUrl") as string) || "").trim() || null;
   const bannerUrl = ((fd.get("bannerUrl") as string) || "").trim() || null;
 
-  // Ids d’assets venant du form
   const thumbnailAssetIdRaw = fd.get("thumbnailAssetId");
   const bannerAssetIdRaw = fd.get("bannerAssetId");
-  const thumbnailAssetId = thumbnailAssetIdRaw ? Number(String(thumbnailAssetIdRaw)) : null;
-  const bannerAssetId = bannerAssetIdRaw ? Number(String(bannerAssetIdRaw)) : null;
+
+  const thumbnailAssetId =
+    thumbnailAssetIdRaw && String(thumbnailAssetIdRaw).trim() !== ""
+      ? Number(String(thumbnailAssetIdRaw))
+      : null;
+
+  const bannerAssetId =
+    bannerAssetIdRaw && String(bannerAssetIdRaw).trim() !== ""
+      ? Number(String(bannerAssetIdRaw))
+      : null;
 
   const data: Prisma.PageCreateInput = {
     title,
@@ -56,22 +73,34 @@ export async function POST(req: Request) {
     published,
     tags,
     kind,
+
     ...(categoryId ? { category: { connect: { id: categoryId } } } : {}),
 
-    ...(session.user?.id ? { author: { connect: { id: String(session.user.id) } } } : {}),
+    ...(kind === "GUIDE" && guideCategoryId
+      ? { guideCategory: { connect: { id: guideCategoryId } } }
+      : {}),
+
+    ...(session.user?.id
+      ? { author: { connect: { id: String(session.user.id) } } }
+      : {}),
 
     ...(bannerAssetId
       ? { banner: { connect: { id: bannerAssetId } }, bannerUrl: null }
       : { bannerUrl }),
+
     ...(thumbnailAssetId
       ? { thumbnail: { connect: { id: thumbnailAssetId } }, thumbnailUrl: null }
       : { thumbnailUrl }),
   };
 
-  await prisma.page.create({ data });
+  const created = await prisma.page.create({
+    data,
+    select: { id: true, slug: true },
+  });
 
   revalidatePath("/pages");
-  revalidatePath(`/pages/${slug}`);
+  revalidatePath(`/pages/${created.slug}`);
+  revalidatePath("/admin/pages");
 
-  return NextResponse.json({ ok: true, slug });
+  return NextResponse.json({ ok: true, id: created.id, slug: created.slug });
 }

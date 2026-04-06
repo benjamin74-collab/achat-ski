@@ -22,10 +22,12 @@ export default async function AdminPages() {
       id: true,
       slug: true,
       title: true,
+      kind: true,
       published: true,
       createdAt: true,
       thumbnailUrl: true,
       thumbnail: { select: { publicUrl: true } },
+      guideCategory: { select: { name: true } },
     },
   });
 
@@ -43,6 +45,8 @@ export default async function AdminPages() {
           <tr className="text-left text-slate-500">
             <th className="py-2">Miniature</th>
             <th className="py-2">Titre</th>
+            <th className="py-2">Type</th>
+            <th className="py-2">Catégorie guide</th>
             <th className="py-2">Slug</th>
             <th className="py-2">Statut</th>
             <th className="py-2">Créée le</th>
@@ -70,6 +74,8 @@ export default async function AdminPages() {
                 </td>
 
                 <td className="py-2">{r.title}</td>
+                <td className="py-2">{r.kind}</td>
+                <td className="py-2 text-slate-600">{r.guideCategory?.name ?? "—"}</td>
                 <td className="py-2 text-slate-600">{r.slug}</td>
                 <td className="py-2">{r.published ? "Publié" : "Brouillon"}</td>
                 <td className="py-2">{r.createdAt.toISOString().slice(0, 10)}</td>

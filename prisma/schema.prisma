@@ -52,7 +52,6 @@ model User {
   @@index([siteId])
 }
 
-
 model EmailVerificationToken {
   id        Int      @id @default(autoincrement())
   token     String   @unique
@@ -108,20 +107,17 @@ model Brand {
   id          Int         @id @default(autoincrement())
   name        String      @unique
   slug        String      @unique
-  description String?     // HTML sanitisé
+  description String?
   websiteUrl  String?     @db.VarChar(512)
 
-  // logo (médiathèque) + fallback URL
   logoUrl     String?     @db.VarChar(512)
   logoId      Int?
   logo        MediaAsset? @relation("BrandLogo", fields: [logoId], references: [id])
 
-  // bannière (médiathèque) + fallback URL
   bannerUrl   String?     @db.VarChar(512)
   bannerId    Int?
   banner      MediaAsset? @relation("BrandBanner", fields: [bannerId], references: [id])
 
-  // SEO
   metaTitle       String?
   metaDescription String?
 
@@ -130,6 +126,24 @@ model Brand {
   updatedAt   DateTime    @updatedAt
 
   products Product[]
+}
+
+model GuideCategory {
+  id          Int      @id @default(autoincrement())
+  name        String   @unique
+  slug        String   @unique
+  description String?
+  order       Int      @default(0)
+  isInMenu    Boolean  @default(true)
+  active      Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  pages Page[]
+
+  @@index([order])
+  @@index([active, isInMenu])
+  @@index([slug])
 }
 
 model Page {
@@ -145,14 +159,14 @@ model Page {
   bannerId     Int?
   banner       MediaAsset? @relation("PageBanner", fields: [bannerId], references: [id])
 
-  // typage de l’article (Guide / Comparatif / Article)
   kind PageKind @default(ARTICLE)
 
-  // relation (facultative) à Category
   categoryId Int?
   category   Category? @relation(fields: [categoryId], references: [id], onDelete: SetNull)
 
-  // String pour matcher User.id (cuid), et relation vers User
+  guideCategoryId Int?
+  guideCategory   GuideCategory? @relation(fields: [guideCategoryId], references: [id], onDelete: SetNull)
+
   authorId String?
   author   User?   @relation(fields: [authorId], references: [id])
 
@@ -160,14 +174,15 @@ model Page {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  // SEO
   metaTitle       String?
   metaDescription String?
 
-  // Postgres: tableau de strings sans annotation de colonne
   tags String[]
 
   comments PageComment[]
+
+  @@index([kind, published])
+  @@index([guideCategoryId])
 }
 
 enum PageKind {
@@ -181,7 +196,6 @@ model PageComment {
   pageId Int
   page   Page @relation(fields: [pageId], references: [id])
 
-  // String pour matcher User.id (cuid)
   userId String
   user   User   @relation(fields: [userId], references: [id])
 
@@ -202,13 +216,8 @@ model Product {
   brandId Int?
   Brand   Brand?  @relation(fields: [brandId], references: [id])
   model   String
-  season  String? // ex: "2025/26"
+  season  String?
 
-  // Migration en douceur : on introduit la vraie relation vers Category.
-  // Ancien champ libre (texte) mis en commentaire si tu veux couper plus tard :
-  // category    String?      // all-mountain, rando, freeride... (deprecated)
-
-  // Nouvelle relation (principale) vers Category
   categoryId Int?
   category   Category? @relation(fields: [categoryId], references: [id], onDelete: SetNull)
 
@@ -218,11 +227,10 @@ model Product {
   createdAt   DateTime        @default(now())
   description String?
   skus        Sku[]
-  clicks      Click[] // back-relation pour Click.product
+  clicks      Click[]
   reviews     Review[]
   tests       EditorialTest[]
 
-  // index utile pour filtres
   @@index([brandId])
   @@index([categoryId])
 }
@@ -231,7 +239,7 @@ model Sku {
   id         Int     @id @default(autoincrement())
   product    Product @relation(fields: [productId], references: [id])
   productId  Int
-  variant    String? // 172 cm, 180 cm...
+  variant    String?
   gtin       String? @unique
   attributes Json?
   offers     Offer[]
@@ -241,9 +249,9 @@ model Merchant {
   id        Int     @id @default(autoincrement())
   name      String  @unique
   slug      String  @unique
-  network   String? // kwanko | awin | sovrn | direct
+  network   String?
   programId String?
-  status    String? // active | paused
+  status    String?
   offers    Offer[]
 }
 
@@ -255,12 +263,12 @@ model Offer {
   merchantId    Int
   affiliateUrl  String
   priceCents    Int
-  currency      String // "EUR"
+  currency      String
   inStock       Boolean   @default(true)
   shippingCents Int?
   lastSeen      DateTime? @default(now())
 
-  clicks Click[] // back-relation pour Click.offer
+  clicks Click[]
 
   @@unique([skuId, merchantId])
 }
@@ -277,11 +285,6 @@ model Click {
   referrer          String?
 }
 
-/**
- * -----------------------------
- * AVIS & TESTS (avec modération)
- * ------------------------------
- */
 enum ModerationStatus {
   PENDING
   APPROVED
@@ -291,12 +294,12 @@ enum ModerationStatus {
 model Review {
   id         Int              @id @default(autoincrement())
   productId  Int
-  userId     String? // auteur connecté (facultatif)
-  rating     Int // 1..5
+  userId     String?
+  rating     Int
   title      String
   body       String
   authorName String?
-  sourceName String? // “Ekosport”, “Snowleader”, etc.
+  sourceName String?
   sourceUrl  String?
   status     ModerationStatus @default(PENDING)
   createdAt  DateTime         @default(now())
@@ -312,35 +315,26 @@ model Review {
 model EditorialTest {
   id        Int     @id @default(autoincrement())
   productId Int
-  userId    String? // auteur connecté (facultatif, mais dans ton nouveau modèle ce sera surtout l'admin)
+  userId    String?
   title     String
+  excerpt   String
+  content   String? @db.Text
 
-  // Intro courte du test (ancien "excerpt")
-  excerpt String
-
-  // Contenu complet du test (HTML WYSIWYG)
-  content String? @db.Text
-
-  // Bannière du test (optionnelle)
   bannerUrl String?
   bannerId  Int?
   banner    MediaAsset? @relation("TestBanner", fields: [bannerId], references: [id])
 
-  // Note globale (optionnelle, si tu veux garder un score global)
-  score Float? // 0..10 ou 0..5 (optionnel)
+  score Float?
 
-  // Infos source (tu peux les utiliser pour "Meilleur-Ski", ou des partenaires)
-  sourceName String // “Skipass”, “Backcountry Magazine”, etc.
+  sourceName String
   sourceUrl  String
 
   status      ModerationStatus @default(PENDING)
   publishedAt DateTime         @default(now())
 
-  // Relations
   product Product @relation(fields: [productId], references: [id])
   user    User?   @relation(fields: [userId], references: [id])
 
-  // Catégories de notation + notes par catégorie
   ratings EditorialTestScore[]
 
   @@index([productId])
@@ -363,7 +357,7 @@ model TestRatingCategory {
 model EditorialTestScore {
   testId     Int
   categoryId Int
-  score      Int // 0..10
+  score      Int
 
   test     EditorialTest      @relation(fields: [testId], references: [id])
   category TestRatingCategory @relation(fields: [categoryId], references: [id])
@@ -371,42 +365,31 @@ model EditorialTestScore {
   @@id([testId, categoryId])
 }
 
-/**
- * -----------------------------
- * Catégories HIÉRARCHIQUES + SEO + MAPPINGS AFFILIÉS
- * ------------------------------
- */
 model Category {
   id   Int    @id @default(autoincrement())
   slug String @unique
   name String
 
-  // Hiérarchie
   parentId Int?
   parent   Category?  @relation("CategoryHierarchy", fields: [parentId], references: [id], onDelete: SetNull)
   children Category[] @relation("CategoryHierarchy")
 
-  // Contenu & SEO
   intro           String?
-  content         String? // Markdown ou texte
+  content         String?
   metaTitle       String?
   metaDescription String?
 
-  // Navigation & tri (aligne avec ton BO : Menu, Ordre, Publié)
-  isInMenu  Boolean @default(true) // afficher dans le menu
-  order     Int     @default(0) // ordre dans le menu / sous-menu
+  isInMenu  Boolean @default(true)
+  order     Int     @default(0)
   published Boolean @default(true)
 
-  // Mappings affiliés (chaînes exactes depuis les flux)
-  mapKwanko     String[] // ex: ["Ski > All-Mountain", "Skis polyvalents"]
+  mapKwanko     String[]
   mapEkosport   String[]
   mapSnowleader String[]
   mapGlisshop   String[]
 
-  // Aliases / slugs secondaires (utile pour 301, recherche, variations)
   aliases String[]
 
-  // Relation inverse depuis Product (si tu veux requêter depuis la catégorie)
   products Product[]
   pages    Page[]
 
@@ -418,14 +401,9 @@ model Category {
   @@index([published])
 }
 
-/**
- * -----------------------------
- * Journal d’import (Kwanko, etc.)
- * ------------------------------
- */
 model ImportRun {
   id             Int       @id @default(autoincrement())
-  source         String // "kwanko"
+  source         String
   startedAt      DateTime  @default(now())
   finishedAt     DateTime?
   offersUpserted Int       @default(0)
@@ -433,23 +411,16 @@ model ImportRun {
   notes          String?
 }
 
-/**
- * -----------------------------
- * Paramétrage design sites
- * ------------------------------
- */
 model SiteSettings {
   id     Int    @id @default(autoincrement())
-  siteId String @unique // "meilleur-ski" | "meilleur-robot" | etc.
+  siteId String @unique
 
-  // Branding
   name       String?
   tagline    String?
   logoSrc    String?
   logoAlt    String?
   faviconSrc String?
 
-  // Colors tokens
   primary          String
   secondary        String
   accent           String
@@ -459,22 +430,20 @@ model SiteSettings {
   mutedForeground  String
   border           String
 
-  // Fonts (keys)
   fontSans    String
   fontDisplay String
 
-  // Home / UI (JSON pour flexibilité)
   heroTitle     String?
   heroHighlight String?
   heroSubtitle  String?
-  heroCtas      Json?  // [{label, href, variant}...]
+  heroCtas      Json?
 
   showCategories   Boolean @default(true)
   showLatestGuides Boolean @default(true)
   showTopBrands    Boolean @default(true)
 
-  categoryTiles Json? // [{slug,title,desc,cta,img}...]
-  topBrands     Json? // [{name,slug,logo}...]
+  categoryTiles Json?
+  topBrands     Json?
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -482,30 +451,22 @@ model SiteSettings {
   @@index([siteId])
 }
 
-
-/**
- * -----------------------------
- * MEDIA
- * ------------------------------
- */
 model MediaAsset {
   id          Int       @id @default(autoincrement())
   slug        String    @unique
   title       String?
   alt         String?
-  kind        MediaKind @default(IMAGE) // extension future: VIDEO, DOC, etc.
+  kind        MediaKind @default(IMAGE)
   mime        String
   width       Int?
   height      Int?
   bytes       Int?
-  // chemin objet dans le storage (Vercel Blob ou S3)
   storageKey  String    @unique
   publicUrl   String    @db.VarChar(1024)
   createdAt   DateTime  @default(now())
   createdById String?
   createdBy   User?     @relation(name: "MediaCreatedBy", fields: [createdById], references: [id])
 
-  // back-relations (facultatives)
   brandsLogo     Brand[]         @relation("BrandLogo")
   brandsBanner   Brand[]         @relation("BrandBanner")
   pagesThumbnail Page[]          @relation("PageThumbnail")
@@ -518,11 +479,6 @@ enum MediaKind {
   IMAGE
 }
 
-/**
- * -----------------------------
- * COOKIES
- * ------------------------------
- */
 enum CookiePurpose {
   ESSENTIAL
   ANALYTICS
@@ -536,18 +492,18 @@ enum ConsentChoice {
 }
 
 model CookieDefinition {
-  id          Int          @id @default(autoincrement())
-  siteId      String?      // null = tous sites, sinon "meilleur-ski" / "meilleur-robot" etc.
-  key         String       // ex: "_ga", "gclid", "ms_consent"
-  name        String       // ex: "Google Analytics"
-  provider    String?      // ex: "Google"
-  purpose     CookiePurpose @default(ESSENTIAL)
-  description String?
-  durationDays Int?        // ex: 395 (13 mois)
-  mandatory   Boolean      @default(false) // true = essentiel au site
+  id           Int           @id @default(autoincrement())
+  siteId       String?
+  key          String
+  name         String
+  provider     String?
+  purpose      CookiePurpose @default(ESSENTIAL)
+  description  String?
+  durationDays Int?
+  mandatory    Boolean       @default(false)
 
-  createdAt   DateTime     @default(now())
-  updatedAt   DateTime     @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   @@index([siteId])
   @@index([purpose])
@@ -558,7 +514,7 @@ model CookieConsentLog {
   id        String        @id @default(cuid())
   siteId    String?
   choice    ConsentChoice
-  version   String        // version du texte/paramétrage consentement
+  version   String
   userAgent String?
   path      String?
   createdAt DateTime      @default(now())
@@ -567,21 +523,13 @@ model CookieConsentLog {
   @@index([createdAt])
 }
 
-/**
- * -----------------------------
- * ADSENSE
- * ------------------------------
- */
 model AdSettings {
   id            Int      @id @default(autoincrement())
-  siteId        String   @unique // "meilleur-ski" | "meilleur-robot" | etc.
+  siteId        String   @unique
 
   enabled       Boolean  @default(false)
+  adsenseClient String?
 
-  // Adsense
-  adsenseClient String?  // ex: "ca-pub-1234567890"
-
-  // Slots (1 par emplacement)
   slotPageTop     String?
   slotPageInline  String?
   slotPageSidebar String?
@@ -601,10 +549,10 @@ model TrackingSettings {
   enabledAds               Boolean  @default(false)
   enabledGtm               Boolean  @default(false)
 
-  ga4MeasurementId         String?  // ex: G-XXXXXXXXXX
-  googleAdsId              String?  // ex: AW-123456789
-  googleAdsConversionLabel String?  // ex: AbCdEfGhIjKlMnOpQr
-  gtmContainerId           String?  // ex: GTM-XXXXXXX
+  ga4MeasurementId         String?
+  googleAdsId              String?
+  googleAdsConversionLabel String?
+  gtmContainerId           String?
 
   createdAt                DateTime @default(now())
   updatedAt                DateTime @updatedAt

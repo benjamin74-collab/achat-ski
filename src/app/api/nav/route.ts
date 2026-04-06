@@ -19,17 +19,22 @@ function sortTree(items: NavItem[]) {
 }
 
 export async function GET() {
-  const rows = await prisma.category.findMany({
-    where: { isInMenu: true, published: true },
-    orderBy: [{ order: "asc" }, { name: "asc" }],
-    select: { id: true, name: true, slug: true, parentId: true, order: true },
-  });
+  const [categoryRows, guideCategoryRows] = await Promise.all([
+    prisma.category.findMany({
+      where: { isInMenu: true, published: true },
+      orderBy: [{ order: "asc" }, { name: "asc" }],
+      select: { id: true, name: true, slug: true, parentId: true, order: true },
+    }),
+    prisma.guideCategory.findMany({
+      where: { active: true, isInMenu: true },
+      orderBy: [{ order: "asc" }, { name: "asc" }],
+      select: { id: true, name: true, slug: true },
+    }),
+  ]);
 
-  // index par id
   const byId = new Map<number, NavItem>();
-  rows.forEach((r) => byId.set(r.id, { ...r, children: [] }));
+  categoryRows.forEach((r) => byId.set(r.id, { ...r, children: [] }));
 
-  // relier parents/enfants
   const roots: NavItem[] = [];
   byId.forEach((node) => {
     if (node.parentId !== null && byId.has(node.parentId)) {
@@ -39,8 +44,10 @@ export async function GET() {
     }
   });
 
-  // trie récursif (parents + enfants + petits-enfants)
   sortTree(roots);
 
-  return NextResponse.json(roots);
+  return NextResponse.json({
+    categories: roots,
+    guideCategories: guideCategoryRows,
+  });
 }

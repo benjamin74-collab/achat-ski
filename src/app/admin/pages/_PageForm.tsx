@@ -7,13 +7,18 @@ import { slugify } from "@/lib/slug";
 import MediaPicker from "@/components/admin/MediaPicker";
 import RichTextEditor from "@/components/admin/RichTextEditor";
 
+type GuideCategoryOption = {
+  id: number;
+  name: string;
+};
+
 type PageData = {
   id?: number;
   title?: string;
   slug?: string;
   intro?: string | null;
   content?: string;
-  // Fallback URLs
+
   thumbnailUrl?: string | null;
   bannerUrl?: string | null;
   published?: boolean;
@@ -21,11 +26,13 @@ type PageData = {
   metaDescription?: string | null;
   tags?: string[] | null;
 
-  // Pré-remplissage médiathèque
   thumbnailAssetId?: number | null;
   thumbnailAssetUrl?: string | null;
   bannerAssetId?: number | null;
   bannerAssetUrl?: string | null;
+
+  kind?: "GUIDE" | "COMPARATIF" | "ARTICLE";
+  guideCategoryId?: number | null;
 };
 
 type TabKey = "general" | "content" | "seo";
@@ -37,9 +44,6 @@ function TabPanel({
   active: boolean;
   children: React.ReactNode;
 }) {
-  // Important:
-  // - on ne démonte PAS => les inputs & l'éditeur gardent leur état
-  // - on cache via CSS + on retire de la navigation clavier / lecteurs
   return (
     <div
       className={active ? "block" : "hidden"}
@@ -50,47 +54,54 @@ function TabPanel({
   );
 }
 
-export default function PageForm({ initial }: { initial?: PageData }) {
+export default function PageForm({
+  initial,
+  guideCategories = [],
+}: {
+  initial?: PageData;
+  guideCategories?: GuideCategoryOption[];
+}) {
   const r = useRouter();
   const [saving, setSaving] = useState(false);
   const [activeTab, setActiveTab] = useState<TabKey>("general");
 
   const [currentSlug, setCurrentSlug] = useState<string>(initial?.slug ?? "");
-
-  async function onSubmit(formData: FormData) {
-  setSaving(true);
-
-  const res = await fetch(
-    initial?.id ? `/api/admin/pages/${initial.id}` : `/api/admin/pages`,
-    {
-      method: initial?.id ? "PUT" : "POST",
-      body: formData,
-    }
+  const [kind, setKind] = useState<"GUIDE" | "COMPARATIF" | "ARTICLE">(
+    initial?.kind ?? "ARTICLE"
   );
 
-  setSaving(false);
+  async function onSubmit(formData: FormData) {
+    setSaving(true);
 
-  if (!res.ok) {
-    alert("Erreur lors de l’enregistrement");
-    return;
-  }
+    const res = await fetch(
+      initial?.id ? `/api/admin/pages/${initial.id}` : `/api/admin/pages`,
+      {
+        method: initial?.id ? "PUT" : "POST",
+        body: formData,
+      }
+    );
 
-  // On évite le push vers /pages/[slug] (qui peut 404 si non publié)
-  if (initial?.id) {
-    r.push(`/admin/pages/${initial.id}/edit`);
-    return;
-  }
+    setSaving(false);
 
-  // Création : l’API doit idéalement renvoyer l’id créé
-  // Si elle ne le fait pas, on fallback sur /admin/pages
-  try {
-    const json = (await res.json()) as { id?: number };
-    if (json?.id) r.push(`/admin/pages/${json.id}/edit`);
-    else r.push(`/admin/pages`);
-  } catch {
-    r.push(`/admin/pages`);
+    if (!res.ok) {
+      alert("Erreur lors de l’enregistrement");
+      return;
+    }
+
+    if (initial?.id) {
+      r.push(`/admin/pages/${initial.id}/edit`);
+      r.refresh();
+      return;
+    }
+
+    try {
+      const json = (await res.json()) as { id?: number };
+      if (json?.id) r.push(`/admin/pages/${json.id}/edit`);
+      else r.push(`/admin/pages`);
+    } catch {
+      r.push(`/admin/pages`);
+    }
   }
-}
 
   const initialThumb =
     initial?.thumbnailAssetId && initial?.thumbnailAssetUrl
@@ -124,11 +135,12 @@ export default function PageForm({ initial }: { initial?: PageData }) {
     window.open(`/pages/${currentSlug}`, "_blank", "noopener,noreferrer");
   }
 
+  const showGuideCategory = kind === "GUIDE";
+
   return (
     <form action={onSubmit} className="grid gap-4">
-      {/* Bandeau top : publié + actions */}
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between rounded-2xl border border-slate-200 bg-white px-4 py-3 shadow-sm">
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-3 flex-wrap">
           <label className="inline-flex items-center gap-2 text-sm">
             <input
               type="checkbox"
@@ -137,12 +149,14 @@ export default function PageForm({ initial }: { initial?: PageData }) {
             />
             <span>Publié</span>
           </label>
+
           {initial?.id && (
             <span className="text-xs text-slate-500">
               ID #{initial.id} {currentSlug && `· /pages/${currentSlug}`}
             </span>
           )}
         </div>
+
         <div className="flex items-center gap-2">
           <button
             type="button"
@@ -158,7 +172,6 @@ export default function PageForm({ initial }: { initial?: PageData }) {
         </div>
       </div>
 
-      {/* Onglets */}
       <div className="border-b border-slate-200 flex gap-2 mt-1">
         <button
           type="button"
@@ -195,18 +208,60 @@ export default function PageForm({ initial }: { initial?: PageData }) {
         </button>
       </div>
 
-      {/* ✅ On garde les 3 panneaux MONTÉS, on cache seulement */}
       <TabPanel active={activeTab === "general"}>
         <div className="card grid gap-4">
-          <div className="grid gap-2">
-            <label className="text-sm font-medium text-slate-700">Titre</label>
-            <input
-              name="title"
-              defaultValue={initial?.title ?? ""}
-              className="input"
-              required
-            />
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="grid gap-2">
+              <label className="text-sm font-medium text-slate-700">Titre</label>
+              <input
+                name="title"
+                defaultValue={initial?.title ?? ""}
+                className="input"
+                required
+              />
+            </div>
+
+            <div className="grid gap-2">
+              <label className="text-sm font-medium text-slate-700">Type de contenu</label>
+              <select
+                name="kind"
+                className="input"
+                value={kind}
+                onChange={(e) =>
+                  setKind(e.target.value as "GUIDE" | "COMPARATIF" | "ARTICLE")
+                }
+              >
+                <option value="ARTICLE">Article</option>
+                <option value="GUIDE">Guide</option>
+                <option value="COMPARATIF">Comparatif</option>
+              </select>
+            </div>
           </div>
+
+          {showGuideCategory ? (
+            <div className="grid gap-2">
+              <label className="text-sm font-medium text-slate-700">
+                Catégorie de guide
+              </label>
+              <select
+                name="guideCategoryId"
+                defaultValue={initial?.guideCategoryId?.toString() ?? ""}
+                className="input"
+              >
+                <option value="">Aucune catégorie</option>
+                {guideCategories.map((cat) => (
+                  <option key={cat.id} value={cat.id}>
+                    {cat.name}
+                  </option>
+                ))}
+              </select>
+              <p className="text-xs text-slate-500">
+                Visible dans le hub Guides et dans le menu sous “Guides”.
+              </p>
+            </div>
+          ) : (
+            <input type="hidden" name="guideCategoryId" value="" />
+          )}
 
           <div className="grid gap-2">
             <label className="text-sm font-medium text-slate-700">
@@ -238,7 +293,6 @@ export default function PageForm({ initial }: { initial?: PageData }) {
             />
           </div>
 
-          {/* Miniature puis bannière, l’une sous l’autre */}
           <div className="grid gap-4">
             <div className="grid gap-2">
               <MediaPicker
@@ -307,6 +361,7 @@ export default function PageForm({ initial }: { initial?: PageData }) {
                 placeholder="Titre SEO (sinon titre de l’article)"
               />
             </div>
+
             <div className="grid gap-2">
               <label className="text-sm font-medium text-slate-700">
                 Meta Description

@@ -13,6 +13,17 @@ type NavItem = {
   children: NavItem[];
 };
 
+type GuideNavItem = {
+  id: number;
+  name: string;
+  slug: string;
+};
+
+type NavResponse = {
+  categories: NavItem[];
+  guideCategories: GuideNavItem[];
+};
+
 function IconMenu(props: React.SVGProps<SVGSVGElement>) {
   return (
     <svg viewBox="0 0 24 24" fill="none" aria-hidden="true" {...props}>
@@ -53,14 +64,19 @@ export default function Header() {
   }, []);
 
   const [navItems, setNavItems] = useState<NavItem[]>([]);
+  const [guideItems, setGuideItems] = useState<GuideNavItem[]>([]);
+
   useEffect(() => {
     let aborted = false;
     (async () => {
       try {
         const res = await fetch("/api/nav", { cache: "no-store" });
         if (!res.ok) return;
-        const data = (await res.json()) as NavItem[];
-        if (!aborted) setNavItems(data);
+        const data = (await res.json()) as NavResponse;
+        if (!aborted) {
+          setNavItems(data.categories ?? []);
+          setGuideItems(data.guideCategories ?? []);
+        }
       } catch {
         // silencieux
       }
@@ -93,12 +109,12 @@ export default function Header() {
         : "text-ink/80 hover:text-ink hover:bg-brand-500/10"
     }`;
 
-  const [openIds, setOpenIds] = useState<Record<number, boolean>>({});
+  const [openIds, setOpenIds] = useState<Record<string, boolean>>({});
   useEffect(() => {
     if (!mobileOpen) setOpenIds({});
   }, [mobileOpen]);
 
-  const toggleOpen = (id: number) => setOpenIds((s) => ({ ...s, [id]: !s[id] }));
+  const toggleOpen = (id: string) => setOpenIds((s) => ({ ...s, [id]: !s[id] }));
 
   const isActivePath = (slug: string) => Boolean(pathname?.startsWith(`/${slug}`));
 
@@ -169,9 +185,34 @@ export default function Header() {
         <div className="mx-auto max-w-6xl px-4 py-2">
           <nav className="hidden lg:block">
             <div className="flex items-center gap-1">
-              <Link href="/pages" className={navLinkClass(Boolean(pathname?.startsWith("/pages")))}>
-                Guides
-              </Link>
+              <div className="relative group">
+                <Link href="/pages" className={navLinkClass(Boolean(pathname?.startsWith("/pages")))} aria-haspopup="menu">
+                  Guides
+                </Link>
+
+                <div className="absolute left-0 top-full pt-2 opacity-0 pointer-events-none group-hover:opacity-100 group-hover:pointer-events-auto transition">
+                  <div className="w-[360px] rounded-2xl border border-ring bg-white shadow-card p-3">
+                    <div className="space-y-2">
+                      <div className="rounded-xl border border-ring/60 p-3 hover:bg-muted/40">
+                        <Link href="/pages" className="font-semibold text-sm text-ink hover:underline">
+                          Tous les guides
+                        </Link>
+                        <p className="mt-1 text-xs text-slate-500">
+                          Voir l’ensemble des guides, conseils et comparatifs.
+                        </p>
+                      </div>
+
+                      {guideItems.map((g) => (
+                        <div key={g.id} className="rounded-xl border border-ring/60 p-3 hover:bg-muted/40">
+                          <Link href={`/pages#${g.slug}`} className="font-semibold text-sm text-ink hover:underline">
+                            {g.name}
+                          </Link>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              </div>
 
               {topLevel.map((n) => {
                 const href = `/${n.slug}`;
@@ -249,9 +290,44 @@ export default function Header() {
 
             <div className="p-4 space-y-4">
               <div className="space-y-1">
-                <Link href="/pages" className={`block ${navLinkClass(Boolean(pathname?.startsWith("/pages")))}`}>
-                  Guides
-                </Link>
+                <div className="rounded-xl border border-ring/70 overflow-hidden">
+                  <div className="flex items-center">
+                    <Link
+                      href="/pages"
+                      className={`flex-1 px-3 py-2 text-sm font-medium ${pathname?.startsWith("/pages") ? "bg-brand-500/15" : "bg-white"}`}
+                    >
+                      Guides
+                    </Link>
+                    <button
+                      type="button"
+                      onClick={() => toggleOpen("guides")}
+                      className="px-3 py-2 text-sm text-slate-600 hover:bg-muted"
+                      aria-expanded={Boolean(openIds.guides)}
+                      aria-label={openIds.guides ? "Fermer Guides" : "Ouvrir Guides"}
+                    >
+                      {openIds.guides ? "–" : "+"}
+                    </button>
+                  </div>
+
+                  {openIds.guides ? (
+                    <div className="px-3 pb-2 pt-1 bg-muted/30">
+                      <ul className="space-y-1">
+                        <li>
+                          <Link href="/pages" className="block py-1 text-sm text-ink hover:underline">
+                            Tous les guides
+                          </Link>
+                        </li>
+                        {guideItems.map((g) => (
+                          <li key={g.id}>
+                            <Link href={`/pages#${g.slug}`} className="block py-1 text-sm text-ink hover:underline">
+                              {g.name}
+                            </Link>
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  ) : null}
+                </div>
 
                 {topLevel.map((n) => {
                   const hasChildren = (n.children?.length ?? 0) > 0;
@@ -265,7 +341,9 @@ export default function Header() {
                     );
                   }
 
-                  const opened = Boolean(openIds[n.id]);
+                  const key = `cat-${n.id}`;
+                  const opened = Boolean(openIds[key]);
+
                   return (
                     <div key={n.id} className="rounded-xl border border-ring/70 overflow-hidden">
                       <div className="flex items-center">
@@ -277,7 +355,7 @@ export default function Header() {
                         </Link>
                         <button
                           type="button"
-                          onClick={() => toggleOpen(n.id)}
+                          onClick={() => toggleOpen(key)}
                           className="px-3 py-2 text-sm text-slate-600 hover:bg-muted"
                           aria-expanded={opened}
                           aria-label={opened ? `Fermer ${n.name}` : `Ouvrir ${n.name}`}
