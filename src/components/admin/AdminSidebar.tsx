@@ -15,6 +15,7 @@ const NAV: Item[] = [
   { href: "/admin/categories", label: "Catégories", desc: "Texte + SEO" },
   { href: "/admin/brands", label: "Marques", desc: "Ajouter, modifier, supprimer" },
   { href: "/admin/pages", label: "Pages", desc: "Pages statiques / blog" },
+  { href: "/admin/guide-categories", label: "Catégories de guides", desc: "Classer les guides et gérer le menu Guides" },
   { href: "/admin/media", label: "Médiathèque", desc: "Uploader & gérer les images" },
   { href: "/admin/cookies", label: "Cookies (RGPD)", desc: "Consentement & liste des cookies" },
   { href: "/admin/design", label: "Design", desc: "Branding & homepage" },
