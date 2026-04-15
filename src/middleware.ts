@@ -31,7 +31,7 @@ function getSiteSlugFromHost(host: string): string {
 }
 
 export async function middleware(req: NextRequest) {
-  const { pathname } = req.nextUrl;
+  const { pathname, search } = req.nextUrl;
 
   if (pathname.startsWith("/admin")) {
     const token = (await getToken({
@@ -39,19 +39,19 @@ export async function middleware(req: NextRequest) {
       secret: process.env.NEXTAUTH_SECRET,
     })) as TokenWithSite | null;
 
-    // ✅ Pas connecté -> redirige vers ta page custom /auth/signin avec URL complète (même domaine)
+    // Non connecté => redirection vers /auth/signin
     if (!token) {
       const url = new URL("/auth/signin", req.url);
-      url.searchParams.set("callbackUrl", req.nextUrl.href);
+      url.searchParams.set("callbackUrl", `${pathname}${search}`);
       return NextResponse.redirect(url);
     }
 
-    // Doit être admin
+    // Connecté mais non admin => retour accueil
     if (token.role !== "ADMIN") {
       return NextResponse.redirect(new URL("/", req.url));
     }
 
-    // ✅ Check multi-site (admin limité à son site)
+    // Sécurité multi-site
     const host = getHost(req);
     const currentSite = getSiteSlugFromHost(host);
     const tokenSite = token.siteId ?? null;

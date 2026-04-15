@@ -4,7 +4,6 @@ import type { JWT } from "next-auth/jwt";
 import CredentialsProvider from "next-auth/providers/credentials";
 import GitHub from "next-auth/providers/github";
 import { prisma } from "@/lib/prisma";
-import { Role } from "@prisma/client";
 import bcrypt from "bcryptjs";
 
 type RoleLiteral = "ADMIN" | "USER";
@@ -30,7 +29,6 @@ export const authOptions: NextAuthOptions = {
         const pass = credentials?.password || "";
         if (!email || !pass) return null;
 
-        // ✅ On s’appuie sur la base (per-site admin compatible multi-sites)
         const dbUser = await prisma.user.findUnique({
           where: { email },
           select: {
@@ -73,8 +71,8 @@ export const authOptions: NextAuthOptions = {
     ...(process.env.GITHUB_ID && process.env.GITHUB_SECRET
       ? [
           GitHub({
-            clientId: process.env.GITHUB_ID!,
-            clientSecret: process.env.GITHUB_SECRET!,
+            clientId: process.env.GITHUB_ID,
+            clientSecret: process.env.GITHUB_SECRET,
             allowDangerousEmailAccountLinking: true,
             profile(profile): User {
               const u: UserWithRoleSite = {
@@ -97,26 +95,47 @@ export const authOptions: NextAuthOptions = {
     },
 
     async jwt({ token, user }): Promise<JWT> {
+      const typedToken = token as JwtWithRoleSite;
+
       if (user) {
-        const role = (user as UserWithRoleSite).role ?? "USER";
-        (token as JwtWithRoleSite).id = user.id;
-        (token as JwtWithRoleSite).role = role;
-        (token as JwtWithRoleSite).siteId = (user as UserWithRoleSite).siteId ?? null;
+        const typedUser = user as UserWithRoleSite;
+        typedToken.id = typedUser.id;
+        typedToken.role = typedUser.role ?? "USER";
+        typedToken.siteId = typedUser.siteId ?? null;
       }
-      return token;
+
+      return typedToken;
     },
 
     async session({ session, token }): Promise<Session> {
+      const typedToken = token as JwtWithRoleSite;
+
       if (session.user) {
-        (session.user as typeof session.user & { id: string; role: RoleLiteral; siteId: string | null }).id =
-          (token as JwtWithRoleSite).id ?? "";
+        (
+          session.user as typeof session.user & {
+            id: string;
+            role: RoleLiteral;
+            siteId: string | null;
+          }
+        ).id = typedToken.id ?? "";
 
-        (session.user as typeof session.user & { id: string; role: RoleLiteral; siteId: string | null }).role =
-          ((token as JwtWithRoleSite).role ?? "USER") as RoleLiteral;
+        (
+          session.user as typeof session.user & {
+            id: string;
+            role: RoleLiteral;
+            siteId: string | null;
+          }
+        ).role = (typedToken.role ?? "USER") as RoleLiteral;
 
-        (session.user as typeof session.user & { id: string; role: RoleLiteral; siteId: string | null }).siteId =
-          (token as JwtWithRoleSite).siteId ?? null;
+        (
+          session.user as typeof session.user & {
+            id: string;
+            role: RoleLiteral;
+            siteId: string | null;
+          }
+        ).siteId = typedToken.siteId ?? null;
       }
+
       return session;
     },
 
@@ -127,24 +146,27 @@ export const authOptions: NextAuthOptions = {
 
         if (callbackUrl) {
           if (callbackUrl.startsWith("/")) return `${baseUrl}${callbackUrl}`;
+
           try {
             const absCb = new URL(callbackUrl);
             if (absCb.origin === baseUrl) return absCb.toString();
           } catch {
-            /* ignore */
+            // ignore
           }
         }
       } catch {
-        /* ignore */
+        // ignore
       }
 
       if (url.startsWith("/")) return `${baseUrl}${url}`;
+
       try {
         const abs = new URL(url);
         if (abs.origin === baseUrl) return abs.toString();
       } catch {
-        /* ignore */
+        // ignore
       }
+
       return baseUrl;
     },
   },

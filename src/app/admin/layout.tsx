@@ -2,7 +2,7 @@
 import type { ReactNode } from "react";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
-import { notFound } from "next/navigation";
+import { redirect } from "next/navigation";
 import { headers } from "next/headers";
 import AdminSidebar from "@/components/admin/AdminSidebar";
 
@@ -24,6 +24,7 @@ function getSiteSlugFromHost(host: string): string {
 
   if (host.includes("meilleur-robot")) return "meilleur-robot";
   if (host.includes("meilleur-ski") || host.includes("achat-ski")) return "meilleur-ski";
+
   return process.env.DEFAULT_SITE_SLUG || "meilleur-ski";
 }
 
@@ -31,22 +32,35 @@ export default async function AdminLayout({ children }: { children: ReactNode })
   const session = await getServerSession(authOptions);
   const role = session?.user?.role;
 
-  if (!session || role !== "ADMIN") return notFound();
+  // Non connecté => signin
+  if (!session) {
+    redirect("/auth/signin");
+  }
 
-  // ✅ Next.js 15: headers() peut être async côté types -> on await
+  // Connecté mais non admin => accueil
+  if (role !== "ADMIN") {
+    redirect("/");
+  }
+
   const h = await headers();
   const host = (h.get("host") || "").toLowerCase().split(":")[0];
   const currentSite = getSiteSlugFromHost(host);
 
-  const userSiteId = (session.user as unknown as SessionUserWithSite).siteId ?? null;
-  if (userSiteId && userSiteId !== currentSite) return notFound();
+  const userSiteId = (session.user as typeof session.user & SessionUserWithSite).siteId ?? null;
+
+  // Admin d'un autre site => accueil
+  if (userSiteId && userSiteId !== currentSite) {
+    redirect("/");
+  }
 
   return (
     <div className="mx-auto max-w-6xl px-4 py-6 grid grid-cols-12 gap-6">
       <aside className="col-span-12 md:col-span-3 lg:col-span-3">
         <AdminSidebar />
       </aside>
-      <section className="col-span-12 md:col-span-9 lg:col-span-9">{children}</section>
+      <section className="col-span-12 md:col-span-9 lg:col-span-9">
+        {children}
+      </section>
     </div>
   );
 }
