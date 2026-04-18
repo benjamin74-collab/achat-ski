@@ -31,7 +31,7 @@ function getSiteSlugFromHost(host: string): string {
 }
 
 export async function middleware(req: NextRequest) {
-  const { pathname, search } = req.nextUrl;
+  const { pathname } = req.nextUrl;
 
   if (pathname.startsWith("/admin")) {
     const token = (await getToken({
@@ -39,11 +39,9 @@ export async function middleware(req: NextRequest) {
       secret: process.env.NEXTAUTH_SECRET,
     })) as TokenWithSite | null;
 
-    // Non connecté => redirection vers /auth/signin
+    // Non connecté => redirection vers l'accueil
     if (!token) {
-      const url = new URL("/auth/signin", req.url);
-      url.searchParams.set("callbackUrl", `${pathname}${search}`);
-      return NextResponse.redirect(url);
+      return NextResponse.redirect(new URL("/", req.url));
     }
 
     // Connecté mais non admin => retour accueil

@@ -32,9 +32,9 @@ export default async function AdminLayout({ children }: { children: ReactNode })
   const session = await getServerSession(authOptions);
   const role = session?.user?.role;
 
-  // Non connecté => signin
+  // Non connecté => accueil
   if (!session) {
-    redirect("/auth/signin");
+    redirect("/");
   }
 
   // Connecté mais non admin => accueil
