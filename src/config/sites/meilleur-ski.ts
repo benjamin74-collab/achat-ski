@@ -93,11 +93,11 @@ export const meilleurSki: SiteConfig = {
       },
     ],
     topBrands: [
-      { name: "Rossignol", slug: "rossignol", logo: "/brands/2026-02-18T21-35-20-364Z-logo-rossignol.svg" },
-      { name: "Salomon", slug: "salomon", logo: "/brands/2026-03-09T20-58-37-112Z-logo-salomon.png" },
-      { name: "Head", slug: "head", logo: "/brands/2026-03-09T21-26-26-434Z-logo-head.png" },
-      { name: "Black Crows", slug: "black-crows", logo: "/brands/2026-03-09T21-35-32-594Z-Logo-black-crows.png" },
-      { name: "Atomic", slug: "atomic", logo: "/brands/2026-03-09T21-41-48-373Z-Atomic-Skis-logo.png" },
+      { name: "Rossignol", slug: "rossignol", logo: "https://oaa44rjkpdy1hsiv.public.blob.vercel-storage.com/brands/2026-02-18T21-35-20-364Z-logo-rossignol.svg" },
+      { name: "Salomon", slug: "salomon", logo: "https://oaa44rjkpdy1hsiv.public.blob.vercel-storage.com/brands/2026-03-09T20-58-37-112Z-logo-salomon.png" },
+      { name: "Head", slug: "head", logo: "https://oaa44rjkpdy1hsiv.public.blob.vercel-storage.com/brands/2026-03-09T21-26-26-434Z-logo-head.png" },
+      { name: "Black Crows", slug: "black-crows", logo: "https://oaa44rjkpdy1hsiv.public.blob.vercel-storage.com/brands/2026-03-09T21-35-32-594Z-Logo-black-crows.png" },
+      { name: "Atomic", slug: "atomic", logo: "https://oaa44rjkpdy1hsiv.public.blob.vercel-storage.com/brands/2026-03-09T21-41-48-373Z-Atomic-Skis-logo.png" },
     ],
   },
 };
