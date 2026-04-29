@@ -54,25 +54,133 @@ function getSearchPlaceholder(siteId: string | undefined) {
   return "Rechercher un ski, modèle ou marque…";
 }
 
+function MegaMenu({ item }: { item: NavItem }) {
+  return (
+    <div className="absolute left-1/2 top-full z-50 w-[720px] -translate-x-1/2 pt-3 opacity-0 pointer-events-none translate-y-2 group-hover:opacity-100 group-hover:pointer-events-auto group-hover:translate-y-0 transition-all duration-200">
+      <div className="overflow-hidden rounded-[1.35rem] border border-slate-200/80 bg-white shadow-[0_24px_70px_rgba(15,23,42,0.16)]">
+        <div className="grid grid-cols-[1fr_220px]">
+          <div className="p-4">
+            <div className="mb-3 flex items-center justify-between gap-4">
+              <div>
+                <p className="text-xs font-semibold uppercase tracking-[0.18em] text-brand-600">
+                  Catégorie
+                </p>
+                <Link href={`/${item.slug}`} className="mt-1 block text-lg font-bold text-ink hover:text-brand-600">
+                  {item.name}
+                </Link>
+              </div>
+
+              <Link
+                href={`/${item.slug}`}
+                className="rounded-full border border-slate-200 px-3 py-1.5 text-xs font-semibold text-slate-700 hover:border-brand-300 hover:bg-brand-50 hover:text-brand-700"
+              >
+                Tout voir
+              </Link>
+            </div>
+
+            <div className="grid grid-cols-2 gap-2.5">
+              {item.children.map((child) => (
+                <div
+                  key={child.id}
+                  className="group/card rounded-2xl border border-slate-200 bg-white p-3.5 transition hover:border-brand-200 hover:bg-slate-50/80"
+                >
+                  <Link href={`/${child.slug}`} className="block text-sm font-bold text-slate-900 group-hover/card:text-brand-700">
+                    {child.name}
+                  </Link>
+
+                  {(child.children?.length ?? 0) > 0 ? (
+                    <ul className="mt-2.5 space-y-1.5">
+                      {child.children.slice(0, 5).map((sub) => (
+                        <li key={sub.id}>
+                          <Link
+                            href={`/${sub.slug}`}
+                            className="block text-sm leading-5 text-slate-600 hover:text-brand-700"
+                          >
+                            {sub.name}
+                          </Link>
+                        </li>
+                      ))}
+                      {child.children.length > 5 ? (
+                        <li className="pt-1 text-xs font-medium text-slate-400">
+                          + {child.children.length - 5} autres catégories
+                        </li>
+                      ) : null}
+                    </ul>
+                  ) : (
+                    <p className="mt-2 text-xs leading-5 text-slate-500">
+                      Comparatifs, prix et meilleurs choix.
+                    </p>
+                  )}
+                </div>
+              ))}
+            </div>
+          </div>
+
+          <aside className="border-l border-slate-200 bg-slate-50/80 p-4">
+            <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">
+              Accès rapide
+            </p>
+
+            <div className="mt-4 space-y-2">
+              <Link
+                href={`/${item.slug}`}
+                className="block rounded-2xl bg-white p-3 text-sm font-semibold text-slate-900 shadow-sm ring-1 ring-slate-200 hover:bg-brand-50 hover:text-brand-700 hover:ring-brand-200"
+              >
+                Voir toute la catégorie
+              </Link>
+
+              <Link
+                href="/pages"
+                className="block rounded-2xl bg-white p-3 text-sm font-semibold text-slate-900 shadow-sm ring-1 ring-slate-200 hover:bg-brand-50 hover:text-brand-700 hover:ring-brand-200"
+              >
+                Guides d’achat
+              </Link>
+
+              <Link
+                href="/search"
+                className="block rounded-2xl bg-white p-3 text-sm font-semibold text-slate-900 shadow-sm ring-1 ring-slate-200 hover:bg-brand-50 hover:text-brand-700 hover:ring-brand-200"
+              >
+                Comparer les prix
+              </Link>
+            </div>
+
+            <div className="mt-5 rounded-2xl bg-white p-3 ring-1 ring-slate-200">
+              <p className="text-sm font-bold text-slate-900">Conseil expert</p>
+              <p className="mt-1 text-xs leading-5 text-slate-500">
+                Comparez les modèles, les marques et les prix avant d’acheter votre matériel.
+              </p>
+            </div>
+          </aside>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default function Header() {
   const pathname = usePathname();
 
   const [searchPlaceholder, setSearchPlaceholder] = useState("Rechercher…");
+  const [navItems, setNavItems] = useState<NavItem[]>([]);
+  const [guideItems, setGuideItems] = useState<GuideNavItem[]>([]);
+  const [mobileOpen, setMobileOpen] = useState(false);
+  const [openIds, setOpenIds] = useState<Record<string, boolean>>({});
+
   useEffect(() => {
     const siteId = document.documentElement.dataset.siteId;
     setSearchPlaceholder(getSearchPlaceholder(siteId));
   }, []);
 
-  const [navItems, setNavItems] = useState<NavItem[]>([]);
-  const [guideItems, setGuideItems] = useState<GuideNavItem[]>([]);
-
   useEffect(() => {
     let aborted = false;
+
     (async () => {
       try {
         const res = await fetch("/api/nav", { cache: "no-store" });
         if (!res.ok) return;
+
         const data = (await res.json()) as NavResponse;
+
         if (!aborted) {
           setNavItems(data.categories ?? []);
           setGuideItems(data.guideCategories ?? []);
@@ -81,40 +189,39 @@ export default function Header() {
         // silencieux
       }
     })();
+
     return () => {
       aborted = true;
     };
   }, []);
 
-  const topLevel = navItems;
-
-  const [mobileOpen, setMobileOpen] = useState(false);
   useEffect(() => {
     setMobileOpen(false);
   }, [pathname]);
 
   useEffect(() => {
     if (!mobileOpen) return;
+
     const prev = document.body.style.overflow;
     document.body.style.overflow = "hidden";
+
     return () => {
       document.body.style.overflow = prev;
     };
   }, [mobileOpen]);
 
-  const navLinkClass = (active: boolean) =>
-    `px-3 py-2 text-sm rounded-lg transition no-underline hover:no-underline ${
-      active
-        ? "bg-brand-500/20 text-ink border border-brand-200"
-        : "text-ink/80 hover:text-ink hover:bg-brand-500/10"
-    }`;
-
-  const [openIds, setOpenIds] = useState<Record<string, boolean>>({});
   useEffect(() => {
     if (!mobileOpen) setOpenIds({});
   }, [mobileOpen]);
 
   const toggleOpen = (id: string) => setOpenIds((s) => ({ ...s, [id]: !s[id] }));
+
+  const navLinkClass = (active: boolean) =>
+    `relative inline-flex items-center rounded-full px-3.5 py-2 text-sm font-medium transition no-underline hover:no-underline ${
+      active
+        ? "bg-brand-500/15 text-ink"
+        : "text-slate-700 hover:bg-slate-100 hover:text-ink"
+    }`;
 
   const isActivePath = (slug: string) => Boolean(pathname?.startsWith(`/${slug}`));
 
@@ -132,15 +239,15 @@ export default function Header() {
             <div className="hidden lg:flex flex-1 justify-center">
               <form action="/search" className="w-full max-w-[640px]">
                 <div className="relative">
-                  <IconSearch className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+                  <IconSearch className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
                   <input
                     name="q"
                     placeholder={searchPlaceholder}
-                    className="w-full rounded-xl bg-white/95 text-ink border border-ring pl-10 pr-28 py-2 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-brand-500"
+                    className="w-full rounded-xl border border-ring bg-white/95 py-2 pl-10 pr-28 text-ink placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-brand-500"
                   />
                   <button
                     aria-label="Rechercher"
-                    className="absolute right-1 top-1 rounded-lg px-3 py-1.5 bg-sec-500 hover:bg-sec-600 text-white text-sm"
+                    className="absolute right-1 top-1 rounded-lg bg-sec-500 px-3 py-1.5 text-sm text-white hover:bg-sec-600"
                   >
                     Rechercher
                   </button>
@@ -151,7 +258,7 @@ export default function Header() {
             <div className="ml-auto flex items-center gap-2">
               <button
                 type="button"
-                className="lg:hidden inline-flex items-center justify-center h-10 w-10 rounded-xl border border-ring bg-white hover:bg-muted"
+                className="inline-flex h-10 w-10 items-center justify-center rounded-xl border border-ring bg-white hover:bg-muted lg:hidden"
                 aria-label="Ouvrir le menu"
                 onClick={() => setMobileOpen(true)}
               >
@@ -163,15 +270,15 @@ export default function Header() {
           <div className="mt-3 lg:hidden">
             <form action="/search">
               <div className="relative">
-                <IconSearch className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+                <IconSearch className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
                 <input
                   name="q"
                   placeholder={searchPlaceholder}
-                  className="w-full rounded-xl bg-white/95 text-ink border border-ring pl-10 pr-28 py-2 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-brand-500"
+                  className="w-full rounded-xl border border-ring bg-white/95 py-2 pl-10 pr-20 text-ink placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-brand-500"
                 />
                 <button
                   aria-label="Rechercher"
-                  className="absolute right-1 top-1 rounded-lg px-3 py-1.5 bg-sec-500 hover:bg-sec-600 text-white text-sm"
+                  className="absolute right-1 top-1 rounded-lg bg-sec-500 px-3 py-1.5 text-sm text-white hover:bg-sec-600"
                 >
                   Go
                 </button>
@@ -181,40 +288,41 @@ export default function Header() {
         </div>
       </div>
 
-      <div className="bg-white border-t border-ring">
-        <div className="mx-auto max-w-6xl px-4 py-2">
+      <div className="border-t border-ring bg-white">
+        <div className="mx-auto max-w-6xl px-4">
           <nav className="hidden lg:block">
-            <div className="flex items-center gap-1">
-              <div className="relative group">
+            <div className="flex min-h-13 items-center gap-1">
+              <div className="group relative">
                 <Link href="/pages" className={navLinkClass(Boolean(pathname?.startsWith("/pages")))} aria-haspopup="menu">
                   Guides
                 </Link>
 
-                <div className="absolute left-0 top-full pt-2 opacity-0 pointer-events-none group-hover:opacity-100 group-hover:pointer-events-auto transition">
-                  <div className="w-[360px] rounded-2xl border border-ring bg-white shadow-card p-3">
-                    <div className="space-y-2">
-                      <div className="rounded-xl border border-ring/60 p-3 hover:bg-muted/40">
-                        <Link href="/pages" className="font-semibold text-sm text-ink hover:underline">
-                          Tous les guides
-                        </Link>
-                        <p className="mt-1 text-xs text-slate-500">
-                          Voir l’ensemble des guides, conseils et comparatifs.
-                        </p>
-                      </div>
+                <div className="absolute left-0 top-full z-50 w-[420px] pt-3 opacity-0 pointer-events-none translate-y-2 group-hover:opacity-100 group-hover:pointer-events-auto group-hover:translate-y-0 transition-all duration-200">
+                  <div className="rounded-[1.35rem] border border-slate-200/80 bg-white p-4 shadow-[0_24px_70px_rgba(15,23,42,0.16)]">
+                    <p className="text-xs font-semibold uppercase tracking-[0.18em] text-brand-600">
+                      Guides
+                    </p>
 
+                    <Link href="/pages" className="mt-1 block text-lg font-bold text-ink hover:text-brand-600">
+                      Tous les guides
+                    </Link>
+
+                    <div className="mt-4 grid gap-2">
                       {guideItems.map((g) => (
-                        <div key={g.id} className="rounded-xl border border-ring/60 p-3 hover:bg-muted/40">
-                          <Link href={`/pages#${g.slug}`} className="font-semibold text-sm text-ink hover:underline">
-                            {g.name}
-                          </Link>
-                        </div>
+                        <Link
+                          key={g.id}
+                          href={`/pages#${g.slug}`}
+                          className="rounded-2xl border border-slate-200 bg-white p-3 text-sm font-semibold text-slate-900 hover:border-brand-200 hover:bg-brand-50 hover:text-brand-700"
+                        >
+                          {g.name}
+                        </Link>
                       ))}
                     </div>
                   </div>
                 </div>
               </div>
 
-              {topLevel.map((n) => {
+              {navItems.map((n) => {
                 const href = `/${n.slug}`;
                 const active = Boolean(pathname?.startsWith(href));
                 const hasChildren = (n.children?.length ?? 0) > 0;
@@ -228,42 +336,12 @@ export default function Header() {
                 }
 
                 return (
-                  <div key={n.id} className="relative group">
+                  <div key={n.id} className="group relative">
                     <Link href={href} className={navLinkClass(active)} aria-haspopup="menu">
                       {n.name}
                     </Link>
 
-                    <div className="absolute left-0 top-full pt-2 opacity-0 pointer-events-none group-hover:opacity-100 group-hover:pointer-events-auto transition">
-                      <div className="w-[520px] rounded-2xl border border-ring bg-white shadow-card p-3">
-                        <div className="grid grid-cols-2 gap-2">
-                          {n.children.map((c) => (
-                            <div key={c.id} className="rounded-xl border border-ring/60 p-3 hover:bg-muted/40">
-                              <Link href={`/${c.slug}`} className="font-semibold text-sm text-ink hover:underline">
-                                {c.name}
-                              </Link>
-
-                              {(c.children?.length ?? 0) > 0 ? (
-                                <ul className="mt-2 space-y-1">
-                                  {c.children.slice(0, 6).map((g) => (
-                                    <li key={g.id}>
-                                      <Link
-                                        href={`/${g.slug}`}
-                                        className="text-sm text-slate-600 hover:text-ink hover:underline"
-                                      >
-                                        {g.name}
-                                      </Link>
-                                    </li>
-                                  ))}
-                                  {c.children.length > 6 ? (
-                                    <li className="text-xs text-slate-500">+ {c.children.length - 6} autres…</li>
-                                  ) : null}
-                                </ul>
-                              ) : null}
-                            </div>
-                          ))}
-                        </div>
-                      </div>
-                    </div>
+                    <MegaMenu item={n} />
                   </div>
                 );
               })}
@@ -274,13 +352,14 @@ export default function Header() {
 
       {mobileOpen ? (
         <div className="lg:hidden">
-          <div className="fixed inset-0 bg-black/40 z-50" onClick={() => setMobileOpen(false)} />
-          <div className="fixed top-0 right-0 h-full w-[86%] max-w-sm bg-white z-50 border-l border-ring shadow-card">
-            <div className="flex items-center justify-between px-4 py-3 border-b border-ring">
+          <div className="fixed inset-0 z-50 bg-black/40" onClick={() => setMobileOpen(false)} />
+
+          <div className="fixed right-0 top-0 z-50 h-full w-[86%] max-w-sm border-l border-ring bg-white shadow-card">
+            <div className="flex items-center justify-between border-b border-ring px-4 py-3">
               <span className="text-sm font-semibold text-slate-800">Menu</span>
               <button
                 type="button"
-                className="inline-flex items-center justify-center h-10 w-10 rounded-xl border border-ring bg-white hover:bg-muted"
+                className="inline-flex h-10 w-10 items-center justify-center rounded-xl border border-ring bg-white hover:bg-muted"
                 aria-label="Fermer le menu"
                 onClick={() => setMobileOpen(false)}
               >
@@ -288,13 +367,15 @@ export default function Header() {
               </button>
             </div>
 
-            <div className="p-4 space-y-4">
-              <div className="space-y-1">
-                <div className="rounded-xl border border-ring/70 overflow-hidden">
+            <div className="h-[calc(100vh-65px)] overflow-y-auto p-4">
+              <div className="space-y-2">
+                <div className="overflow-hidden rounded-xl border border-ring/70">
                   <div className="flex items-center">
                     <Link
                       href="/pages"
-                      className={`flex-1 px-3 py-2 text-sm font-medium ${pathname?.startsWith("/pages") ? "bg-brand-500/15" : "bg-white"}`}
+                      className={`flex-1 px-3 py-2 text-sm font-medium ${
+                        pathname?.startsWith("/pages") ? "bg-brand-500/15" : "bg-white"
+                      }`}
                     >
                       Guides
                     </Link>
@@ -303,23 +384,22 @@ export default function Header() {
                       onClick={() => toggleOpen("guides")}
                       className="px-3 py-2 text-sm text-slate-600 hover:bg-muted"
                       aria-expanded={Boolean(openIds.guides)}
-                      aria-label={openIds.guides ? "Fermer Guides" : "Ouvrir Guides"}
                     >
                       {openIds.guides ? "–" : "+"}
                     </button>
                   </div>
 
                   {openIds.guides ? (
-                    <div className="px-3 pb-2 pt-1 bg-muted/30">
+                    <div className="bg-muted/30 px-3 pb-2 pt-1">
                       <ul className="space-y-1">
                         <li>
-                          <Link href="/pages" className="block py-1 text-sm text-ink hover:underline">
+                          <Link href="/pages" className="block py-1 text-sm text-ink">
                             Tous les guides
                           </Link>
                         </li>
                         {guideItems.map((g) => (
                           <li key={g.id}>
-                            <Link href={`/pages#${g.slug}`} className="block py-1 text-sm text-ink hover:underline">
+                            <Link href={`/pages#${g.slug}`} className="block py-1 text-sm text-ink">
                               {g.name}
                             </Link>
                           </li>
@@ -329,13 +409,19 @@ export default function Header() {
                   ) : null}
                 </div>
 
-                {topLevel.map((n) => {
+                {navItems.map((n) => {
                   const hasChildren = (n.children?.length ?? 0) > 0;
                   const active = isActivePath(n.slug);
 
                   if (!hasChildren) {
                     return (
-                      <Link key={n.id} href={`/${n.slug}`} className={`block ${navLinkClass(active)}`}>
+                      <Link
+                        key={n.id}
+                        href={`/${n.slug}`}
+                        className={`block rounded-xl px-3 py-2 text-sm font-medium ${
+                          active ? "bg-brand-500/15 text-ink" : "text-slate-700 hover:bg-muted"
+                        }`}
+                      >
                         {n.name}
                       </Link>
                     );
@@ -345,11 +431,13 @@ export default function Header() {
                   const opened = Boolean(openIds[key]);
 
                   return (
-                    <div key={n.id} className="rounded-xl border border-ring/70 overflow-hidden">
+                    <div key={n.id} className="overflow-hidden rounded-xl border border-ring/70">
                       <div className="flex items-center">
                         <Link
                           href={`/${n.slug}`}
-                          className={`flex-1 px-3 py-2 text-sm font-medium ${active ? "bg-brand-500/15" : "bg-white"}`}
+                          className={`flex-1 px-3 py-2 text-sm font-medium ${
+                            active ? "bg-brand-500/15" : "bg-white"
+                          }`}
                         >
                           {n.name}
                         </Link>
@@ -358,29 +446,25 @@ export default function Header() {
                           onClick={() => toggleOpen(key)}
                           className="px-3 py-2 text-sm text-slate-600 hover:bg-muted"
                           aria-expanded={opened}
-                          aria-label={opened ? `Fermer ${n.name}` : `Ouvrir ${n.name}`}
                         >
                           {opened ? "–" : "+"}
                         </button>
                       </div>
 
                       {opened ? (
-                        <div className="px-3 pb-2 pt-1 bg-muted/30">
+                        <div className="bg-muted/30 px-3 pb-2 pt-1">
                           <ul className="space-y-1">
                             {n.children.map((c) => (
                               <li key={c.id}>
-                                <Link href={`/${c.slug}`} className="block py-1 text-sm text-ink hover:underline">
+                                <Link href={`/${c.slug}`} className="block py-1 text-sm font-medium text-ink">
                                   {c.name}
                                 </Link>
 
                                 {(c.children?.length ?? 0) > 0 ? (
-                                  <ul className="mt-1 ml-3 border-l border-ring/60 pl-3 space-y-1">
+                                  <ul className="ml-3 mt-1 space-y-1 border-l border-ring/60 pl-3">
                                     {c.children.map((g) => (
                                       <li key={g.id}>
-                                        <Link
-                                          href={`/${g.slug}`}
-                                          className="block py-0.5 text-sm text-slate-600 hover:text-ink hover:underline"
-                                        >
+                                        <Link href={`/${g.slug}`} className="block py-0.5 text-sm text-slate-600">
                                           {g.name}
                                         </Link>
                                       </li>
