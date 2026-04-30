@@ -54,9 +54,18 @@ function getSearchPlaceholder(siteId: string | undefined) {
   return "Rechercher un ski, modèle ou marque…";
 }
 
-function MegaMenu({ item }: { item: NavItem }) {
+function MegaMenu({ item, align = "center" }: { item: NavItem; align?: "left" | "center" | "right" }) {
+  const positionClass =
+    align === "left"
+      ? "left-0"
+      : align === "right"
+        ? "right-0"
+        : "left-1/2 -translate-x-1/2";
+
   return (
-    <div className="absolute left-1/2 top-full z-50 w-[720px] -translate-x-1/2 pt-3 opacity-0 pointer-events-none translate-y-2 group-hover:opacity-100 group-hover:pointer-events-auto group-hover:translate-y-0 transition-all duration-200">
+    <div
+      className={`absolute top-full z-50 w-[720px] max-w-[calc(100vw-2rem)] pt-3 opacity-0 pointer-events-none translate-y-2 group-hover:opacity-100 group-hover:pointer-events-auto group-hover:translate-y-0 transition-all duration-200 ${positionClass}`}
+    >
       <div className="overflow-hidden rounded-[1.35rem] border border-slate-200/80 bg-white shadow-[0_24px_70px_rgba(15,23,42,0.16)]">
         <div className="grid grid-cols-[1fr_220px]">
           <div className="p-4">
@@ -92,10 +101,7 @@ function MegaMenu({ item }: { item: NavItem }) {
                     <ul className="mt-2.5 space-y-1.5">
                       {child.children.slice(0, 5).map((sub) => (
                         <li key={sub.id}>
-                          <Link
-                            href={`/${sub.slug}`}
-                            className="block text-sm leading-5 text-slate-600 hover:text-brand-700"
-                          >
+                          <Link href={`/${sub.slug}`} className="block text-sm leading-5 text-slate-600 hover:text-brand-700">
                             {sub.name}
                           </Link>
                         </li>
@@ -217,7 +223,7 @@ export default function Header() {
   const toggleOpen = (id: string) => setOpenIds((s) => ({ ...s, [id]: !s[id] }));
 
   const navLinkClass = (active: boolean) =>
-    `relative inline-flex items-center rounded-full px-3.5 py-2 text-sm font-medium transition no-underline hover:no-underline ${
+    `relative inline-flex min-h-[44px] max-w-[132px] items-center justify-center rounded-full px-3 py-1.5 text-center text-[13px] font-medium leading-tight transition no-underline hover:no-underline xl:max-w-none xl:px-3.5 xl:text-sm ${
       active
         ? "bg-brand-500/15 text-ink"
         : "text-slate-700 hover:bg-slate-100 hover:text-ink"
@@ -291,13 +297,13 @@ export default function Header() {
       <div className="border-t border-ring bg-white">
         <div className="mx-auto max-w-6xl px-4">
           <nav className="hidden lg:block">
-            <div className="flex min-h-13 items-center gap-1">
+            <div className="flex min-h-13 items-center justify-center gap-1">
               <div className="group relative">
                 <Link href="/pages" className={navLinkClass(Boolean(pathname?.startsWith("/pages")))} aria-haspopup="menu">
                   Guides
                 </Link>
 
-                <div className="absolute left-0 top-full z-50 w-[420px] pt-3 opacity-0 pointer-events-none translate-y-2 group-hover:opacity-100 group-hover:pointer-events-auto group-hover:translate-y-0 transition-all duration-200">
+                <div className="absolute left-0 top-full z-50 w-[420px] max-w-[calc(100vw-2rem)] pt-3 opacity-0 pointer-events-none translate-y-2 group-hover:opacity-100 group-hover:pointer-events-auto group-hover:translate-y-0 transition-all duration-200">
                   <div className="rounded-[1.35rem] border border-slate-200/80 bg-white p-4 shadow-[0_24px_70px_rgba(15,23,42,0.16)]">
                     <p className="text-xs font-semibold uppercase tracking-[0.18em] text-brand-600">
                       Guides
@@ -322,7 +328,7 @@ export default function Header() {
                 </div>
               </div>
 
-              {navItems.map((n) => {
+              {navItems.map((n, index) => {
                 const href = `/${n.slug}`;
                 const active = Boolean(pathname?.startsWith(href));
                 const hasChildren = (n.children?.length ?? 0) > 0;
@@ -341,7 +347,10 @@ export default function Header() {
                       {n.name}
                     </Link>
 
-                    <MegaMenu item={n} />
+                    <MegaMenu
+                      item={n}
+                      align={index <= 1 ? "left" : index >= navItems.length - 2 ? "right" : "center"}
+                    />
                   </div>
                 );
               })}
