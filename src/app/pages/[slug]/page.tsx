@@ -8,7 +8,6 @@ import { sanitizeHtml } from "@/lib/sanitize";
 import { getCurrentSiteId, getCurrentSiteUrl } from "@/lib/currentSite";
 import ShareButtons from "@/components/ShareButtons";
 import RelatedArticles from "@/components/RelatedArticles";
-import Comments from "@/components/Comments";
 import AdsenseScript from "@/components/ads/AdsenseScript";
 import AdsenseUnit from "@/components/ads/AdsenseUnit";
 import { injectInlineAdMarker, splitHtmlByMarker } from "@/lib/ads";
@@ -68,6 +67,22 @@ function addHeadingIdsAndBuildToc(html: string): { html: string; toc: TocItem[] 
 
 function formatDateISO(d: Date) {
   return d.toISOString().slice(0, 10);
+}
+
+function readingTime(html: string) {
+  const words = stripTags(html).split(/\s+/).filter(Boolean).length;
+  return Math.max(1, Math.ceil(words / 220));
+}
+
+function adBox(children: React.ReactNode) {
+  return (
+    <div className="overflow-hidden rounded-3xl border border-slate-200 bg-white p-3 shadow-sm md:p-4">
+      <div className="mb-2 text-center text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-400">
+        Publicité
+      </div>
+      {children}
+    </div>
+  );
 }
 
 export async function generateMetadata({ params }: { params: Params }): Promise<Metadata> {
@@ -152,6 +167,7 @@ export default async function PageDetail({ params }: { params: Params }) {
   const heroSrc = bannerSrc ?? thumbSrc;
 
   const sanitized = sanitizeHtml(page.content || "");
+  const estimatedReadingTime = readingTime(sanitized);
   const htmlWithAutoAd = injectInlineAdMarker(sanitized);
   const { html: htmlWithIds, toc } = addHeadingIdsAndBuildToc(htmlWithAutoAd);
   const { before: htmlBeforeAd, after: htmlAfterAd, hasMarker } = splitHtmlByMarker(htmlWithIds);
@@ -167,6 +183,7 @@ export default async function PageDetail({ params }: { params: Params }) {
         createdAt: true,
         thumbnail: { select: { publicUrl: true } },
         thumbnailUrl: true,
+        guideCategory: { select: { name: true } },
       },
     }),
     prisma.page.findMany({
@@ -180,6 +197,7 @@ export default async function PageDetail({ params }: { params: Params }) {
         createdAt: true,
         thumbnail: { select: { publicUrl: true } },
         thumbnailUrl: true,
+        guideCategory: { select: { name: true } },
       },
     }),
   ]);
@@ -246,262 +264,306 @@ export default async function PageDetail({ params }: { params: Params }) {
   const hasAdsense = !!adSettings?.enabled && !!adSettings.adsenseClient;
 
   return (
-    <section id="top" className="py-2 md:py-4">
+    <section id="top" className="bg-slate-50/70 pb-12">
       <link rel="canonical" href={canonicalUrl} />
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbJsonLd) }} />
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(blogPostingJsonLd) }} />
 
       {hasAdsense ? <AdsenseScript client={adSettings.adsenseClient!} /> : null}
 
-      <nav className="text-xs md:text-sm text-slate-600 flex flex-wrap items-center gap-2">
-        <Link href="/" className="underline underline-offset-2">
-          Accueil
-        </Link>
-        <span className="text-slate-400">/</span>
-        <Link href="/pages" className="underline underline-offset-2">
-          Guides
-        </Link>
-        {page.guideCategory?.name ? (
-          <>
-            <span className="text-slate-400">/</span>
-            <Link href={`/pages#${page.guideCategory.slug}`} className="underline underline-offset-2">
-              {page.guideCategory.name}
-            </Link>
-          </>
-        ) : null}
-        <span className="text-slate-400">/</span>
-        <span className="text-slate-700 font-medium line-clamp-1">{page.title}</span>
-      </nav>
-
-      <header className="mt-4">
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
-          <div className="lg:col-span-8 space-y-4">
-            <div className="inline-flex flex-wrap items-center gap-2">
-              <span className="text-xs font-semibold rounded-full border px-2.5 py-1 bg-white">
-                {kindLabel(page.kind)}
-              </span>
-              {page.guideCategory?.name ? (
-                <span className="text-xs font-medium rounded-full border px-2.5 py-1 bg-white text-slate-700">
-                  {page.guideCategory.name}
-                </span>
-              ) : null}
-              {page.category?.name ? (
-                <span className="text-xs text-slate-600">{page.category.name}</span>
-              ) : null}
-            </div>
-
-            <h1 className="text-2xl md:text-4xl font-bold tracking-tight text-slate-900">
-              {page.title}
-            </h1>
-
-            {page.intro ? (
-              <p className="text-base md:text-lg text-slate-700 leading-relaxed">
-                {page.intro}
-              </p>
-            ) : null}
-
-            <div className="flex flex-wrap items-center gap-3 text-sm text-slate-600">
-              <span>
-                Publié le <time dateTime={page.createdAt.toISOString()}>{formatDateISO(page.createdAt)}</time>
-              </span>
-              {page.author?.name ? (
-                <>
-                  <span className="text-slate-300">·</span>
-                  <span>
-                    par <span className="font-medium text-slate-800">{page.author.name}</span>
-                  </span>
-                </>
-              ) : null}
-            </div>
-
-            <div className="flex flex-wrap items-center gap-3">
-              <ShareButtons title={page.title} url={canonicalUrl} />
-              {toc.length > 0 ? (
-                <a
-                  href="#sommaire"
-                  className="text-sm font-medium rounded-full border px-3 py-1.5 bg-white hover:shadow-card transition-shadow"
-                >
-                  Aller au sommaire
-                </a>
-              ) : null}
-            </div>
-          </div>
-
-          <div className="lg:col-span-4">
-            {heroSrc ? (
-              <div className="overflow-hidden rounded-3xl border bg-muted shadow-card">
-                <div className="aspect-[16/10]">
-                  <img
-                    src={heroSrc}
-                    alt={page.title}
-                    className="h-full w-full object-cover"
-                  />
-                </div>
-              </div>
-            ) : (
-              <div className="rounded-3xl border bg-muted p-6 text-sm text-slate-600">
-                Illustration à venir
-              </div>
-            )}
-          </div>
-        </div>
-      </header>
-
-      <div className="mt-8 grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
-        <article className="lg:col-span-8">
-          <div className="rounded-3xl border bg-white shadow-card">
-            <div className="p-5 md:p-8">
-              <div className="prose prose-slate max-w-none prose-headings:scroll-mt-24 prose-a:underline prose-a:underline-offset-2">
-                <div dangerouslySetInnerHTML={{ __html: htmlBeforeAd }} />
-
-                {hasAdsense && adSettings.slotPageInline && hasMarker ? (
-                  <div className="not-prose my-6 rounded-2xl border bg-white p-3 md:p-4 overflow-hidden">
-                    <AdsenseUnit
-                      client={adSettings.adsenseClient!}
-                      slot={adSettings.slotPageInline}
-                    />
-                  </div>
-                ) : null}
-
-                {htmlAfterAd ? (
-                  <div dangerouslySetInnerHTML={{ __html: htmlAfterAd }} />
-                ) : null}
-              </div>
-            </div>
-          </div>
-
-          {hasAdsense && adSettings.slotPageInline ? (
-            <section className="my-6">
-              <div className="rounded-2xl border bg-white p-3 md:p-4 overflow-hidden">
-                <AdsenseUnit
-                  client={adSettings.adsenseClient!}
-                  slot={adSettings.slotPageInline}
-                />
-              </div>
-            </section>
+      <div className="mx-auto max-w-6xl px-4 pt-5">
+        <nav className="flex flex-wrap items-center gap-2 text-xs text-slate-500 md:text-sm">
+          <Link href="/" className="font-medium text-slate-600 hover:text-brand-700">
+            Accueil
+          </Link>
+          <span>/</span>
+          <Link href="/pages" className="font-medium text-slate-600 hover:text-brand-700">
+            Guides
+          </Link>
+          {page.guideCategory?.name ? (
+            <>
+              <span>/</span>
+              <Link href={`/pages#${page.guideCategory.slug}`} className="font-medium text-slate-600 hover:text-brand-700">
+                {page.guideCategory.name}
+              </Link>
+            </>
           ) : null}
+          <span>/</span>
+          <span className="line-clamp-1 font-semibold text-slate-800">{page.title}</span>
+        </nav>
 
-          <section className="mt-10">
-            <RelatedArticles currentSlug={page.slug} max={6} />
-          </section>
+        <header className="mt-5 overflow-hidden rounded-[2rem] border border-slate-200 bg-white shadow-sm">
+          <div className="grid grid-cols-1 lg:grid-cols-12">
+            <div className="p-5 md:p-8 lg:col-span-7 lg:p-10">
+              <div className="flex flex-wrap items-center gap-2">
+                <span className="rounded-full bg-brand-50 px-3 py-1 text-xs font-bold text-brand-700 ring-1 ring-brand-200">
+                  {kindLabel(page.kind)}
+                </span>
 
-          {latest3.length > 0 && (
-            <section className="mt-10">
-              <h2 className="text-lg md:text-xl font-semibold mb-3">Derniers articles</h2>
-              <ul className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                {latest3.map((a) => (
-                  <li
-                    key={a.id}
-                    className="rounded-2xl border bg-white overflow-hidden hover:shadow-card transition-shadow"
+                {page.guideCategory?.name ? (
+                  <span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold text-slate-700 ring-1 ring-slate-200">
+                    {page.guideCategory.name}
+                  </span>
+                ) : null}
+
+                {page.category?.name ? (
+                  <span className="rounded-full bg-white px-3 py-1 text-xs font-semibold text-slate-600 ring-1 ring-slate-200">
+                    {page.category.name}
+                  </span>
+                ) : null}
+              </div>
+
+              <h1 className="mt-5 max-w-3xl text-3xl font-black leading-tight tracking-tight text-slate-950 md:text-5xl">
+                {page.title}
+              </h1>
+
+              {page.intro ? (
+                <p className="mt-5 max-w-3xl text-base leading-8 text-slate-700 md:text-lg">
+                  {page.intro}
+                </p>
+              ) : null}
+
+              <div className="mt-6 flex flex-wrap items-center gap-x-4 gap-y-2 text-sm text-slate-600">
+                <span>
+                  Publié le{" "}
+                  <time dateTime={page.createdAt.toISOString()} className="font-semibold text-slate-800">
+                    {formatDateISO(page.createdAt)}
+                  </time>
+                </span>
+                <span className="hidden text-slate-300 sm:inline">·</span>
+                <span>{estimatedReadingTime} min de lecture</span>
+                {page.author?.name ? (
+                  <>
+                    <span className="hidden text-slate-300 sm:inline">·</span>
+                    <span>
+                      par <span className="font-semibold text-slate-800">{page.author.name}</span>
+                    </span>
+                  </>
+                ) : null}
+              </div>
+
+              <div className="mt-7 flex flex-wrap items-center gap-3">
+                <ShareButtons title={page.title} url={canonicalUrl} />
+
+                {toc.length > 0 ? (
+                  <a
+                    href="#sommaire"
+                    className="inline-flex rounded-full border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-800 shadow-sm hover:border-brand-200 hover:bg-brand-50 hover:text-brand-700"
                   >
-                    <Link href={`/pages/${a.slug}`} className="block">
-                      <div className="aspect-[16/9] bg-muted">
-                        {a.thumbnail?.publicUrl || a.thumbnailUrl ? (
-                          <img
-                            src={a.thumbnail?.publicUrl ?? a.thumbnailUrl!}
-                            alt={a.title}
-                            className="h-full w-full object-cover"
-                            loading="lazy"
-                            decoding="async"
-                          />
-                        ) : null}
-                      </div>
-                      <div className="p-3">
-                        <div className="text-xs text-slate-500">{formatDateISO(a.createdAt)}</div>
-                        <h3 className="mt-1 text-sm font-semibold line-clamp-2">{a.title}</h3>
-                      </div>
-                    </Link>
-                  </li>
-                ))}
-              </ul>
-            </section>
-          )}
+                    Aller au sommaire
+                  </a>
+                ) : null}
+              </div>
+            </div>
 
-          <section className="mt-10">
-            <Comments pageId={page.id} />
-          </section>
-
-          <div className="mt-8 flex flex-wrap items-center justify-between gap-3">
-            <ShareButtons title={page.title} url={canonicalUrl} />
-
-            {hasAdsense && adSettings.slotPageBottom ? (
-              <section className="w-full">
-                <div className="rounded-2xl border bg-white p-3 md:p-4 overflow-hidden">
-                  <AdsenseUnit
-                    client={adSettings.adsenseClient!}
-                    slot={adSettings.slotPageBottom}
-                  />
+            <div className="bg-slate-100 lg:col-span-5">
+              {heroSrc ? (
+                <div className="h-full min-h-[260px] lg:min-h-full">
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img src={heroSrc} alt={page.title} className="h-full w-full object-cover" />
                 </div>
+              ) : (
+                <div className="flex h-full min-h-[260px] items-center justify-center bg-[radial-gradient(circle_at_30%_20%,rgba(14,165,233,.18),transparent_35%),linear-gradient(135deg,#f8fafc,#e2e8f0)] p-10 text-center">
+                  <div>
+                    <p className="text-xs font-semibold uppercase tracking-[0.18em] text-brand-600">
+                      Guide expert
+                    </p>
+                    <p className="mt-2 text-lg font-black text-slate-900">Meilleur Ski</p>
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+        </header>
+
+        {hasAdsense && adSettings.slotPageTop ? (
+          <section className="mt-6">
+            {adBox(<AdsenseUnit client={adSettings.adsenseClient!} slot={adSettings.slotPageTop} />)}
+          </section>
+        ) : null}
+
+        <div className="mt-8 grid grid-cols-1 items-start gap-7 lg:grid-cols-12">
+          <article className="lg:col-span-8">
+            <div className="overflow-hidden rounded-[2rem] border border-slate-200 bg-white shadow-sm">
+              <div className="p-5 md:p-8 lg:p-10">
+                <div className="prose max-w-none prose-headings:scroll-mt-28">
+                  <div dangerouslySetInnerHTML={{ __html: htmlBeforeAd }} />
+
+                  {hasAdsense && adSettings.slotPageInline && hasMarker ? (
+                    <div className="not-prose my-8">
+                      {adBox(<AdsenseUnit client={adSettings.adsenseClient!} slot={adSettings.slotPageInline} />)}
+                    </div>
+                  ) : null}
+
+                  {htmlAfterAd ? <div dangerouslySetInnerHTML={{ __html: htmlAfterAd }} /> : null}
+                </div>
+              </div>
+            </div>
+
+            {hasAdsense && adSettings.slotPageInline && !hasMarker ? (
+              <section className="my-7">
+                {adBox(<AdsenseUnit client={adSettings.adsenseClient!} slot={adSettings.slotPageInline} />)}
               </section>
             ) : null}
-          </div>
-        </article>
 
-        <aside className="lg:col-span-4 space-y-4 lg:sticky lg:top-24">
-          {toc.length > 0 && (
-            <div id="sommaire" className="rounded-3xl border bg-white shadow-card">
-              <div className="p-5">
-                <div className="flex items-center justify-between gap-2">
-                  <h2 className="text-base font-semibold">Sommaire</h2>
-                  <a href="#top" className="text-xs text-slate-500 underline underline-offset-2">
-                    Haut de page
-                  </a>
-                </div>
-
-                <nav className="mt-3">
-                  <ul className="space-y-2 text-sm">
-                    {toc.map((item) => (
-                      <li key={item.id} className={item.level === 3 ? "pl-3" : ""}>
-                        <a
-                          href={`#${item.id}`}
-                          className="text-slate-700 hover:text-slate-900 underline-offset-2 hover:underline"
-                        >
-                          {item.text}
-                        </a>
-                      </li>
-                    ))}
-                  </ul>
-                </nav>
-              </div>
-            </div>
-          )}
-
-          {lastArticle && (
-            <div className="rounded-3xl border bg-white overflow-hidden shadow-card">
-              <Link href={`/pages/${lastArticle.slug}`} className="block hover:shadow-card transition-shadow">
-                <div className="aspect-[16/9] bg-muted">
-                  {lastArticle.thumbnail?.publicUrl || lastArticle.thumbnailUrl ? (
-                    <img
-                      src={lastArticle.thumbnail?.publicUrl ?? lastArticle.thumbnailUrl!}
-                      alt={lastArticle.title}
-                      className="h-full w-full object-cover"
-                      loading="lazy"
-                      decoding="async"
-                    />
-                  ) : null}
-                </div>
-                <div className="p-4">
-                  <div className="text-xs text-slate-500">À lire aussi · {formatDateISO(lastArticle.createdAt)}</div>
-                  <h3 className="mt-1 text-base font-semibold">{lastArticle.title}</h3>
-                  {lastArticle.intro ? (
-                    <p className="mt-1 text-sm text-slate-600 line-clamp-3">{lastArticle.intro}</p>
-                  ) : null}
-                </div>
-              </Link>
-            </div>
-          )}
-
-          {hasAdsense && adSettings.slotPageSidebar ? (
-            <section>
-              <div className="rounded-3xl border bg-white p-3 md:p-4 overflow-hidden shadow-card">
-                <AdsenseUnit
-                  client={adSettings.adsenseClient!}
-                  slot={adSettings.slotPageSidebar}
-                />
-              </div>
+            <section className="mt-10">
+              <RelatedArticles currentSlug={page.slug} max={6} />
             </section>
-          ) : null}
-        </aside>
+
+            {latest3.length > 0 ? (
+              <section className="mt-12">
+                <div className="mb-4">
+                  <p className="text-xs font-semibold uppercase tracking-[0.18em] text-brand-600">
+                    Nouveautés
+                  </p>
+                  <h2 className="mt-1 text-xl font-bold tracking-tight text-slate-950">
+                    Derniers articles
+                  </h2>
+                </div>
+
+                <ul className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+                  {latest3.map((a) => {
+                    const img = a.thumbnail?.publicUrl ?? a.thumbnailUrl;
+
+                    return (
+                      <li
+                        key={a.id}
+                        className="group overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm transition hover:-translate-y-0.5 hover:shadow-card"
+                      >
+                        <Link href={`/pages/${a.slug}`} className="block">
+                          <div className="aspect-[16/10] bg-slate-100">
+                            {img ? (
+                              // eslint-disable-next-line @next/next/no-img-element
+                              <img
+                                src={img}
+                                alt={a.title}
+                                className="h-full w-full object-cover transition duration-300 group-hover:scale-[1.03]"
+                                loading="lazy"
+                                decoding="async"
+                              />
+                            ) : null}
+                          </div>
+                          <div className="p-4">
+                            {a.guideCategory?.name ? (
+                              <div className="mb-1 text-[11px] font-bold uppercase tracking-[0.12em] text-slate-500">
+                                {a.guideCategory.name}
+                              </div>
+                            ) : null}
+                            <div className="text-xs text-slate-500">{formatDateISO(a.createdAt)}</div>
+                            <h3 className="mt-1 line-clamp-2 text-sm font-bold text-slate-950 group-hover:text-brand-700">
+                              {a.title}
+                            </h3>
+                          </div>
+                        </Link>
+                      </li>
+                    );
+                  })}
+                </ul>
+              </section>
+            ) : null}
+
+            <div className="mt-10 flex flex-wrap items-center justify-between gap-3 rounded-3xl border border-slate-200 bg-white p-4 shadow-sm">
+              <div>
+                <p className="text-sm font-bold text-slate-950">Article utile ?</p>
+                <p className="text-sm text-slate-600">Partagez ce guide à d’autres passionnés de ski.</p>
+              </div>
+              <ShareButtons title={page.title} url={canonicalUrl} />
+            </div>
+
+            {hasAdsense && adSettings.slotPageBottom ? (
+              <section className="mt-7">
+                {adBox(<AdsenseUnit client={adSettings.adsenseClient!} slot={adSettings.slotPageBottom} />)}
+              </section>
+            ) : null}
+          </article>
+
+          <aside className="space-y-5 lg:sticky lg:top-28 lg:col-span-4">
+            {toc.length > 0 ? (
+              <div id="sommaire" className="rounded-[2rem] border border-slate-200 bg-white shadow-sm">
+                <div className="p-5">
+                  <div className="flex items-center justify-between gap-3">
+                    <div>
+                      <p className="text-xs font-semibold uppercase tracking-[0.18em] text-brand-600">
+                        Navigation
+                      </p>
+                      <h2 className="mt-1 text-base font-black text-slate-950">Sommaire</h2>
+                    </div>
+
+                    <a href="#top" className="text-xs font-semibold text-slate-500 hover:text-brand-700">
+                      Haut ↑
+                    </a>
+                  </div>
+
+                  <nav className="mt-4 max-h-[380px] overflow-y-auto pr-1">
+                    <ul className="space-y-1.5 text-sm">
+                      {toc.map((item) => (
+                        <li key={item.id} className={item.level === 3 ? "pl-4" : ""}>
+                          <a
+                            href={`#${item.id}`}
+                            className={`block rounded-xl px-3 py-2 leading-snug transition hover:bg-brand-50 hover:text-brand-700 ${
+                              item.level === 3
+                                ? "text-sm text-slate-500"
+                                : "font-semibold text-slate-800"
+                            }`}
+                          >
+                            {item.text}
+                          </a>
+                        </li>
+                      ))}
+                    </ul>
+                  </nav>
+                </div>
+              </div>
+            ) : null}
+
+            {lastArticle ? (
+              <div className="overflow-hidden rounded-[2rem] border border-slate-200 bg-white shadow-sm">
+                <Link href={`/pages/${lastArticle.slug}`} className="group block">
+                  <div className="aspect-[16/10] bg-slate-100">
+                    {lastArticle.thumbnail?.publicUrl || lastArticle.thumbnailUrl ? (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img
+                        src={lastArticle.thumbnail?.publicUrl ?? lastArticle.thumbnailUrl!}
+                        alt={lastArticle.title}
+                        className="h-full w-full object-cover transition duration-300 group-hover:scale-[1.03]"
+                        loading="lazy"
+                        decoding="async"
+                      />
+                    ) : null}
+                  </div>
+
+                  <div className="p-5">
+                    <div className="text-xs font-bold uppercase tracking-[0.14em] text-brand-600">
+                      À lire aussi
+                    </div>
+
+                    {lastArticle.guideCategory?.name ? (
+                      <div className="mt-2 text-xs font-semibold text-slate-500">
+                        {lastArticle.guideCategory.name}
+                      </div>
+                    ) : null}
+
+                    <h3 className="mt-2 text-base font-black leading-snug text-slate-950 group-hover:text-brand-700">
+                      {lastArticle.title}
+                    </h3>
+
+                    {lastArticle.intro ? (
+                      <p className="mt-2 line-clamp-3 text-sm leading-6 text-slate-600">
+                        {lastArticle.intro}
+                      </p>
+                    ) : null}
+                  </div>
+                </Link>
+              </div>
+            ) : null}
+
+            {hasAdsense && adSettings.slotPageSidebar ? (
+              <section>
+                {adBox(<AdsenseUnit client={adSettings.adsenseClient!} slot={adSettings.slotPageSidebar} />)}
+              </section>
+            ) : null}
+          </aside>
+        </div>
       </div>
     </section>
   );
