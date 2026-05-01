@@ -444,6 +444,10 @@ model SiteSettings {
 
   categoryTiles Json?
   topBrands     Json?
+  
+  robotsIndex     Boolean @default(true)
+  robotsFollow    Boolean @default(true)
+  robotsNoarchive Boolean @default(false)
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt

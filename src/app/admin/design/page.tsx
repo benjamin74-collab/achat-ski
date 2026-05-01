@@ -49,7 +49,9 @@ export default async function AdminDesignPage() {
   const showCategories = settings?.showCategories ?? true;
   const showLatestGuides = settings?.showLatestGuides ?? true;
   const showTopBrands = settings?.showTopBrands ?? true;
-
+  const robotsIndex = settings?.robotsIndex ?? true;
+  const robotsFollow = settings?.robotsFollow ?? true;
+  const robotsNoarchive = settings?.robotsNoarchive ?? false;
   const categoryTiles = safeJsonStringify(settings?.categoryTiles, "[]");
   const topBrands = safeJsonStringify(settings?.topBrands, "[]");
 
@@ -282,7 +284,41 @@ export default async function AdminDesignPage() {
             </label>
           </div>
         </section>
+		
+        {/* -------- SEO / Robots -------- */}
+        <section className="rounded-2xl border border-ring bg-white p-5">
+          <h2 className="text-base font-semibold text-ink">SEO / Robots</h2>
+          <p className="mt-1 text-sm text-slate-600">
+            Réglages d’exploration et d’indexation pour ce site.
+          </p>
 
+          <div className="mt-4 grid grid-cols-1 gap-3 md:grid-cols-3">
+            <label className="flex items-start gap-3 rounded-xl border border-ring bg-muted/30 px-3 py-3">
+              <input type="checkbox" name="robotsIndex" defaultChecked={robotsIndex} className="mt-1" />
+              <span>
+                <span className="block text-sm font-medium text-ink">Autoriser l’indexation</span>
+                <span className="block text-xs text-slate-500">index / noindex</span>
+              </span>
+            </label>
+
+            <label className="flex items-start gap-3 rounded-xl border border-ring bg-muted/30 px-3 py-3">
+              <input type="checkbox" name="robotsFollow" defaultChecked={robotsFollow} className="mt-1" />
+              <span>
+                <span className="block text-sm font-medium text-ink">Autoriser le suivi des liens</span>
+                <span className="block text-xs text-slate-500">follow / nofollow</span>
+              </span>
+            </label>
+
+            <label className="flex items-start gap-3 rounded-xl border border-ring bg-muted/30 px-3 py-3">
+              <input type="checkbox" name="robotsNoarchive" defaultChecked={robotsNoarchive} className="mt-1" />
+              <span>
+                <span className="block text-sm font-medium text-ink">Interdire l’archive Google</span>
+                <span className="block text-xs text-slate-500">noarchive</span>
+              </span>
+            </label>
+          </div>
+        </section>
+		
         <div className="flex items-center justify-end gap-3">
           <button type="submit" className="btn">
             Enregistrer

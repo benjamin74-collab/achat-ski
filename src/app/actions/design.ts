@@ -84,7 +84,9 @@ export async function saveDesign(formData: FormData) {
   const showCategories = asBool(raw.showCategories === "on" || raw.showCategories === "true", true);
   const showLatestGuides = asBool(raw.showLatestGuides === "on" || raw.showLatestGuides === "true", true);
   const showTopBrands = asBool(raw.showTopBrands === "on" || raw.showTopBrands === "true", true);
-
+  const robotsIndex = raw.robotsIndex === "on" || raw.robotsIndex === "true";
+  const robotsFollow = raw.robotsFollow === "on" || raw.robotsFollow === "true";
+  const robotsNoarchive = raw.robotsNoarchive === "on" || raw.robotsNoarchive === "true";
   // JSONB (CTA / tiles / top brands)
   const heroCtas = asJson(raw.heroCtas);
   const categoryTiles = asJson(raw.categoryTiles);
@@ -99,6 +101,10 @@ export async function saveDesign(formData: FormData) {
       logoSrc,
       logoAlt,
       faviconSrc: faviconSrc || null,
+
+      robotsIndex,
+      robotsFollow,
+      robotsNoarchive,
 
       primary,
       secondary,
@@ -133,6 +139,10 @@ export async function saveDesign(formData: FormData) {
       logoSrc,
       logoAlt,
       faviconSrc: faviconSrc || null,
+
+      robotsIndex,
+      robotsFollow,
+      robotsNoarchive,
 
       primary,
       secondary,

@@ -16,13 +16,26 @@ export async function generateMetadata(): Promise<Metadata> {
   const siteConfig = getSiteConfig(siteId);
   const siteUrl = await getCurrentSiteUrl();
 
+  const settings = await prisma.siteSettings.findUnique({
+    where: { siteId },
+    select: {
+      robotsIndex: true,
+      robotsFollow: true,
+      robotsNoarchive: true,
+    },
+  });
+
   return {
     metadataBase: new URL(siteUrl),
     title: `${siteConfig.name} — Comparez les meilleurs produits au meilleur prix`,
     description:
       siteConfig.tagline ||
       `Comparez les meilleurs produits sur ${siteConfig.name}.`,
-    robots: { index: false, follow: false },
+    robots: {
+      index: settings?.robotsIndex ?? true,
+      follow: settings?.robotsFollow ?? true,
+      noarchive: settings?.robotsNoarchive ?? false,
+    },
     alternates: {
       canonical: siteUrl,
     },
