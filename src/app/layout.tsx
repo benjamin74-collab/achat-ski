@@ -16,14 +16,28 @@ export async function generateMetadata(): Promise<Metadata> {
   const siteConfig = getSiteConfig(siteId);
   const siteUrl = await getCurrentSiteUrl();
 
-  const settings = await prisma.siteSettings.findUnique({
-    where: { siteId },
-    select: {
-      robotsIndex: true,
-      robotsFollow: true,
-      robotsNoarchive: true,
-    },
-  });
+  const [settings, adSettings] = await Promise.all([
+    prisma.siteSettings.findUnique({
+      where: { siteId },
+      select: {
+        robotsIndex: true,
+        robotsFollow: true,
+        robotsNoarchive: true,
+      },
+    }),
+    prisma.adSettings.findUnique({
+      where: { siteId },
+      select: {
+        enabled: true,
+        adsenseClient: true,
+      },
+    }),
+  ]);
+
+  const adsenseClient =
+    adSettings?.enabled && adSettings.adsenseClient
+      ? adSettings.adsenseClient
+      : null;
 
   return {
     metadataBase: new URL(siteUrl),
@@ -39,6 +53,11 @@ export async function generateMetadata(): Promise<Metadata> {
     alternates: {
       canonical: siteUrl,
     },
+    other: adsenseClient
+      ? {
+          "google-adsense-account": adsenseClient,
+        }
+      : undefined,
   };
 }
 
