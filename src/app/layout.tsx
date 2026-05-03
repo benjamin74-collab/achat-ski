@@ -97,7 +97,8 @@ export default async function RootLayout({ children }: { children: React.ReactNo
   const siteId = await getCurrentSiteId();
   const siteConfig = getSiteConfig(siteId);
 
-  const tracking = await prisma.trackingSettings.findUnique({
+  const [tracking, adSettings] = await Promise.all([
+  prisma.trackingSettings.findUnique({
     where: { siteId },
     select: {
       enabledAnalytics: true,
@@ -108,7 +109,15 @@ export default async function RootLayout({ children }: { children: React.ReactNo
       googleAdsConversionLabel: true,
       gtmContainerId: true,
     },
-  });
+    }),
+	  prisma.adSettings.findUnique({
+		where: { siteId },
+		select: {
+		  enabled: true,
+		  adsenseClient: true,
+		},
+	  }),
+	]);
 
   const cssVars: CSSVars = {
     "--primary": hexToRgbTriplet(siteConfig.colors.primary),
@@ -125,7 +134,8 @@ export default async function RootLayout({ children }: { children: React.ReactNo
 
   const branding = getBranding(siteConfig);
   const fontClasses = getFontClasses([siteConfig.fonts.sans, siteConfig.fonts.display]);
-
+  const hasGoogleCmp = !!adSettings?.enabled && !!adSettings.adsenseClient;
+  
   return (
     <html
       lang="fr"
@@ -153,7 +163,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
           <Header />
           <main className="container-page py-6">{children}</main>
           <Footer />
-          <CookieBanner />
+          <CookieBanner disabled={hasGoogleCmp} />
         </Providers>
       </body>
     </html>

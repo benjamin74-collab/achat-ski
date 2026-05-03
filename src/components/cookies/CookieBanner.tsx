@@ -5,20 +5,25 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { getConsentClient, setConsentClient, type Consent } from "@/lib/consent";
 
-export default function CookieBanner() {
+export default function CookieBanner({ disabled = false }: { disabled?: boolean }) {
   const [open, setOpen] = useState(false);
 
   useEffect(() => {
+    if (disabled) {
+      setOpen(false);
+      return;
+    }
+
     const c = getConsentClient();
     setOpen(c == null);
-  }, []);
+  }, [disabled]);
 
   function choose(v: Consent) {
     setConsentClient(v);
     setOpen(false);
   }
 
-  if (!open) return null;
+  if (disabled || !open) return null;
 
   return (
     <div className="fixed bottom-4 left-4 z-[60] w-[min(420px,calc(100vw-2rem))]">
@@ -39,19 +44,11 @@ export default function CookieBanner() {
         </p>
 
         <div className="mt-4 flex flex-col sm:flex-row gap-2">
-          <button
-            type="button"
-            className="btn-outline w-full justify-center"
-            onClick={() => choose("essential")}
-          >
+          <button type="button" className="btn-outline w-full justify-center" onClick={() => choose("essential")}>
             Essentiels uniquement
           </button>
 
-          <button
-            type="button"
-            className="btn w-full justify-center"
-            onClick={() => choose("all")}
-          >
+          <button type="button" className="btn w-full justify-center" onClick={() => choose("all")}>
             Tout accepter
           </button>
         </div>
