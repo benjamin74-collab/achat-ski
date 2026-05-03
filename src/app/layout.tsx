@@ -10,6 +10,7 @@ import { getSiteConfig } from "@/config/site";
 import type { SiteConfig } from "@/config/site.types";
 import { getFontClasses, getFontFamilyVar } from "@/config/fonts";
 import { getCurrentSiteId, getCurrentSiteUrl } from "@/lib/currentSite";
+import AdsenseScript from "@/components/ads/AdsenseScript";
 
 export async function generateMetadata(): Promise<Metadata> {
   const siteId = await getCurrentSiteId();
@@ -150,6 +151,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
     >
       <body className="min-h-screen bg-white text-ink antialiased" suppressHydrationWarning>
         <Providers>
+		{hasGoogleCmp ? <AdsenseScript client={adSettings!.adsenseClient!} /> : null}
           <TrackingScripts
             enabledAnalytics={tracking?.enabledAnalytics}
             enabledAds={tracking?.enabledAds}
