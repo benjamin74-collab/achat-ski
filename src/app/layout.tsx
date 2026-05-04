@@ -11,6 +11,7 @@ import type { SiteConfig } from "@/config/site.types";
 import { getFontClasses, getFontFamilyVar } from "@/config/fonts";
 import { getCurrentSiteId, getCurrentSiteUrl } from "@/lib/currentSite";
 import AdsenseScript from "@/components/ads/AdsenseScript";
+import Script from "next/script";
 
 export async function generateMetadata(): Promise<Metadata> {
   const siteId = await getCurrentSiteId();
@@ -151,7 +152,17 @@ export default async function RootLayout({ children }: { children: React.ReactNo
     >
       <body className="min-h-screen bg-white text-ink antialiased" suppressHydrationWarning>
         <Providers>
-		{hasGoogleCmp ? <AdsenseScript client={adSettings!.adsenseClient!} /> : null}
+		{hasGoogleCmp ? (
+		  <Script
+			id="adsense-script"
+			async
+			strategy="afterInteractive"
+			src={`https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=${encodeURIComponent(
+			  adSettings!.adsenseClient!
+			)}`}
+			crossOrigin="anonymous"
+		  />
+		) : null}
           <TrackingScripts
             enabledAnalytics={tracking?.enabledAnalytics}
             enabledAds={tracking?.enabledAds}
