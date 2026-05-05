@@ -71,9 +71,7 @@ function MegaMenu({ item, align = "center" }: { item: NavItem; align?: "left" | 
           <div className="p-4">
             <div className="mb-3 flex items-center justify-between gap-4">
               <div>
-                <p className="text-xs font-semibold uppercase tracking-[0.18em] text-brand-600">
-                  Catégorie
-                </p>
+                <p className="text-xs font-semibold uppercase tracking-[0.18em] text-brand-600">Catégorie</p>
                 <Link href={`/${item.slug}`} className="mt-1 block text-lg font-bold text-ink hover:text-brand-600">
                   {item.name}
                 </Link>
@@ -113,9 +111,7 @@ function MegaMenu({ item, align = "center" }: { item: NavItem; align?: "left" | 
                       ) : null}
                     </ul>
                   ) : (
-                    <p className="mt-2 text-xs leading-5 text-slate-500">
-                      Comparatifs, prix et meilleurs choix.
-                    </p>
+                    <p className="mt-2 text-xs leading-5 text-slate-500">Comparatifs, prix et meilleurs choix.</p>
                   )}
                 </div>
               ))}
@@ -123,29 +119,18 @@ function MegaMenu({ item, align = "center" }: { item: NavItem; align?: "left" | 
           </div>
 
           <aside className="border-l border-slate-200 bg-slate-50/80 p-4">
-            <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">
-              Accès rapide
-            </p>
+            <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">Accès rapide</p>
 
             <div className="mt-4 space-y-2">
-              <Link
-                href={`/${item.slug}`}
-                className="block rounded-2xl bg-white p-3 text-sm font-semibold text-slate-900 shadow-sm ring-1 ring-slate-200 hover:bg-brand-50 hover:text-brand-700 hover:ring-brand-200"
-              >
+              <Link href={`/${item.slug}`} className="block rounded-2xl bg-white p-3 text-sm font-semibold text-slate-900 shadow-sm ring-1 ring-slate-200 hover:bg-brand-50 hover:text-brand-700 hover:ring-brand-200">
                 Voir toute la catégorie
               </Link>
 
-              <Link
-                href="/pages"
-                className="block rounded-2xl bg-white p-3 text-sm font-semibold text-slate-900 shadow-sm ring-1 ring-slate-200 hover:bg-brand-50 hover:text-brand-700 hover:ring-brand-200"
-              >
+              <Link href="/pages" className="block rounded-2xl bg-white p-3 text-sm font-semibold text-slate-900 shadow-sm ring-1 ring-slate-200 hover:bg-brand-50 hover:text-brand-700 hover:ring-brand-200">
                 Guides d’achat
               </Link>
 
-              <Link
-                href="/search"
-                className="block rounded-2xl bg-white p-3 text-sm font-semibold text-slate-900 shadow-sm ring-1 ring-slate-200 hover:bg-brand-50 hover:text-brand-700 hover:ring-brand-200"
-              >
+              <Link href="/search" className="block rounded-2xl bg-white p-3 text-sm font-semibold text-slate-900 shadow-sm ring-1 ring-slate-200 hover:bg-brand-50 hover:text-brand-700 hover:ring-brand-200">
                 Comparer les prix
               </Link>
             </div>
@@ -224,9 +209,7 @@ export default function Header() {
 
   const navLinkClass = (active: boolean) =>
     `relative inline-flex min-h-[44px] max-w-[132px] items-center justify-center rounded-full px-3 py-1.5 text-center text-[13px] font-medium leading-tight transition no-underline hover:no-underline xl:max-w-none xl:px-3.5 xl:text-sm ${
-      active
-        ? "bg-brand-500/15 text-ink"
-        : "text-slate-700 hover:bg-slate-100 hover:text-ink"
+      active ? "bg-brand-500/15 text-ink" : "text-slate-700 hover:bg-slate-100 hover:text-ink"
     }`;
 
   const isActivePath = (slug: string) => Boolean(pathname?.startsWith(`/${slug}`));
@@ -238,9 +221,9 @@ export default function Header() {
       <div className="bg-bg/80 supports-[backdrop-filter]:backdrop-blur">
         <div className="mx-auto max-w-6xl px-4 py-3">
           <div className="flex items-center gap-3">
-            <Link href="/" className="shrink-0" aria-label="Accueil">
+            <div className="shrink-0">
               <Logo />
-            </Link>
+            </div>
 
             <div className="hidden lg:flex flex-1 justify-center">
               <form action="/search" className="w-full max-w-[640px]">
@@ -251,10 +234,7 @@ export default function Header() {
                     placeholder={searchPlaceholder}
                     className="w-full rounded-xl border border-ring bg-white/95 py-2 pl-10 pr-28 text-ink placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-brand-500"
                   />
-                  <button
-                    aria-label="Rechercher"
-                    className="absolute right-1 top-1 rounded-lg bg-sec-500 px-3 py-1.5 text-sm text-white hover:bg-sec-600"
-                  >
+                  <button aria-label="Rechercher" className="absolute right-1 top-1 rounded-lg bg-sec-500 px-3 py-1.5 text-sm text-white hover:bg-sec-600">
                     Rechercher
                   </button>
                 </div>
@@ -282,10 +262,7 @@ export default function Header() {
                   placeholder={searchPlaceholder}
                   className="w-full rounded-xl border border-ring bg-white/95 py-2 pl-10 pr-20 text-ink placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-brand-500"
                 />
-                <button
-                  aria-label="Rechercher"
-                  className="absolute right-1 top-1 rounded-lg bg-sec-500 px-3 py-1.5 text-sm text-white hover:bg-sec-600"
-                >
+                <button aria-label="Rechercher" className="absolute right-1 top-1 rounded-lg bg-sec-500 px-3 py-1.5 text-sm text-white hover:bg-sec-600">
                   Go
                 </button>
               </div>
@@ -305,9 +282,7 @@ export default function Header() {
 
                 <div className="absolute left-0 top-full z-50 w-[420px] max-w-[calc(100vw-2rem)] pt-3 opacity-0 pointer-events-none translate-y-2 group-hover:opacity-100 group-hover:pointer-events-auto group-hover:translate-y-0 transition-all duration-200">
                   <div className="rounded-[1.35rem] border border-slate-200/80 bg-white p-4 shadow-[0_24px_70px_rgba(15,23,42,0.16)]">
-                    <p className="text-xs font-semibold uppercase tracking-[0.18em] text-brand-600">
-                      Guides
-                    </p>
+                    <p className="text-xs font-semibold uppercase tracking-[0.18em] text-brand-600">Guides</p>
 
                     <Link href="/pages" className="mt-1 block text-lg font-bold text-ink hover:text-brand-600">
                       Tous les guides
@@ -347,10 +322,7 @@ export default function Header() {
                       {n.name}
                     </Link>
 
-                    <MegaMenu
-                      item={n}
-                      align={index <= 1 ? "left" : index >= navItems.length - 2 ? "right" : "center"}
-                    />
+                    <MegaMenu item={n} align={index <= 1 ? "left" : index >= navItems.length - 2 ? "right" : "center"} />
                   </div>
                 );
               })}
@@ -380,20 +352,10 @@ export default function Header() {
               <div className="space-y-2">
                 <div className="overflow-hidden rounded-xl border border-ring/70">
                   <div className="flex items-center">
-                    <Link
-                      href="/pages"
-                      className={`flex-1 px-3 py-2 text-sm font-medium ${
-                        pathname?.startsWith("/pages") ? "bg-brand-500/15" : "bg-white"
-                      }`}
-                    >
+                    <Link href="/pages" className={`flex-1 px-3 py-2 text-sm font-medium ${pathname?.startsWith("/pages") ? "bg-brand-500/15" : "bg-white"}`}>
                       Guides
                     </Link>
-                    <button
-                      type="button"
-                      onClick={() => toggleOpen("guides")}
-                      className="px-3 py-2 text-sm text-slate-600 hover:bg-muted"
-                      aria-expanded={Boolean(openIds.guides)}
-                    >
+                    <button type="button" onClick={() => toggleOpen("guides")} className="px-3 py-2 text-sm text-slate-600 hover:bg-muted" aria-expanded={Boolean(openIds.guides)}>
                       {openIds.guides ? "–" : "+"}
                     </button>
                   </div>
@@ -424,13 +386,7 @@ export default function Header() {
 
                   if (!hasChildren) {
                     return (
-                      <Link
-                        key={n.id}
-                        href={`/${n.slug}`}
-                        className={`block rounded-xl px-3 py-2 text-sm font-medium ${
-                          active ? "bg-brand-500/15 text-ink" : "text-slate-700 hover:bg-muted"
-                        }`}
-                      >
+                      <Link key={n.id} href={`/${n.slug}`} className={`block rounded-xl px-3 py-2 text-sm font-medium ${active ? "bg-brand-500/15 text-ink" : "text-slate-700 hover:bg-muted"}`}>
                         {n.name}
                       </Link>
                     );
@@ -442,20 +398,10 @@ export default function Header() {
                   return (
                     <div key={n.id} className="overflow-hidden rounded-xl border border-ring/70">
                       <div className="flex items-center">
-                        <Link
-                          href={`/${n.slug}`}
-                          className={`flex-1 px-3 py-2 text-sm font-medium ${
-                            active ? "bg-brand-500/15" : "bg-white"
-                          }`}
-                        >
+                        <Link href={`/${n.slug}`} className={`flex-1 px-3 py-2 text-sm font-medium ${active ? "bg-brand-500/15" : "bg-white"}`}>
                           {n.name}
                         </Link>
-                        <button
-                          type="button"
-                          onClick={() => toggleOpen(key)}
-                          className="px-3 py-2 text-sm text-slate-600 hover:bg-muted"
-                          aria-expanded={opened}
-                        >
+                        <button type="button" onClick={() => toggleOpen(key)} className="px-3 py-2 text-sm text-slate-600 hover:bg-muted" aria-expanded={opened}>
                           {opened ? "–" : "+"}
                         </button>
                       </div>
