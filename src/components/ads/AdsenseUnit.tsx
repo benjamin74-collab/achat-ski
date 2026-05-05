@@ -9,6 +9,18 @@ type Props = {
   testLabel?: string;
 };
 
+function isPreviewContext() {
+  if (typeof window === "undefined") return false;
+
+  try {
+    const inIframe = window.self !== window.top;
+    const ref = document.referrer || "";
+    return inIframe || ref.includes("google") || ref.includes("adsense");
+  } catch {
+    return true;
+  }
+}
+
 export default function AdsenseUnit({
   client,
   slot,
@@ -16,13 +28,15 @@ export default function AdsenseUnit({
   testLabel = "Emplacement publicitaire",
 }: Props) {
   const [mounted, setMounted] = useState(false);
+  const [preview, setPreview] = useState(false);
 
   useEffect(() => {
     setMounted(true);
+    setPreview(isPreviewContext());
   }, []);
 
   useEffect(() => {
-    if (!mounted || !client || !slot) return;
+    if (!mounted || preview || !client || !slot) return;
 
     const timer = window.setTimeout(() => {
       try {
@@ -31,14 +45,14 @@ export default function AdsenseUnit({
       } catch {
         // ignore
       }
-    }, 300);
+    }, 500);
 
     return () => window.clearTimeout(timer);
-  }, [mounted, client, slot]);
+  }, [mounted, preview, client, slot]);
 
   if (!client || !slot) return null;
 
-  if (!mounted) {
+  if (!mounted || preview) {
     return (
       <div className={`relative min-h-[160px] ${className ?? ""}`}>
         <div className="flex min-h-[160px] items-center justify-center rounded-2xl border border-dashed border-slate-200 bg-slate-50 text-xs font-semibold uppercase tracking-[0.16em] text-slate-400">
