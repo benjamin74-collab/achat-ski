@@ -8,7 +8,6 @@ import { sanitizeHtml } from "@/lib/sanitize";
 import { getCurrentSiteId, getCurrentSiteUrl } from "@/lib/currentSite";
 import ShareButtons from "@/components/ShareButtons";
 import RelatedArticles from "@/components/RelatedArticles";
-//import AdsenseScript from "@/components/ads/AdsenseScript";
 import AdsenseUnit from "@/components/ads/AdsenseUnit";
 import { injectInlineAdMarker, splitHtmlByMarker } from "@/lib/ads";
 
@@ -268,8 +267,6 @@ export default async function PageDetail({ params }: { params: Params }) {
       <link rel="canonical" href={canonicalUrl} />
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbJsonLd) }} />
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(blogPostingJsonLd) }} />
-
-//      {hasAdsense ? <AdsenseScript client={adSettings.adsenseClient!} /> : null}
 
       <div className="mx-auto max-w-6xl px-4 pt-5">
         <nav className="flex flex-wrap items-center gap-2 text-xs text-slate-500 md:text-sm">

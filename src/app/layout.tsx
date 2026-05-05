@@ -10,7 +10,6 @@ import { getSiteConfig } from "@/config/site";
 import type { SiteConfig } from "@/config/site.types";
 import { getFontClasses, getFontFamilyVar } from "@/config/fonts";
 import { getCurrentSiteId, getCurrentSiteUrl } from "@/lib/currentSite";
-import AdsenseScript from "@/components/ads/AdsenseScript";
 import Script from "next/script";
 
 export async function generateMetadata(): Promise<Metadata> {
