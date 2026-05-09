@@ -28,32 +28,47 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
       slug: true,
       description: true,
       category: { select: { name: true } },
+      Brand: { select: { name: true } },
     },
   });
 
   if (!p) return { title: "Produit introuvable" };
 
-  const name = [p.brand, p.model, p.season].filter(Boolean).join(" ");
+  const name = [p.Brand?.name ?? p.brand, p.model, p.season].filter(Boolean).join(" ");
   const url = `${site}/p/${p.slug}`;
   const desc =
     p.description?.trim() ||
-    `Compare les prix de ${name} chez les meilleurs marchands partenaires et consulte les tests disponibles.`;
+    `Comparez les prix de ${name}, consultez les offres disponibles et trouvez le meilleur marchand partenaire.`;
 
   return {
-    title: `${name} — meilleur prix`,
+    title: `${name} — Comparatif prix et offres`,
     description: desc,
     alternates: { canonical: url },
     openGraph: {
-      title: `${name} — meilleur prix`,
+      title: `${name} — Comparatif prix et offres`,
       description: desc,
       url,
     },
     twitter: {
       card: "summary_large_image",
-      title: `${name} — meilleur prix`,
+      title: `${name} — Comparatif prix et offres`,
       description: desc,
     },
   };
+}
+
+function jsonToSpecs(input: Prisma.JsonValue | null | undefined): Array<[string, string]> {
+  if (!input || typeof input !== "object" || Array.isArray(input)) return [];
+
+  return Object.entries(input)
+    .filter(([, value]) => value !== null && value !== undefined && typeof value !== "object")
+    .map(([key, value]) => [
+      key
+        .replace(/([A-Z])/g, " $1")
+        .replace(/^./, (s) => s.toUpperCase())
+        .trim(),
+      String(value),
+    ]);
 }
 
 export default async function ProductPage({ params }: PageProps) {
@@ -64,12 +79,13 @@ export default async function ProductPage({ params }: PageProps) {
     where: { slug },
     include: {
       category: { select: { name: true, slug: true } },
-      Brand: { select: { id: true, name: true, slug: true } },
+      Brand: { select: { id: true, name: true, slug: true, logo: { select: { publicUrl: true, alt: true } }, logoUrl: true } },
       skus: {
         select: {
           id: true,
           variant: true,
           gtin: true,
+          attributes: true,
           offers: {
             select: {
               id: true,
@@ -133,23 +149,45 @@ export default async function ProductPage({ params }: PageProps) {
     })),
   );
 
-  const title = [product.Brand?.name ?? product.brand, product.model, product.season]
-    .filter(Boolean)
-    .join(" ");
+  const title = [product.Brand?.name ?? product.brand, product.model, product.season].filter(Boolean).join(" ");
 
-  const minPriceCents = offersFlat
-    .filter((o) => o.inStock)
-    .reduce<number | null>((acc, o) => {
-      const total = o.priceCents + (o.shippingCents ?? 0);
-      return acc == null || total < acc ? total : acc;
-    }, null);
+  const inStockOffers = offersFlat.filter((o) => o.inStock);
+  const sortedOffers = [...offersFlat].sort(
+    (a, b) => a.priceCents + (a.shippingCents ?? 0) - (b.priceCents + (b.shippingCents ?? 0)),
+  );
 
-  const specs: Array<[string, string]> = [
-    ["Marque", product.Brand?.name ?? product.brand ?? "—"],
+  const bestOffer = inStockOffers.length
+    ? [...inStockOffers].sort(
+        (a, b) => a.priceCents + (a.shippingCents ?? 0) - (b.priceCents + (b.shippingCents ?? 0)),
+      )[0]
+    : sortedOffers[0];
+
+  const minPriceCents = bestOffer ? bestOffer.priceCents + (bestOffer.shippingCents ?? 0) : null;
+  const hasStock = inStockOffers.length > 0;
+
+  const brandName = product.Brand?.name ?? product.brand ?? "—";
+  const brandUrl = product.Brand?.slug
+    ? `/marques/${product.Brand.slug}`
+    : product.brand
+      ? `/marques/${slugify(product.brand)}`
+      : null;
+
+  const canonicalUrl = `${site}/p/${product.slug}`;
+  const desc = product.description?.trim() ?? null;
+  const pageDescription =
+    desc ||
+    `Comparez les prix de ${title}, consultez les offres disponibles et trouvez le meilleur marchand partenaire.`;
+
+  const baseSpecs: Array<[string, string]> = [
+    ["Marque", brandName],
     ["Modèle", product.model ?? "—"],
     ["Saison", product.season ?? "—"],
     ["Catégorie", product.category?.name ?? "—"],
   ];
+
+  const attributeSpecs = jsonToSpecs(product.attributes as Prisma.JsonValue | null);
+  const skuSpecs = product.skus[0]?.attributes ? jsonToSpecs(product.skus[0].attributes as Prisma.JsonValue) : [];
+  const specs = [...baseSpecs, ...attributeSpecs, ...skuSpecs];
 
   const brandWhere: Prisma.ProductWhereInput =
     typeof product.Brand?.id === "number"
@@ -166,11 +204,11 @@ export default async function ProductPage({ params }: PageProps) {
     },
     take: 6,
     orderBy: { createdAt: "desc" },
-    select: { id: true, slug: true, brand: true, model: true, season: true },
+    include: {
+      category: { select: { name: true, slug: true } },
+      skus: { include: { offers: true } },
+    },
   });
-
-  const canonicalUrl = `${site}/p/${product.slug}`;
-  const tests = product.tests;
 
   type CategoryAgg = {
     id: number;
@@ -183,7 +221,7 @@ export default async function ProductPage({ params }: PageProps) {
 
   const categoryMap = new Map<number, CategoryAgg>();
 
-  for (const t of tests) {
+  for (const t of product.tests) {
     for (const r of t.ratings ?? []) {
       const c = r.category;
       if (!c) continue;
@@ -208,28 +246,11 @@ export default async function ProductPage({ params }: PageProps) {
     }))
     .sort((a, b) => a.order - b.order || a.label.localeCompare(b.label));
 
-  const inStockOffers = offersFlat.filter((o) => o.inStock);
-  const hasStock = inStockOffers.length > 0;
-
-  const minPriceOffer =
-    inStockOffers.length > 0
-      ? [...inStockOffers].sort(
-          (a, b) => a.priceCents + (a.shippingCents ?? 0) - (b.priceCents + (b.shippingCents ?? 0)),
-        )[0]
-      : undefined;
-
-  const currency = minPriceOffer?.currency ?? "EUR";
-  const minPriceEuro =
-    minPriceOffer != null ? (minPriceOffer.priceCents + (minPriceOffer.shippingCents ?? 0)) / 100 : undefined;
-
+  const currency = bestOffer?.currency ?? "EUR";
+  const minPriceEuro = bestOffer ? (bestOffer.priceCents + (bestOffer.shippingCents ?? 0)) / 100 : undefined;
   const maxPriceEuro = offersFlat.length
     ? Math.max(...offersFlat.map((o) => (o.priceCents + (o.shippingCents ?? 0)) / 100))
     : undefined;
-
-  const desc = product.description?.trim() ?? null;
-  const pageDescription =
-    desc ||
-    `Compare les prix de ${title}, consulte les tests et découvre les offres disponibles chez les marchands partenaires.`;
 
   const breadcrumbJsonLd = {
     "@context": "https://schema.org",
@@ -243,7 +264,7 @@ export default async function ProductPage({ params }: PageProps) {
               "@type": "ListItem",
               position: 2,
               name: product.category.name,
-              item: `${site}/c/${product.category.slug}`,
+              item: `${site}/${product.category.slug}`,
             },
             {
               "@type": "ListItem",
@@ -270,10 +291,10 @@ export default async function ProductPage({ params }: PageProps) {
     name: title,
     description: pageDescription,
     url: canonicalUrl,
-    brand: (product.Brand?.name ?? product.brand)
+    brand: brandName
       ? {
           "@type": "Brand",
-          name: product.Brand?.name ?? product.brand,
+          name: brandName,
           ...(product.Brand?.slug ? { url: `${site}/marques/${product.Brand.slug}` } : {}),
         }
       : undefined,
@@ -324,206 +345,325 @@ export default async function ProductPage({ params }: PageProps) {
     mainEntity: {
       "@id": `${canonicalUrl}#product`,
     },
-    about: [
-      {
-        "@type": "Thing",
-        name: product.category?.name ?? "Produit",
-        ...(product.category?.slug ? { url: `${site}/c/${product.category.slug}` } : {}),
-      },
-      ...((product.Brand?.name ?? product.brand)
-        ? [
-            {
-              "@type": "Brand",
-              name: product.Brand?.name ?? product.brand,
-              ...(product.Brand?.slug ? { url: `${site}/marques/${product.Brand.slug}` } : {}),
-            },
-          ]
-        : []),
-    ],
   };
 
-  const brandUrl = product.Brand?.slug
-    ? `/marques/${product.Brand.slug}`
-    : product.brand
-      ? `/marques/${slugify(product.brand)}`
-      : null;
-
   return (
-    <main className="container mx-auto max-w-6xl px-4 py-6">
+    <main className="bg-slate-50/70 pb-12">
       <link rel="canonical" href={canonicalUrl} />
 
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbJsonLd) }} />
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(webPageJsonLd) }} />
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(productJsonLd) }} />
 
-      <Breadcrumbs
-        items={[
-          { label: "Accueil", href: "/" },
-          {
-            label: product.category?.name ?? "Catégorie",
-            href: product.category?.slug ? `/c/${product.category.slug}` : undefined,
-          },
-          { label: title },
-        ]}
-      />
+      <div className="mx-auto max-w-6xl px-4 pt-5">
+        <Breadcrumbs
+          items={[
+            { label: "Accueil", href: "/" },
+            {
+              label: product.category?.name ?? "Catégorie",
+              href: product.category?.slug ? `/${product.category.slug}` : undefined,
+            },
+            { label: title },
+          ]}
+        />
 
-      <section className="mt-4 grid grid-cols-1 gap-6 lg:grid-cols-12">
-        <div className="lg:col-span-5">
-          <div className="aspect-[4/3] w-full overflow-hidden rounded-2xl border bg-muted" />
-          <p className="mt-2 text-xs text-neutral-500">Photo à venir (marque / feed partenaire).</p>
-        </div>
-
-        <div className="lg:col-span-7">
-          <h1 className="text-2xl font-semibold">{title}</h1>
-
-          <div className="mt-1 text-neutral-600">
-            {product.category?.name ?? "—"} ·{" "}
-            {brandUrl ? (
-              <Link href={brandUrl} className="underline hover:no-underline">
-                {product.Brand?.name ?? product.brand}
-              </Link>
-            ) : (
-              product.Brand?.name ?? product.brand ?? "—"
-            )}
-          </div>
-
-          <div className="mt-3 rounded-xl border p-4">
-            <div className="text-sm text-neutral-500">à partir de</div>
-            <div className="text-3xl font-bold">{minPriceCents != null ? money(minPriceCents, "EUR") : "—"}</div>
-            <div className="mt-1 text-sm text-neutral-500">chez nos marchands partenaires</div>
-          </div>
-
-          {categoryRatings.length > 0 && (
-            <section className="mt-4 rounded-xl border p-4 bg-surface/60">
-              <h2 className="text-sm font-semibold">Notes des tests</h2>
-              <ul className="mt-2 space-y-1 text-sm">
-                {categoryRatings.map((cat) => (
-                  <li key={cat.id} className="flex items-center justify-between">
-                    <span>{cat.label}</span>
-                    <span className="flex items-center gap-2">
-                      <StarRating value={(cat.avg / 10) * 5} />
-                      <span className="text-xs text-neutral-600">{cat.avg.toFixed(1)} / 10</span>
-                    </span>
-                  </li>
-                ))}
-              </ul>
-            </section>
-          )}
-
-          <dl className="mt-4 grid grid-cols-1 gap-2 sm:grid-cols-2">
-            {specs.map(([k, v]) => (
-              <div key={k} className="rounded-xl border p-3">
-                <dt className="text-xs uppercase tracking-wide text-neutral-500">{k}</dt>
-                <dd className="text-sm">{v}</dd>
+        <section className="mt-5 overflow-hidden rounded-[2rem] border border-slate-200 bg-white shadow-sm">
+          <div className="grid grid-cols-1 lg:grid-cols-12">
+            <div className="bg-slate-100 lg:col-span-5">
+              <div className="flex min-h-[360px] items-center justify-center bg-[radial-gradient(circle_at_30%_20%,rgba(14,165,233,.16),transparent_35%),linear-gradient(135deg,#f8fafc,#e2e8f0)] p-8">
+                <div className="text-center">
+                  <div className="mx-auto flex h-24 w-24 items-center justify-center rounded-3xl bg-white/80 text-3xl font-black text-brand-700 shadow-sm ring-1 ring-slate-200">
+                    {brandName.slice(0, 2).toUpperCase()}
+                  </div>
+                  <p className="mt-4 text-sm font-semibold text-slate-500">Photo produit à venir</p>
+                  <p className="mt-1 text-xs text-slate-400">Image importée via le feed marchand</p>
+                </div>
               </div>
-            ))}
-          </dl>
+            </div>
 
-          {desc && (
-            <section className="mt-6 rounded-2xl border border-ring bg-surface/60 p-5 shadow-card">
-              <h2 className="text-lg font-semibold">Description</h2>
-              <div className="max-w-none mt-2 space-y-3 text-sm leading-relaxed text-ink">
-                {desc.split(/\n{2,}/).map((para, i) => (
-                  <p key={i}>{para.trim()}</p>
-                ))}
+            <div className="p-5 md:p-8 lg:col-span-7 lg:p-10">
+              <div className="flex flex-wrap items-center gap-2">
+                {product.category?.name ? (
+                  <Link
+                    href={product.category.slug ? `/${product.category.slug}` : "#"}
+                    className="rounded-full bg-brand-50 px-3 py-1 text-xs font-bold text-brand-700 ring-1 ring-brand-200"
+                  >
+                    {product.category.name}
+                  </Link>
+                ) : null}
+
+                <span
+                  className={`rounded-full px-3 py-1 text-xs font-bold ring-1 ${
+                    hasStock
+                      ? "bg-emerald-50 text-emerald-700 ring-emerald-200"
+                      : "bg-slate-100 text-slate-500 ring-slate-200"
+                  }`}
+                >
+                  {hasStock ? "En stock" : "Stock à vérifier"}
+                </span>
+
+                {offersFlat.length > 0 ? (
+                  <span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold text-slate-700 ring-1 ring-slate-200">
+                    {offersFlat.length} offre{offersFlat.length > 1 ? "s" : ""}
+                  </span>
+                ) : null}
               </div>
-            </section>
-          )}
 
-          {tests.length > 0 && (
-            <section className="mt-8">
-              <h2 className="text-lg font-semibold">Tests & Essais</h2>
-              <ul className="mt-3 space-y-3">
-                {tests.map((t) => (
-                  <li key={t.id} className="rounded-xl border p-3">
-                    <div className="flex items-center justify-between">
-                      <div className="font-medium">{t.title}</div>
-                      <div className="text-xs text-neutral-500">
-                        {t.sourceName} · {t.publishedAt.toISOString().slice(0, 10)}
+              <h1 className="mt-5 text-3xl font-black leading-tight tracking-tight text-slate-950 md:text-5xl">
+                {title}
+              </h1>
+
+              <div className="mt-4 flex flex-wrap items-center gap-2 text-sm text-slate-600">
+                <span>{product.category?.name ?? "Catégorie non définie"}</span>
+                <span className="text-slate-300">·</span>
+                {brandUrl ? (
+                  <Link href={brandUrl} className="font-semibold text-brand-700 hover:text-brand-800">
+                    {brandName}
+                  </Link>
+                ) : (
+                  <span className="font-semibold text-slate-800">{brandName}</span>
+                )}
+              </div>
+
+              <div className="mt-7 grid grid-cols-1 gap-4 md:grid-cols-[1fr_auto] md:items-end">
+                <div className="rounded-3xl border border-slate-200 bg-slate-50/80 p-5">
+                  <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">
+                    Meilleur prix trouvé
+                  </p>
+                  <div className="mt-2 text-4xl font-black text-slate-950">
+                    {minPriceCents != null ? money(minPriceCents, currency) : "—"}
+                  </div>
+                  <p className="mt-1 text-sm text-slate-500">prix total estimé avec livraison</p>
+                </div>
+
+                {bestOffer ? (
+                  <Link
+                    href={`/api/go/${bestOffer.merchantSlug}/${bestOffer.id}`}
+                    target="_blank"
+                    rel="nofollow sponsored noopener"
+                    prefetch={false}
+                    className="inline-flex min-h-[56px] items-center justify-center rounded-2xl bg-slate-950 px-6 py-3 text-sm font-black text-white shadow-sm transition hover:bg-brand-700"
+                  >
+                    Voir la meilleure offre
+                  </Link>
+                ) : null}
+              </div>
+
+              <div className="mt-5 grid grid-cols-1 gap-3 sm:grid-cols-3">
+                <div className="rounded-2xl border border-slate-200 bg-white p-4">
+                  <div className="text-xs font-semibold uppercase tracking-[0.14em] text-slate-500">Marque</div>
+                  <div className="mt-1 font-bold text-slate-950">{brandName}</div>
+                </div>
+                <div className="rounded-2xl border border-slate-200 bg-white p-4">
+                  <div className="text-xs font-semibold uppercase tracking-[0.14em] text-slate-500">Saison</div>
+                  <div className="mt-1 font-bold text-slate-950">{product.season ?? "—"}</div>
+                </div>
+                <div className="rounded-2xl border border-slate-200 bg-white p-4">
+                  <div className="text-xs font-semibold uppercase tracking-[0.14em] text-slate-500">Marchands</div>
+                  <div className="mt-1 font-bold text-slate-950">{offersFlat.length || "—"}</div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <section id="prix" className="mt-8">
+          <PriceTable offers={offersFlat} />
+        </section>
+
+        <div className="mt-8 grid grid-cols-1 gap-7 lg:grid-cols-12">
+          <section className="lg:col-span-8">
+            <div className="rounded-[2rem] border border-slate-200 bg-white p-5 shadow-sm md:p-8">
+              <p className="text-xs font-semibold uppercase tracking-[0.18em] text-brand-600">
+                Présentation
+              </p>
+              <h2 className="mt-1 text-2xl font-black tracking-tight text-slate-950">
+                À propos du {product.model}
+              </h2>
+
+              {desc ? (
+                <div className="mt-4 space-y-4 text-sm leading-7 text-slate-700 md:text-base md:leading-8">
+                  {desc.split(/\n{2,}/).map((para, i) => (
+                    <p key={i}>{para.trim()}</p>
+                  ))}
+                </div>
+              ) : (
+                <p className="mt-4 text-sm leading-7 text-slate-600">
+                  Cette fiche produit sera enrichie automatiquement avec les informations issues des flux marchands et des contenus éditoriaux.
+                </p>
+              )}
+            </div>
+
+            {product.tests.length > 0 ? (
+              <section className="mt-8 rounded-[2rem] border border-slate-200 bg-white p-5 shadow-sm md:p-8">
+                <p className="text-xs font-semibold uppercase tracking-[0.18em] text-brand-600">
+                  Tests
+                </p>
+                <h2 className="mt-1 text-2xl font-black tracking-tight text-slate-950">
+                  Tests & avis experts
+                </h2>
+
+                <ul className="mt-5 space-y-4">
+                  {product.tests.map((t) => (
+                    <li key={t.id} className="rounded-3xl border border-slate-200 bg-slate-50/70 p-4">
+                      <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+                        <div>
+                          <h3 className="font-black text-slate-950">{t.title}</h3>
+                          <p className="mt-1 text-xs text-slate-500">
+                            {t.sourceName} · {t.publishedAt.toISOString().slice(0, 10)}
+                          </p>
+                        </div>
+
+                        {typeof t.score === "number" ? (
+                          <span className="rounded-full bg-brand-50 px-3 py-1 text-xs font-black text-brand-700 ring-1 ring-brand-200">
+                            {t.score}/10
+                          </span>
+                        ) : null}
                       </div>
-                    </div>
 
-                    {t.excerpt ? <p className="mt-2 text-sm text-neutral-700">{t.excerpt}</p> : null}
+                      {t.excerpt ? <p className="mt-3 text-sm leading-6 text-slate-700">{t.excerpt}</p> : null}
 
-                    {t.ratings && t.ratings.length > 0 && (
-                      <div className="mt-3 space-y-1 text-xs text-neutral-700">
-                        {t.ratings.map((r, idx) => (
-                          <div key={`${r.category.slug}-${idx}`} className="flex items-center justify-between">
-                            <span>{r.category.label}</span>
-                            <span className="flex items-center gap-2">
-                              <StarRating value={(r.score / 10) * 5} />
-                              <span>{r.score} / 10</span>
-                            </span>
-                          </div>
-                        ))}
-                      </div>
-                    )}
+                      {t.ratings && t.ratings.length > 0 ? (
+                        <div className="mt-4 grid grid-cols-1 gap-2 sm:grid-cols-2">
+                          {t.ratings.map((r, idx) => (
+                            <div key={`${r.category.slug}-${idx}`} className="rounded-2xl bg-white p-3 ring-1 ring-slate-200">
+                              <div className="flex items-center justify-between gap-3 text-sm">
+                                <span className="font-semibold text-slate-700">{r.category.label}</span>
+                                <span className="font-black text-slate-950">{r.score}/10</span>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      ) : null}
 
-                    <div className="mt-2 flex items-center justify-between">
-                      {typeof t.score === "number" ? (
-                        <span className="inline-flex items-center text-xs text-neutral-700">
-                          Note globale : <b className="ml-1">{t.score}</b>
-                        </span>
-                      ) : (
-                        <span />
-                      )}
                       {t.sourceUrl ? (
                         <a
                           href={t.sourceUrl}
                           target="_blank"
                           rel="noopener noreferrer"
-                          className="text-xs underline text-neutral-600"
+                          className="mt-4 inline-flex text-sm font-semibold text-brand-700 hover:text-brand-800"
                         >
-                          Lire le test
+                          Lire le test complet →
                         </a>
                       ) : null}
-                    </div>
-                  </li>
-                ))}
-              </ul>
-            </section>
-          )}
-        </div>
-      </section>
+                    </li>
+                  ))}
+                </ul>
+              </section>
+            ) : null}
+          </section>
 
-      <section className="mt-8 rounded-2xl border border-ring bg-surface/60 p-5 shadow-card">
-        <h2 className="text-xl font-semibold">Comparer les prix</h2>
-        <PriceTable offers={offersFlat} />
-      </section>
+          <aside className="space-y-5 lg:col-span-4">
+            <div className="rounded-[2rem] border border-slate-200 bg-white p-5 shadow-sm">
+              <p className="text-xs font-semibold uppercase tracking-[0.18em] text-brand-600">
+                Fiche technique
+              </p>
+              <h2 className="mt-1 text-lg font-black text-slate-950">Caractéristiques</h2>
 
-      {related.length > 0 && (
-        <section className="mt-10">
-          <h2 className="text-lg font-semibold">Produits similaires</h2>
-          <ul className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-            {related.map((r) => (
-              <li key={r.id} className="rounded-2xl border p-4 hover:shadow-sm transition">
-                <Link href={`/p/${r.slug}`} className="block">
-                  <div className="aspect-[4/3] w-full rounded-xl bg-muted border" />
-                  <div className="mt-2 text-sm font-medium">
-                    {[r.brand, r.model, r.season].filter(Boolean).join(" ")}
+              <dl className="mt-4 space-y-2">
+                {specs.map(([k, v]) => (
+                  <div key={`${k}-${v}`} className="rounded-2xl border border-slate-200 bg-slate-50/70 p-3">
+                    <dt className="text-xs font-semibold uppercase tracking-[0.12em] text-slate-500">{k}</dt>
+                    <dd className="mt-1 text-sm font-bold text-slate-950">{v}</dd>
                   </div>
-                </Link>
-              </li>
-            ))}
-          </ul>
-        </section>
-      )}
+                ))}
+              </dl>
+            </div>
 
-      <p className="mt-8 text-xs text-neutral-500">Les prix sont susceptibles d’évoluer. Certains liens sont affiliés.</p>
+            {categoryRatings.length > 0 ? (
+              <div className="rounded-[2rem] border border-slate-200 bg-white p-5 shadow-sm">
+                <p className="text-xs font-semibold uppercase tracking-[0.18em] text-brand-600">
+                  Notes
+                </p>
+                <h2 className="mt-1 text-lg font-black text-slate-950">Synthèse des tests</h2>
+
+                <ul className="mt-4 space-y-3">
+                  {categoryRatings.map((cat) => (
+                    <li key={cat.id}>
+                      <div className="flex items-center justify-between text-sm">
+                        <span className="font-semibold text-slate-700">{cat.label}</span>
+                        <span className="font-black text-slate-950">{cat.avg.toFixed(1)}/10</span>
+                      </div>
+                      <div className="mt-2 h-2 overflow-hidden rounded-full bg-slate-100">
+                        <div
+                          className="h-full rounded-full bg-brand-500"
+                          style={{ width: `${Math.max(0, Math.min(100, cat.avg * 10))}%` }}
+                        />
+                      </div>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            ) : null}
+
+            <div className="rounded-[2rem] border border-slate-200 bg-slate-950 p-5 text-white shadow-sm">
+              <p className="text-xs font-semibold uppercase tracking-[0.18em] text-white/50">
+                Conseil
+              </p>
+              <h2 className="mt-1 text-lg font-black">Comparer avant d’acheter</h2>
+              <p className="mt-3 text-sm leading-6 text-white/70">
+                Les prix peuvent varier selon la taille, le stock, la livraison et les promotions marchands.
+                Pensez à vérifier le total avant achat.
+              </p>
+            </div>
+          </aside>
+        </div>
+
+        {related.length > 0 ? (
+          <section className="mt-10">
+            <div className="mb-4">
+              <p className="text-xs font-semibold uppercase tracking-[0.18em] text-brand-600">
+                Alternatives
+              </p>
+              <h2 className="mt-1 text-xl font-black tracking-tight text-slate-950">
+                Produits similaires
+              </h2>
+            </div>
+
+            <ul className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+              {related.map((r) => {
+                const allOffers = r.skus.flatMap((s) => s.offers);
+                const minTotal =
+                  allOffers.length > 0
+                    ? allOffers.reduce<number>((min, o) => Math.min(min, o.priceCents + (o.shippingCents ?? 0)), Number.POSITIVE_INFINITY)
+                    : null;
+
+                const relatedTitle = [r.brand, r.model, r.season].filter(Boolean).join(" ");
+
+                return (
+                  <li key={r.id} className="group overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm transition hover:-translate-y-0.5 hover:shadow-card">
+                    <Link href={`/p/${r.slug}`} className="block">
+                      <div className="flex aspect-[4/3] items-center justify-center bg-slate-100">
+                        <span className="text-xs font-semibold uppercase tracking-[0.14em] text-slate-400">
+                          Photo à venir
+                        </span>
+                      </div>
+                      <div className="p-4">
+                        <h3 className="text-sm font-black leading-snug text-slate-950 group-hover:text-brand-700">
+                          {relatedTitle}
+                        </h3>
+                        {r.category?.name ? (
+                          <p className="mt-1 text-xs text-slate-500">{r.category.name}</p>
+                        ) : null}
+                        <div className="mt-3 flex items-end justify-between gap-3">
+                          <span className="text-xs text-slate-500">à partir de</span>
+                          <span className="text-lg font-black text-sec-600">
+                            {minTotal != null && Number.isFinite(minTotal) ? money(minTotal, "EUR") : "—"}
+                          </span>
+                        </div>
+                      </div>
+                    </Link>
+                  </li>
+                );
+              })}
+            </ul>
+          </section>
+        ) : null}
+
+        <p className="mt-8 text-xs text-slate-500">
+          Les prix sont susceptibles d’évoluer. Certains liens sont affiliés. Meilleur-Ski peut percevoir une commission si vous achetez via un lien partenaire.
+        </p>
+      </div>
     </main>
-  );
-}
-
-function StarRating({ value }: { value: number }) {
-  const clamped = Math.max(0, Math.min(5, value));
-  const full = Math.floor(clamped);
-  const half = clamped - full >= 0.5 ? 1 : 0;
-  const empty = 5 - full - half;
-  return (
-    <span aria-label={`${value} sur 5`} className="inline-flex items-center text-sec-600">
-      {"★".repeat(full)}
-      {half ? "☆" : ""}
-      {"☆".repeat(empty)}
-    </span>
   );
 }
