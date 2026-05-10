@@ -258,7 +258,7 @@ const topBrands = (() => {
             ? categoryTiles.map((c) => ({
                 "@type": "Thing",
                 name: c.title,
-                href={`/${c.slug}`}
+                url: `${site}/${c.slug}`,
               }))
             : []),
           ...(showTopBrands
