@@ -170,17 +170,37 @@ export default async function HomePage() {
     return fallbackHeroCtas;
   })();
 
-  const categoryTiles = (() => {
-    const parsed = parseCategoryTiles(settings?.categoryTiles);
-    if (parsed.length) return parsed;
-    return fallbackCategoryTiles;
-  })();
+const categoryTiles = (() => {
+  const parsed = parseCategoryTiles(settings?.categoryTiles);
 
-  const topBrands = (() => {
-    const parsed = parseTopBrands(settings?.topBrands);
-    if (parsed.length) return parsed;
-    return fallbackTopBrands;
-  })();
+  if (parsed.length) {
+    return parsed.filter(
+      (item) =>
+        item.slug &&
+        item.title &&
+        item.desc &&
+        item.cta &&
+        item.img,
+    );
+  }
+
+  return fallbackCategoryTiles;
+})();
+
+const topBrands = (() => {
+  const parsed = parseTopBrands(settings?.topBrands);
+
+  if (parsed.length) {
+    return parsed.filter(
+      (item) =>
+        item.slug &&
+        item.name &&
+        item.logo,
+    );
+  }
+
+  return fallbackTopBrands;
+})();
 
   const latestArticles = showLatestGuides
     ? await prisma.page.findMany({
@@ -238,7 +258,7 @@ export default async function HomePage() {
             ? categoryTiles.map((c) => ({
                 "@type": "Thing",
                 name: c.title,
-                url: `${site}/c/${c.slug}`,
+                href={`/${c.slug}`}
               }))
             : []),
           ...(showTopBrands
@@ -262,7 +282,7 @@ export default async function HomePage() {
                 "@type": "ListItem",
                 position: index + 1,
                 name: c.title,
-                url: `${site}/c/${c.slug}`,
+                href={`/${c.slug}`}
               })),
             },
           ]
@@ -338,7 +358,7 @@ export default async function HomePage() {
               {categoryTiles.map((c) => (
                 <li key={c.slug} className="group">
                   <Link
-                    href={`/c/${c.slug}`}
+                    href={`/${c.slug}`}
                     className="block card overflow-hidden hover:shadow-card transition"
                     aria-label={`Voir la catégorie ${c.title}`}
                   >

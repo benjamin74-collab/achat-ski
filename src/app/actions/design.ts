@@ -7,45 +7,53 @@ import type { Prisma } from "@prisma/client";
 import { revalidatePath } from "next/cache";
 
 type Json = Prisma.JsonValue;
-type JsonObj = Record<string, Json>;
-
-function isJsonObject(v: Json): v is JsonObj {
-  return typeof v === "object" && v !== null && !Array.isArray(v);
-}
 
 function asString(v: unknown, fallback = ""): string {
   return typeof v === "string" ? v : fallback;
 }
+
 function asBool(v: unknown, fallback = false): boolean {
   return typeof v === "boolean" ? v : fallback;
 }
+
 function asJson(v: unknown): Json | null {
-  // On stocke du JSONB en DB. On accepte:
-  // - string JSON ("[...]"/"{...}")
-  // - objet/array direct (rare côté FormData)
   if (typeof v === "string") {
     const s = v.trim();
     if (!s) return null;
     try {
       return JSON.parse(s) as Json;
     } catch {
-      // si ce n'est pas du JSON valide, on garde en string
       return s as unknown as Json;
     }
   }
+
   if (v === null || v === undefined) return null;
   if (typeof v === "object") return v as Json;
   if (typeof v === "number" || typeof v === "boolean") return v as Json;
+
   return null;
 }
 
 function formDataToObject(formData: FormData): Record<string, unknown> {
   const out: Record<string, unknown> = {};
+
   for (const [k, v] of formData.entries()) {
-    // FormDataEntryValue = string | File
     out[k] = typeof v === "string" ? v : v.name;
   }
+
   return out;
+}
+
+function getAllStrings(formData: FormData, key: string): string[] {
+  return formData
+    .getAll(key)
+    .map((v) => (typeof v === "string" ? v : ""))
+    .filter(Boolean);
+}
+
+function numberFromRaw(v: unknown, fallback: number): number {
+  const n = Number(v);
+  return Number.isFinite(n) ? n : fallback;
 }
 
 export async function saveDesign(formData: FormData) {
@@ -54,14 +62,12 @@ export async function saveDesign(formData: FormData) {
 
   const raw = formDataToObject(formData);
 
-  // champs texte
   const name = asString(raw.name, siteConfig.name);
   const tagline = asString(raw.tagline, "");
   const logoSrc = asString(raw.logoSrc, siteConfig.brand.logoSrc);
   const logoAlt = asString(raw.logoAlt, siteConfig.brand.logoAlt);
   const faviconSrc = asString(raw.faviconSrc, siteConfig.brand.faviconSrc ?? "");
 
-  // couleurs
   const primary = asString(raw.primary, siteConfig.colors.primary);
   const secondary = asString(raw.secondary, siteConfig.colors.secondary);
   const accent = asString(raw.accent, siteConfig.colors.accent);
@@ -71,26 +77,61 @@ export async function saveDesign(formData: FormData) {
   const mutedForeground = asString(raw.mutedForeground, siteConfig.colors.mutedForeground);
   const border = asString(raw.border, siteConfig.colors.border);
 
-  // fonts
   const fontSans = asString(raw.fontSans, siteConfig.fonts.sans);
   const fontDisplay = asString(raw.fontDisplay, siteConfig.fonts.display);
 
-  // homepage (textes)
   const heroTitle = asString(raw.heroTitle, "");
   const heroHighlight = asString(raw.heroHighlight, "");
   const heroSubtitle = asString(raw.heroSubtitle, "");
 
-  // homepage (toggles)
   const showCategories = asBool(raw.showCategories === "on" || raw.showCategories === "true", true);
   const showLatestGuides = asBool(raw.showLatestGuides === "on" || raw.showLatestGuides === "true", true);
   const showTopBrands = asBool(raw.showTopBrands === "on" || raw.showTopBrands === "true", true);
+
   const robotsIndex = raw.robotsIndex === "on" || raw.robotsIndex === "true";
   const robotsFollow = raw.robotsFollow === "on" || raw.robotsFollow === "true";
   const robotsNoarchive = raw.robotsNoarchive === "on" || raw.robotsNoarchive === "true";
-  // JSONB (CTA / tiles / top brands)
+
   const heroCtas = asJson(raw.heroCtas);
-  const categoryTiles = asJson(raw.categoryTiles);
-  const topBrands = asJson(raw.topBrands);
+
+  const selectedCategorySlugs = getAllStrings(formData, "homeCategorySlugs");
+  const selectedBrandSlugs = getAllStrings(formData, "homeBrandSlugs");
+
+  const categoryTiles = selectedCategorySlugs
+    .map((slug, index) => ({
+      slug,
+      title: asString(raw[`homeCategoryTitle_${slug}`], slug),
+      desc: asString(raw[`homeCategoryDesc_${slug}`], ""),
+      cta: asString(raw[`homeCategoryCta_${slug}`], "Comparer les prix"),
+      img: asString(raw[`homeCategoryImg_${slug}`], ""),
+      order: numberFromRaw(raw[`homeCategoryOrder_${slug}`], index + 1),
+    }))
+    .sort((a, b) => a.order - b.order)
+    .map(({ order, ...item }) => item);
+
+  const brandsFromDb = await prisma.brand.findMany({
+    where: { slug: { in: selectedBrandSlugs } },
+    select: {
+      name: true,
+      slug: true,
+      logoUrl: true,
+      logo: { select: { publicUrl: true } },
+    },
+  });
+
+  const topBrands = selectedBrandSlugs
+    .map((slug, index) => {
+      const b = brandsFromDb.find((x) => x.slug === slug);
+
+      return {
+        name: b?.name ?? slug,
+        slug,
+        logo: asString(raw[`homeBrandLogo_${slug}`], b?.logo?.publicUrl ?? b?.logoUrl ?? ""),
+        order: numberFromRaw(raw[`homeBrandOrder_${slug}`], index + 1),
+      };
+    })
+    .sort((a, b) => a.order - b.order)
+    .map(({ order, ...item }) => item);
 
   await prisma.siteSettings.upsert({
     where: { siteId },
@@ -127,10 +168,9 @@ export async function saveDesign(formData: FormData) {
       showLatestGuides,
       showTopBrands,
 
-      categoryTiles: categoryTiles ?? undefined,
-      topBrands: topBrands ?? undefined,
+      categoryTiles,
+      topBrands,
 
-      // ✅ important pour ton NOT NULL
       updatedAt: new Date(),
     },
     update: {
@@ -165,15 +205,13 @@ export async function saveDesign(formData: FormData) {
       showLatestGuides,
       showTopBrands,
 
-      categoryTiles: categoryTiles ?? undefined,
-      topBrands: topBrands ?? undefined,
+      categoryTiles,
+      topBrands,
 
-      // ✅ important
       updatedAt: new Date(),
     },
   });
 
-  // invalider pages qui dépendent du design
   revalidatePath("/");
   revalidatePath("/admin/design");
 }
