@@ -47,10 +47,14 @@ function isHeroCtaVariant(v: unknown): v is HeroCtaVariant {
 
 function parseCategoryTiles(v: unknown): CategoryTile[] {
   if (!isArray(v)) return [];
+
   const out: CategoryTile[] = [];
+
   for (const item of v) {
     if (typeof item !== "object" || item === null) continue;
+
     const o = item as Record<string, unknown>;
+
     if (isString(o.slug) && isString(o.title) && isString(o.desc) && isString(o.cta) && isString(o.img)) {
       out.push({
         slug: o.slug,
@@ -61,15 +65,20 @@ function parseCategoryTiles(v: unknown): CategoryTile[] {
       });
     }
   }
+
   return out;
 }
 
 function parseTopBrands(v: unknown): TopBrand[] {
   if (!isArray(v)) return [];
+
   const out: TopBrand[] = [];
+
   for (const item of v) {
     if (typeof item !== "object" || item === null) continue;
+
     const o = item as Record<string, unknown>;
+
     if (isString(o.name) && isString(o.slug) && isString(o.logo)) {
       out.push({
         name: o.name,
@@ -78,15 +87,20 @@ function parseTopBrands(v: unknown): TopBrand[] {
       });
     }
   }
+
   return out;
 }
 
 function parseHeroCtas(v: unknown): HeroCta[] {
   if (!isArray(v)) return [];
+
   const out: HeroCta[] = [];
+
   for (const item of v) {
     if (typeof item !== "object" || item === null) continue;
+
     const o = item as Record<string, unknown>;
+
     if (isString(o.label) && isString(o.href)) {
       out.push({
         label: o.label,
@@ -95,6 +109,7 @@ function parseHeroCtas(v: unknown): HeroCta[] {
       });
     }
   }
+
   return out;
 }
 
@@ -170,37 +185,25 @@ export default async function HomePage() {
     return fallbackHeroCtas;
   })();
 
-const categoryTiles = (() => {
-  const parsed = parseCategoryTiles(settings?.categoryTiles);
+  const categoryTiles = (() => {
+    const parsed = parseCategoryTiles(settings?.categoryTiles);
 
-  if (parsed.length) {
-    return parsed.filter(
-      (item) =>
-        item.slug &&
-        item.title &&
-        item.desc &&
-        item.cta &&
-        item.img,
-    );
-  }
+    if (parsed.length) {
+      return parsed.filter((item) => item.slug && item.title && item.desc && item.cta && item.img);
+    }
 
-  return fallbackCategoryTiles;
-})();
+    return fallbackCategoryTiles;
+  })();
 
-const topBrands = (() => {
-  const parsed = parseTopBrands(settings?.topBrands);
+  const topBrands = (() => {
+    const parsed = parseTopBrands(settings?.topBrands);
 
-  if (parsed.length) {
-    return parsed.filter(
-      (item) =>
-        item.slug &&
-        item.name &&
-        item.logo,
-    );
-  }
+    if (parsed.length) {
+      return parsed.filter((item) => item.slug && item.name && item.logo);
+    }
 
-  return fallbackTopBrands;
-})();
+    return fallbackTopBrands;
+  })();
 
   const latestArticles = showLatestGuides
     ? await prisma.page.findMany({
@@ -282,7 +285,7 @@ const topBrands = (() => {
                 "@type": "ListItem",
                 position: index + 1,
                 name: c.title,
-                href={`/${c.slug}`}
+                url: `${site}/${c.slug}`,
               })),
             },
           ]
@@ -311,9 +314,9 @@ const topBrands = (() => {
     <main className="pb-20">
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(homeJsonLd) }} />
 
-      <section className="relative overflow-hidden py-14 md:py-20 text-center bg-gradient-to-b from-white to-muted/60">
+      <section className="relative overflow-hidden py-14 text-center bg-gradient-to-b from-white to-muted/60 md:py-20">
         <div className="container-page relative z-10">
-          <h1 className="text-3xl sm:text-4xl md:text-5xl font-bold leading-tight text-ink tracking-tight">
+          <h1 className="text-3xl font-bold leading-tight text-ink tracking-tight sm:text-4xl md:text-5xl">
             {heroTitle.split(heroHighlight).length > 1 ? (
               <>
                 {heroTitle.split(heroHighlight)[0]}
@@ -327,12 +330,12 @@ const topBrands = (() => {
             )}
           </h1>
 
-          <p className="mt-3 sm:mt-4 text-base sm:text-lg text-slate-600 max-w-[28rem] sm:max-w-2xl mx-auto px-2">
+          <p className="mx-auto mt-3 max-w-[28rem] px-2 text-base text-slate-600 sm:mt-4 sm:max-w-2xl sm:text-lg">
             {heroSubtitle}
           </p>
 
           {heroCtas.length ? (
-            <div className="mt-7 sm:mt-9 flex flex-col sm:flex-row items-center justify-center gap-3 px-3 sm:px-0">
+            <div className="mt-7 flex flex-col items-center justify-center gap-3 px-3 sm:mt-9 sm:flex-row sm:px-0">
               {heroCtas.map((cta) => (
                 <Link key={`${cta.href}-${cta.label}`} href={cta.href} className={`${ctaClass(cta.variant)} w-full sm:w-auto`}>
                   {cta.label}
@@ -345,16 +348,16 @@ const topBrands = (() => {
       </section>
 
       {showCategories ? (
-        <section id="categories" className="mt-12 md:mt-16 container-page">
-          <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-2">
-            <h2 className="text-xl sm:text-2xl font-bold text-ink">Catégories populaires</h2>
-            <p className="text-sm text-slate-600 max-w-2xl">
+        <section id="categories" className="container-page mt-12 md:mt-16">
+          <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
+            <h2 className="text-xl font-bold text-ink sm:text-2xl">Catégories populaires</h2>
+            <p className="max-w-2xl text-sm text-slate-600">
               Des pages catégories pensées pour la performance : prix à jour, filtres utiles et contenu d’aide au choix.
             </p>
           </div>
 
           {categoryTiles.length ? (
-            <ul className="mt-6 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
+            <ul className="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-2 sm:gap-6 lg:grid-cols-3">
               {categoryTiles.map((c) => (
                 <li key={c.slug} className="group">
                   <Link
@@ -389,16 +392,16 @@ const topBrands = (() => {
       ) : null}
 
       {showLatestGuides ? (
-        <section className="mt-14 md:mt-18 container-page">
+        <section className="container-page mt-14 md:mt-18">
           <div className="flex items-center justify-between gap-3">
-            <h2 className="text-xl sm:text-2xl font-bold text-ink">Derniers articles</h2>
+            <h2 className="text-xl font-bold text-ink sm:text-2xl">Derniers articles</h2>
             <Link href="/pages" className="text-sm underline text-brand-600 hover:text-brand-700">
               Voir tout
             </Link>
           </div>
 
           {latestArticles.length ? (
-            <ul className="mt-5 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+            <ul className="mt-5 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
               {latestArticles.map((p) => {
                 const thumb = p.thumbnail?.publicUrl || p.thumbnailUrl || null;
                 const date = p.updatedAt ?? p.createdAt;
@@ -416,7 +419,7 @@ const topBrands = (() => {
 
                       <div className="p-4">
                         <h3 className="text-base font-semibold text-ink line-clamp-2">{p.title}</h3>
-                        {p.intro ? <p className="text-sm text-slate-600 mt-1 line-clamp-2">{p.intro}</p> : null}
+                        {p.intro ? <p className="mt-1 text-sm text-slate-600 line-clamp-2">{p.intro}</p> : null}
                         <div className="mt-2 text-xs text-slate-500">Mis à jour le {fmt.format(date)}</div>
                       </div>
                     </Link>
@@ -433,31 +436,26 @@ const topBrands = (() => {
       ) : null}
 
       {showTopBrands ? (
-        <section className="mt-14 md:mt-18 container-page">
+        <section className="container-page mt-14 md:mt-18">
           <div className="flex items-center justify-between gap-3">
-            <h2 className="text-xl sm:text-2xl font-bold text-ink">Top marques</h2>
+            <h2 className="text-xl font-bold text-ink sm:text-2xl">Top marques</h2>
             <Link href="/marques" className="text-sm underline text-brand-600 hover:text-brand-700">
               Voir tout l’annuaire
             </Link>
           </div>
 
           {topBrands.length ? (
-            <ul className="mt-5 grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-3 sm:gap-4">
+            <ul className="mt-5 grid grid-cols-2 gap-3 sm:grid-cols-3 sm:gap-4 md:grid-cols-5">
               {topBrands.map((b) => (
                 <li key={b.slug} className="group">
                   <Link
                     href={`/marques/${b.slug}`}
-                    className="block rounded-2xl border border-ring bg-white p-4 sm:p-5 hover:shadow-card transition"
+                    className="block rounded-2xl border border-ring bg-white p-4 hover:shadow-card transition sm:p-5"
                     aria-label={`Voir la marque ${b.name}`}
                     title={b.name}
                   >
                     <div className="aspect-[4/3] w-full overflow-hidden rounded-xl bg-muted/40 flex items-center justify-center">
-                      <img
-                        src={b.logo}
-                        alt={b.name}
-                        className="max-h-14 sm:max-h-16 w-auto object-contain"
-                        loading="lazy"
-                      />
+                      <img src={b.logo} alt={b.name} className="max-h-14 w-auto object-contain sm:max-h-16" loading="lazy" />
                     </div>
                     <div className="mt-2 text-center text-sm font-medium text-ink group-hover:underline">{b.name}</div>
                   </Link>
