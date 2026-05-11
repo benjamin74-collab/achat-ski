@@ -4,7 +4,7 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { notFound } from "next/navigation";
 import Link from "next/link";
-import { deleteCategory } from "@/app/actions/categories";
+import { deleteCategory, toggleCategoryHomepage } from "@/app/actions/categories";
 
 export default async function AdminCategoriesPage() {
   const session = await getServerSession(authOptions);
@@ -22,6 +22,7 @@ export default async function AdminCategoriesPage() {
       published: true,
       order: true,
       parent: { select: { name: true } },
+	  showOnHomepage: true,
     },
   });
 
@@ -52,6 +53,7 @@ export default async function AdminCategoriesPage() {
               <th className="border border-ring px-3 py-2 text-center">Publié</th>
               <th className="border border-ring px-3 py-2 text-right">Ordre</th>
               <th className="border border-ring px-3 py-2 text-right">Actions</th>
+			  <th className="border border-ring px-3 py-2 text-center">Homepage</th>
             </tr>
           </thead>
           <tbody>
@@ -69,6 +71,22 @@ export default async function AdminCategoriesPage() {
                   {c.published ? "✅" : "❌"}
                 </td>
                 <td className="border border-ring px-3 py-2 text-right">{c.order}</td>
+				<td className="border border-ring px-3 py-2 text-center">
+				  <form
+					action={async () => {
+					  "use server";
+					  await toggleCategoryHomepage(c.slug, !c.showOnHomepage);
+					}}
+				  >
+					<button
+					  type="submit"
+					  className="rounded-full px-2 py-1 text-sm hover:bg-muted"
+					  title={c.showOnHomepage ? "Retirer de la homepage" : "Afficher en homepage"}
+					>
+					  {c.showOnHomepage ? "✅" : "❌"}
+					</button>
+				  </form>
+				</td>
                 <td className="border border-ring px-3 py-2">
                   <div className="flex items-center justify-end gap-3">
                     <Link href={`/admin/categories/${c.slug}`} className="underline">

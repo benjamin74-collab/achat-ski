@@ -125,6 +125,8 @@ model Brand {
   createdAt   DateTime    @default(now())
   updatedAt   DateTime    @updatedAt
 
+  showOnHomepage Boolean @default(false)
+
   products Product[]
 }
 
@@ -389,6 +391,7 @@ model Category {
   mapGlisshop   String[]
 
   aliases String[]
+  showOnHomepage Boolean @default(false)
 
   products Product[]
   pages    Page[]

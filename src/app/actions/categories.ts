@@ -105,3 +105,13 @@ export async function deleteCategory(slug: string) {
   revalidatePath("/categories");
   revalidatePath(`/c/${slug}`);
 }
+
+export async function toggleCategoryHomepage(slug: string, value: boolean) {
+  await prisma.category.update({
+    where: { slug },
+    data: { showOnHomepage: value },
+  });
+
+  revalidatePath("/");
+  revalidatePath("/admin/categories");
+}

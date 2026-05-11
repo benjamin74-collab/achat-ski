@@ -2,13 +2,14 @@ import Link from "next/link";
 import { prisma } from "@/lib/prisma";
 import Breadcrumbs from "@/components/Breadcrumbs";
 import { deleteBrand } from "./actions";
+import { toggleBrandHomepage } from "@/app/actions/brands";
 
 export const revalidate = 60;
 
 export default async function AdminBrandsPage() {
   const brands = await prisma.brand.findMany({
     orderBy: [{ active: "desc" }, { name: "asc" }],
-    select: { id: true, name: true, slug: true, active: true, websiteUrl: true, logoUrl: true },
+    select: { id: true, name: true, slug: true, active: true, websiteUrl: true, logoUrl: true, showOnHomepage: true },
   });
 
   return (
@@ -30,6 +31,7 @@ export default async function AdminBrandsPage() {
               <th className="p-3">Actif</th>
               <th className="p-3">Site</th>
               <th className="p-3">Slug</th>
+			  <th className="p-3">Homepage</th>
               <th className="p-3 text-right">Actions</th>
             </tr>
           </thead>
@@ -51,6 +53,22 @@ export default async function AdminBrandsPage() {
                   )}
                 </td>
                 <td className="p-3 text-center">{b.slug}</td>
+				<td className="p-3 text-center">
+				  <form
+					action={async () => {
+					  "use server";
+					  await toggleBrandHomepage(b.id, !b.showOnHomepage);
+					}}
+				  >
+					<button
+					  type="submit"
+					  className="rounded-full px-2 py-1 hover:bg-muted"
+					  title={b.showOnHomepage ? "Retirer de la homepage" : "Afficher en homepage"}
+					>
+					  {b.showOnHomepage ? "✅" : "❌"}
+					</button>
+				  </form>
+				</td>
                 <td className="p-3 text-right">
                   <div className="flex items-center justify-end gap-3">
                     <Link className="btn btn-sm" href={`/admin/brands/${b.id}/edit`}>
@@ -76,7 +94,7 @@ export default async function AdminBrandsPage() {
             ))}
             {brands.length === 0 && (
               <tr>
-                <td colSpan={5} className="p-6 text-center text-neutral-500">
+                <td colSpan={6} className="p-6 text-center text-neutral-500">
                   Aucune marque
                 </td>
               </tr>
