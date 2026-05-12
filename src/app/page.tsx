@@ -114,11 +114,17 @@ export default async function HomePage() {
           },
           orderBy: [{ order: "asc" }, { name: "asc" }],
           select: {
-            id: true,
-            slug: true,
-            name: true,
-            intro: true,
-          },
+			  id: true,
+			  slug: true,
+			  name: true,
+			  intro: true,
+			  thumbnailUrl: true,
+			  thumbnail: {
+				select: {
+				  publicUrl: true,
+				},
+			  },
+			},
         })
       : Promise.resolve([]),
 
@@ -258,11 +264,36 @@ export default async function HomePage() {
               {homepageCategories.map((c) => (
                 <li key={c.id} className="group">
                   <Link href={`/${c.slug}`} className="block card overflow-hidden transition hover:shadow-card">
-                    <div className="relative flex aspect-[16/9] w-full items-center justify-center bg-gradient-to-br from-brand-50 via-white to-muted">
-                      <span className="rounded-full bg-white/80 px-4 py-2 text-sm font-bold text-brand-700 ring-1 ring-brand-200">
-                        {c.name}
-                      </span>
-                    </div>
+                    <div className="relative aspect-[16/9] w-full overflow-hidden bg-muted">
+					  {(() => {
+						const image = c.thumbnail?.publicUrl || c.thumbnailUrl;
+
+						return image ? (
+						  <>
+							<img
+							  src={image}
+							  alt={c.name}
+							  className="h-full w-full object-cover transition duration-500 group-hover:scale-105"
+							  loading="lazy"
+							/>
+
+							<div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/10 to-transparent" />
+
+							<div className="absolute bottom-3 left-3">
+							  <span className="rounded-full bg-white/90 px-3 py-1 text-xs font-bold text-brand-700 shadow">
+								{c.name}
+							  </span>
+							</div>
+						  </>
+						) : (
+						  <div className="flex h-full items-center justify-center bg-gradient-to-br from-brand-50 via-white to-muted">
+							<span className="rounded-full bg-white/80 px-4 py-2 text-sm font-bold text-brand-700 ring-1 ring-brand-200">
+							  {c.name}
+							</span>
+						  </div>
+						);
+					  })()}
+					</div>
 
                     <div className="p-5">
                       <h3 className="text-base font-semibold text-ink">{c.name}</h3>

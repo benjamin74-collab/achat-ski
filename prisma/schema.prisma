@@ -380,6 +380,9 @@ model Category {
   content         String?
   metaTitle       String?
   metaDescription String?
+  thumbnailUrl String?
+  thumbnailId  Int?
+  thumbnail    MediaAsset? @relation("CategoryThumbnail", fields: [thumbnailId], references: [id])
 
   isInMenu  Boolean @default(true)
   order     Int     @default(0)
@@ -473,6 +476,7 @@ model MediaAsset {
   createdAt   DateTime  @default(now())
   createdById String?
   createdBy   User?     @relation(name: "MediaCreatedBy", fields: [createdById], references: [id])
+  categoriesThumbnail Category[] @relation("CategoryThumbnail")
 
   brandsLogo     Brand[]         @relation("BrandLogo")
   brandsBanner   Brand[]         @relation("BrandBanner")

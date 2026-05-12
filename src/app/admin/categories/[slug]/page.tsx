@@ -19,7 +19,7 @@ export default async function EditCategoryPage({ params }: { params: Promise<Pag
       select: {
         id: true, slug: true, name: true,
         intro: true, content: true,
-        metaTitle: true, metaDescription: true,
+        metaTitle: true, metaDescription: true, thumbnailUrl: true,
         parentId: true, isInMenu: true, order: true, published: true,
         mapKwanko: true, mapEkosport: true, mapSnowleader: true, mapGlisshop: true, aliases: true,
       },

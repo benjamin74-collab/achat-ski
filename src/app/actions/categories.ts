@@ -14,6 +14,7 @@ const schema = z.object({
   content: z.string().optional().nullable(),
   metaTitle: z.string().optional().nullable(),
   metaDescription: z.string().optional().nullable(),
+  thumbnailUrl: z.string().optional().nullable(),
 
   published: z.boolean().optional().default(true),
 
@@ -70,6 +71,7 @@ export async function upsertCategory(input: UpsertCategoryInput) {
     content: data.content ?? null,
     metaTitle: data.metaTitle ?? null,
     metaDescription: data.metaDescription ?? null,
+	thumbnailUrl: data.thumbnailUrl ?? null,
     published: data.published ?? true,
     parentId: data.parentId ?? null,
     isInMenu: data.isInMenu ?? true,
