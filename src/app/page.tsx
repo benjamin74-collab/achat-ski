@@ -7,20 +7,6 @@ import { getSiteConfig } from "@/config/site";
 
 export const revalidate = 300;
 
-type CategoryTile = {
-  slug: string;
-  title: string;
-  desc: string;
-  cta: string;
-  img: string;
-};
-
-type TopBrand = {
-  name: string;
-  slug: string;
-  logo: string;
-};
-
 type HeroCtaVariant = "primary" | "outline" | "secondary" | "accent";
 
 type HeroCta = {
@@ -45,52 +31,6 @@ function isHeroCtaVariant(v: unknown): v is HeroCtaVariant {
   return v === "primary" || v === "outline" || v === "secondary" || v === "accent";
 }
 
-function parseCategoryTiles(v: unknown): CategoryTile[] {
-  if (!isArray(v)) return [];
-
-  const out: CategoryTile[] = [];
-
-  for (const item of v) {
-    if (typeof item !== "object" || item === null) continue;
-
-    const o = item as Record<string, unknown>;
-
-    if (isString(o.slug) && isString(o.title) && isString(o.desc) && isString(o.cta) && isString(o.img)) {
-      out.push({
-        slug: o.slug,
-        title: o.title,
-        desc: o.desc,
-        cta: o.cta,
-        img: o.img,
-      });
-    }
-  }
-
-  return out;
-}
-
-function parseTopBrands(v: unknown): TopBrand[] {
-  if (!isArray(v)) return [];
-
-  const out: TopBrand[] = [];
-
-  for (const item of v) {
-    if (typeof item !== "object" || item === null) continue;
-
-    const o = item as Record<string, unknown>;
-
-    if (isString(o.name) && isString(o.slug) && isString(o.logo)) {
-      out.push({
-        name: o.name,
-        slug: o.slug,
-        logo: o.logo,
-      });
-    }
-  }
-
-  return out;
-}
-
 function parseHeroCtas(v: unknown): HeroCta[] {
   if (!isArray(v)) return [];
 
@@ -98,7 +38,6 @@ function parseHeroCtas(v: unknown): HeroCta[] {
 
   for (const item of v) {
     if (typeof item !== "object" || item === null) continue;
-
     const o = item as Record<string, unknown>;
 
     if (isString(o.label) && isString(o.href)) {
@@ -123,17 +62,16 @@ function ctaClass(variant?: HeroCtaVariant) {
 export default async function HomePage() {
   const siteConfig = getSiteConfig();
   const site = siteConfig.domain.replace(/\/+$/, "");
+  const home = siteConfig.home;
 
   const settings = await prisma.siteSettings.findUnique({
     where: { siteId: siteConfig.id },
   });
 
-  const home = siteConfig.home;
-
   const fallbackHeroTitle = home?.hero?.title ?? `Le comparateur ${siteConfig.name}`;
   const fallbackHeroHighlight = home?.hero?.highlight ?? siteConfig.name;
   const fallbackHeroSubtitle =
-    home?.hero?.subtitle ?? "Configurez la homepage depuis Admin → Design (titres, sections, contenus).";
+    home?.hero?.subtitle ?? "Comparez les meilleurs produits, marques et prix.";
 
   const fallbackHeroCtas: HeroCta[] =
     home?.hero?.ctas?.map((cta) => ({
@@ -146,85 +84,82 @@ export default async function HomePage() {
       { label: "Guides", href: "/pages", variant: "outline" },
     ];
 
-  const fallbackCategoryTiles: CategoryTile[] = (home?.categoryTiles ?? [])
-    .filter(
-      (item): item is { slug: string; title: string; desc: string; cta: string; img?: string } =>
-        Boolean(item.slug && item.title && item.desc && item.cta && item.img),
-    )
-    .map((item) => ({
-      slug: item.slug,
-      title: item.title,
-      desc: item.desc,
-      cta: item.cta,
-      img: item.img as string,
-    }));
-
-  const fallbackTopBrands: TopBrand[] = (home?.topBrands ?? [])
-    .filter((item): item is { name: string; slug: string; logo?: string } => Boolean(item.name && item.slug && item.logo))
-    .map((item) => ({
-      name: item.name,
-      slug: item.slug,
-      logo: item.logo as string,
-    }));
-
   const heroTitle = settings?.heroTitle ?? fallbackHeroTitle;
   const heroHighlight = settings?.heroHighlight ?? fallbackHeroHighlight;
   const heroSubtitle = settings?.heroSubtitle ?? fallbackHeroSubtitle;
 
-  const showCategories = isBool(settings?.showCategories) ? settings.showCategories : (home?.sections?.categories ?? true);
+  const showCategories = isBool(settings?.showCategories)
+    ? settings.showCategories
+    : (home?.sections?.categories ?? true);
 
   const showLatestGuides = isBool(settings?.showLatestGuides)
     ? settings.showLatestGuides
     : (home?.sections?.latestGuides ?? true);
 
-  const showTopBrands = isBool(settings?.showTopBrands) ? settings.showTopBrands : (home?.sections?.topBrands ?? true);
+  const showTopBrands = isBool(settings?.showTopBrands)
+    ? settings.showTopBrands
+    : (home?.sections?.topBrands ?? true);
 
   const heroCtas = (() => {
     const parsed = parseHeroCtas(settings?.heroCtas);
-    if (parsed.length) return parsed;
-    return fallbackHeroCtas;
+    return parsed.length ? parsed : fallbackHeroCtas;
   })();
 
-  const categoryTiles = (() => {
-    const parsed = parseCategoryTiles(settings?.categoryTiles);
+  const [homepageCategories, homepageBrands, latestArticles] = await Promise.all([
+    showCategories
+      ? prisma.category.findMany({
+          where: {
+            published: true,
+            showOnHomepage: true,
+          },
+          orderBy: [{ order: "asc" }, { name: "asc" }],
+          select: {
+            id: true,
+            slug: true,
+            name: true,
+            intro: true,
+          },
+        })
+      : Promise.resolve([]),
 
-    if (parsed.length) {
-      return parsed.filter((item) => item.slug && item.title && item.desc && item.cta && item.img);
-    }
+    showTopBrands
+      ? prisma.brand.findMany({
+          where: {
+            active: true,
+            showOnHomepage: true,
+          },
+          orderBy: { name: "asc" },
+          select: {
+            id: true,
+            name: true,
+            slug: true,
+            logoUrl: true,
+            logo: { select: { publicUrl: true } },
+          },
+        })
+      : Promise.resolve([]),
 
-    return fallbackCategoryTiles;
-  })();
-
-  const topBrands = (() => {
-    const parsed = parseTopBrands(settings?.topBrands);
-
-    if (parsed.length) {
-      return parsed.filter((item) => item.slug && item.name && item.logo);
-    }
-
-    return fallbackTopBrands;
-  })();
-
-  const latestArticles = showLatestGuides
-    ? await prisma.page.findMany({
-        where: {
-          published: true,
-          kind: { in: ["GUIDE", "ARTICLE", "COMPARATIF"] },
-        },
-        orderBy: { updatedAt: "desc" },
-        take: 6,
-        select: {
-          id: true,
-          slug: true,
-          title: true,
-          intro: true,
-          thumbnailUrl: true,
-          thumbnail: { select: { publicUrl: true } },
-          createdAt: true,
-          updatedAt: true,
-        },
-      })
-    : [];
+    showLatestGuides
+      ? prisma.page.findMany({
+          where: {
+            published: true,
+            kind: { in: ["GUIDE", "ARTICLE", "COMPARATIF"] },
+          },
+          orderBy: { updatedAt: "desc" },
+          take: 6,
+          select: {
+            id: true,
+            slug: true,
+            title: true,
+            intro: true,
+            thumbnailUrl: true,
+            thumbnail: { select: { publicUrl: true } },
+            createdAt: true,
+            updatedAt: true,
+          },
+        })
+      : Promise.resolve([]),
+  ]);
 
   const fmt = new Intl.DateTimeFormat("fr-FR", { dateStyle: "medium" });
 
@@ -257,56 +192,18 @@ export default async function HomePage() {
         description: heroSubtitle,
         isPartOf: { "@id": `${site}/#website` },
         about: [
-          ...(showCategories
-            ? categoryTiles.map((c) => ({
-                "@type": "Thing",
-                name: c.title,
-                url: `${site}/${c.slug}`,
-              }))
-            : []),
-          ...(showTopBrands
-            ? topBrands.map((b) => ({
-                "@type": "Brand",
-                name: b.name,
-                url: `${site}/marques/${b.slug}`,
-              }))
-            : []),
+          ...homepageCategories.map((c) => ({
+            "@type": "Thing",
+            name: c.name,
+            url: `${site}/${c.slug}`,
+          })),
+          ...homepageBrands.map((b) => ({
+            "@type": "Brand",
+            name: b.name,
+            url: `${site}/marques/${b.slug}`,
+          })),
         ],
       },
-      ...(showCategories && categoryTiles.length
-        ? [
-            {
-              "@type": "ItemList",
-              "@id": `${site}/#popular-categories`,
-              name: "Catégories populaires",
-              itemListOrder: "https://schema.org/ItemListOrderAscending",
-              numberOfItems: categoryTiles.length,
-              itemListElement: categoryTiles.map((c, index) => ({
-                "@type": "ListItem",
-                position: index + 1,
-                name: c.title,
-                url: `${site}/${c.slug}`,
-              })),
-            },
-          ]
-        : []),
-      ...(showTopBrands && topBrands.length
-        ? [
-            {
-              "@type": "ItemList",
-              "@id": `${site}/#top-brands`,
-              name: "Top marques",
-              itemListOrder: "https://schema.org/ItemListOrderAscending",
-              numberOfItems: topBrands.length,
-              itemListElement: topBrands.map((b, index) => ({
-                "@type": "ListItem",
-                position: index + 1,
-                name: b.name,
-                url: `${site}/marques/${b.slug}`,
-              })),
-            },
-          ]
-        : []),
     ],
   };
 
@@ -314,9 +211,9 @@ export default async function HomePage() {
     <main className="pb-20">
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(homeJsonLd) }} />
 
-      <section className="relative overflow-hidden py-14 text-center bg-gradient-to-b from-white to-muted/60 md:py-20">
+      <section className="relative overflow-hidden bg-gradient-to-b from-white to-muted/60 py-14 text-center md:py-20">
         <div className="container-page relative z-10">
-          <h1 className="text-3xl font-bold leading-tight text-ink tracking-tight sm:text-4xl md:text-5xl">
+          <h1 className="text-3xl font-bold leading-tight tracking-tight text-ink sm:text-4xl md:text-5xl">
             {heroTitle.split(heroHighlight).length > 1 ? (
               <>
                 {heroTitle.split(heroHighlight)[0]}
@@ -352,30 +249,29 @@ export default async function HomePage() {
           <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
             <h2 className="text-xl font-bold text-ink sm:text-2xl">Catégories populaires</h2>
             <p className="max-w-2xl text-sm text-slate-600">
-              Des pages catégories pensées pour la performance : prix à jour, filtres utiles et contenu d’aide au choix.
+              Les catégories mises en avant depuis le backoffice.
             </p>
           </div>
 
-          {categoryTiles.length ? (
+          {homepageCategories.length ? (
             <ul className="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-2 sm:gap-6 lg:grid-cols-3">
-              {categoryTiles.map((c) => (
-                <li key={c.slug} className="group">
-                  <Link
-                    href={`/${c.slug}`}
-                    className="block card overflow-hidden hover:shadow-card transition"
-                    aria-label={`Voir la catégorie ${c.title}`}
-                  >
-                    <div className="relative aspect-[16/9] w-full bg-muted">
-                      <img src={c.img} alt={c.title} className="h-full w-full object-cover" loading="lazy" />
-                      <div className="absolute inset-0 bg-gradient-to-t from-black/35 via-black/0 to-black/0" />
+              {homepageCategories.map((c) => (
+                <li key={c.id} className="group">
+                  <Link href={`/${c.slug}`} className="block card overflow-hidden transition hover:shadow-card">
+                    <div className="relative flex aspect-[16/9] w-full items-center justify-center bg-gradient-to-br from-brand-50 via-white to-muted">
+                      <span className="rounded-full bg-white/80 px-4 py-2 text-sm font-bold text-brand-700 ring-1 ring-brand-200">
+                        {c.name}
+                      </span>
                     </div>
 
                     <div className="p-5">
-                      <h3 className="text-base font-semibold text-ink">{c.title}</h3>
-                      <p className="mt-1 text-sm text-slate-600 line-clamp-2">{c.desc}</p>
+                      <h3 className="text-base font-semibold text-ink">{c.name}</h3>
+                      <p className="mt-1 line-clamp-2 text-sm text-slate-600">
+                        {c.intro || `Découvrez les produits de la catégorie ${c.name}.`}
+                      </p>
 
                       <div className="mt-3 inline-flex items-center gap-2 text-sm font-semibold text-brand-600">
-                        {c.cta}
+                        Comparer les prix
                         <ArrowRight className="h-4 w-4 transition group-hover:translate-x-0.5" />
                       </div>
                     </div>
@@ -385,7 +281,7 @@ export default async function HomePage() {
             </ul>
           ) : (
             <div className="mt-6 rounded-2xl border border-ring bg-white p-5 text-sm text-slate-600">
-              Aucune vignette configurée. Va dans <strong>Admin → Design</strong> pour définir les catégories de la homepage.
+              Aucune catégorie cochée en homepage.
             </div>
           )}
         </section>
@@ -395,7 +291,7 @@ export default async function HomePage() {
         <section className="container-page mt-14 md:mt-18">
           <div className="flex items-center justify-between gap-3">
             <h2 className="text-xl font-bold text-ink sm:text-2xl">Derniers articles</h2>
-            <Link href="/pages" className="text-sm underline text-brand-600 hover:text-brand-700">
+            <Link href="/pages" className="text-sm text-brand-600 underline hover:text-brand-700">
               Voir tout
             </Link>
           </div>
@@ -407,7 +303,7 @@ export default async function HomePage() {
                 const date = p.updatedAt ?? p.createdAt;
 
                 return (
-                  <li key={p.id} className="rounded-2xl border border-ring bg-white hover:shadow-card transition">
+                  <li key={p.id} className="rounded-2xl border border-ring bg-white transition hover:shadow-card">
                     <Link href={`/pages/${p.slug}`} className="block">
                       <div className="aspect-[16/9] w-full overflow-hidden rounded-t-2xl bg-muted">
                         {thumb ? (
@@ -418,8 +314,8 @@ export default async function HomePage() {
                       </div>
 
                       <div className="p-4">
-                        <h3 className="text-base font-semibold text-ink line-clamp-2">{p.title}</h3>
-                        {p.intro ? <p className="mt-1 text-sm text-slate-600 line-clamp-2">{p.intro}</p> : null}
+                        <h3 className="line-clamp-2 text-base font-semibold text-ink">{p.title}</h3>
+                        {p.intro ? <p className="mt-1 line-clamp-2 text-sm text-slate-600">{p.intro}</p> : null}
                         <div className="mt-2 text-xs text-slate-500">Mis à jour le {fmt.format(date)}</div>
                       </div>
                     </Link>
@@ -439,32 +335,38 @@ export default async function HomePage() {
         <section className="container-page mt-14 md:mt-18">
           <div className="flex items-center justify-between gap-3">
             <h2 className="text-xl font-bold text-ink sm:text-2xl">Top marques</h2>
-            <Link href="/marques" className="text-sm underline text-brand-600 hover:text-brand-700">
+            <Link href="/marques" className="text-sm text-brand-600 underline hover:text-brand-700">
               Voir tout l’annuaire
             </Link>
           </div>
 
-          {topBrands.length ? (
+          {homepageBrands.length ? (
             <ul className="mt-5 grid grid-cols-2 gap-3 sm:grid-cols-3 sm:gap-4 md:grid-cols-5">
-              {topBrands.map((b) => (
-                <li key={b.slug} className="group">
-                  <Link
-                    href={`/marques/${b.slug}`}
-                    className="block rounded-2xl border border-ring bg-white p-4 hover:shadow-card transition sm:p-5"
-                    aria-label={`Voir la marque ${b.name}`}
-                    title={b.name}
-                  >
-                    <div className="aspect-[4/3] w-full overflow-hidden rounded-xl bg-muted/40 flex items-center justify-center">
-                      <img src={b.logo} alt={b.name} className="max-h-14 w-auto object-contain sm:max-h-16" loading="lazy" />
-                    </div>
-                    <div className="mt-2 text-center text-sm font-medium text-ink group-hover:underline">{b.name}</div>
-                  </Link>
-                </li>
-              ))}
+              {homepageBrands.map((b) => {
+                const logo = b.logo?.publicUrl || b.logoUrl || null;
+
+                return (
+                  <li key={b.id} className="group">
+                    <Link
+                      href={`/marques/${b.slug}`}
+                      className="block rounded-2xl border border-ring bg-white p-4 transition hover:shadow-card sm:p-5"
+                    >
+                      <div className="flex aspect-[4/3] w-full items-center justify-center overflow-hidden rounded-xl bg-muted/40">
+                        {logo ? (
+                          <img src={logo} alt={b.name} className="max-h-14 w-auto object-contain sm:max-h-16" loading="lazy" />
+                        ) : (
+                          <span className="text-lg font-black text-slate-400">{b.name.slice(0, 2).toUpperCase()}</span>
+                        )}
+                      </div>
+                      <div className="mt-2 text-center text-sm font-medium text-ink group-hover:underline">{b.name}</div>
+                    </Link>
+                  </li>
+                );
+              })}
             </ul>
           ) : (
             <div className="mt-5 rounded-2xl border border-ring bg-white p-5 text-sm text-slate-600">
-              Aucune marque configurée. Va dans <strong>Admin → Design</strong> pour définir les top marques.
+              Aucune marque cochée en homepage.
             </div>
           )}
         </section>
