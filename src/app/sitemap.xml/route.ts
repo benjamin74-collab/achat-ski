@@ -80,7 +80,7 @@ export async function GET(req: Request) {
   // Catégories
   for (const c of categories) {
     urls.push({
-      loc: `${base}/c/${encodeURIComponent(c.slug)}`,
+      loc: `${base}/${encodeURIComponent(c.slug)}`,
       lastmod: toIso(c.updatedAt),
       changefreq: "weekly",
       priority: "0.8",
