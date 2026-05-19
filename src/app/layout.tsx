@@ -24,8 +24,10 @@ export async function generateMetadata(): Promise<Metadata> {
         robotsIndex: true,
         robotsFollow: true,
         robotsNoarchive: true,
+        faviconSrc: true,
       },
     }),
+
     prisma.adSettings.findUnique({
       where: { siteId },
       select: {
@@ -40,20 +42,36 @@ export async function generateMetadata(): Promise<Metadata> {
       ? adSettings.adsenseClient
       : null;
 
+  const favicon =
+    settings?.faviconSrc ||
+    siteConfig.brand.faviconSrc ||
+    "/favicon.ico";
+
   return {
     metadataBase: new URL(siteUrl),
+
     title: `${siteConfig.name} — Comparez les meilleurs produits au meilleur prix`,
+
     description:
       siteConfig.tagline ||
       `Comparez les meilleurs produits sur ${siteConfig.name}.`,
+
     robots: {
       index: settings?.robotsIndex ?? true,
       follow: settings?.robotsFollow ?? true,
       noarchive: settings?.robotsNoarchive ?? false,
     },
+
     alternates: {
       canonical: siteUrl,
     },
+
+    icons: {
+      icon: favicon,
+      shortcut: favicon,
+      apple: favicon,
+    },
+
     other: adsenseClient
       ? {
           "google-adsense-account": adsenseClient,
@@ -71,12 +89,24 @@ type CSSVars = React.CSSProperties & Record<`--${string}`, string>;
 
 function hexToRgbTriplet(hex: string): string {
   const h = hex.replace("#", "").trim();
-  const full = h.length === 3 ? h.split("").map((c) => c + c).join("") : h;
+  const full =
+    h.length === 3
+      ? h
+          .split("")
+          .map((c) => c + c)
+          .join("")
+      : h;
+
   if (full.length !== 6) return "0 0 0";
+
   const r = parseInt(full.slice(0, 2), 16);
   const g = parseInt(full.slice(2, 4), 16);
   const b = parseInt(full.slice(4, 6), 16);
-  if (Number.isNaN(r) || Number.isNaN(g) || Number.isNaN(b)) return "0 0 0";
+
+  if (Number.isNaN(r) || Number.isNaN(g) || Number.isNaN(b)) {
+    return "0 0 0";
+  }
+
   return `${r} ${g} ${b}`;
 }
 
@@ -94,31 +124,36 @@ function getBranding(cfg: SiteConfig): {
   };
 }
 
-export default async function RootLayout({ children }: { children: React.ReactNode }) {
+export default async function RootLayout({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
   const siteId = await getCurrentSiteId();
   const siteConfig = getSiteConfig(siteId);
 
   const [tracking, adSettings] = await Promise.all([
-  prisma.trackingSettings.findUnique({
-    where: { siteId },
-    select: {
-      enabledAnalytics: true,
-      enabledAds: true,
-      enabledGtm: true,
-      ga4MeasurementId: true,
-      googleAdsId: true,
-      googleAdsConversionLabel: true,
-      gtmContainerId: true,
-    },
+    prisma.trackingSettings.findUnique({
+      where: { siteId },
+      select: {
+        enabledAnalytics: true,
+        enabledAds: true,
+        enabledGtm: true,
+        ga4MeasurementId: true,
+        googleAdsId: true,
+        googleAdsConversionLabel: true,
+        gtmContainerId: true,
+      },
     }),
-	  prisma.adSettings.findUnique({
-		where: { siteId },
-		select: {
-		  enabled: true,
-		  adsenseClient: true,
-		},
-	  }),
-	]);
+
+    prisma.adSettings.findUnique({
+      where: { siteId },
+      select: {
+        enabled: true,
+        adsenseClient: true,
+      },
+    }),
+  ]);
 
   const cssVars: CSSVars = {
     "--primary": hexToRgbTriplet(siteConfig.colors.primary),
@@ -127,16 +162,24 @@ export default async function RootLayout({ children }: { children: React.ReactNo
     "--background": hexToRgbTriplet(siteConfig.colors.background),
     "--foreground": hexToRgbTriplet(siteConfig.colors.foreground),
     "--muted": hexToRgbTriplet(siteConfig.colors.muted),
-    "--muted-foreground": hexToRgbTriplet(siteConfig.colors.mutedForeground),
+    "--muted-foreground": hexToRgbTriplet(
+      siteConfig.colors.mutedForeground
+    ),
     "--border": hexToRgbTriplet(siteConfig.colors.border),
     "--font-sans": getFontFamilyVar(siteConfig.fonts.sans),
     "--font-display": getFontFamilyVar(siteConfig.fonts.display),
   };
 
   const branding = getBranding(siteConfig);
-  const fontClasses = getFontClasses([siteConfig.fonts.sans, siteConfig.fonts.display]);
-  const hasGoogleCmp = !!adSettings?.enabled && !!adSettings.adsenseClient;
-  
+
+  const fontClasses = getFontClasses([
+    siteConfig.fonts.sans,
+    siteConfig.fonts.display,
+  ]);
+
+  const hasGoogleCmp =
+    !!adSettings?.enabled && !!adSettings.adsenseClient;
+
   return (
     <html
       lang="fr"
@@ -149,26 +192,32 @@ export default async function RootLayout({ children }: { children: React.ReactNo
       data-site-logo={branding.logoSrc}
       data-site-logo-alt={branding.logoAlt}
     >
-      <body className="min-h-screen bg-white text-ink antialiased" suppressHydrationWarning>
+      <body
+        className="min-h-screen bg-white text-ink antialiased"
+        suppressHydrationWarning
+      >
         <Providers>
-		{hasGoogleCmp ? (
-		  <Script
-			id="adsense-script"
-			async
-			strategy="afterInteractive"
-			src={`https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=${encodeURIComponent(
-			  adSettings!.adsenseClient!
-			)}`}
-			crossOrigin="anonymous"
-		  />
-		) : null}
+          {hasGoogleCmp ? (
+            <Script
+              id="adsense-script"
+              async
+              strategy="afterInteractive"
+              src={`https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=${encodeURIComponent(
+                adSettings!.adsenseClient!
+              )}`}
+              crossOrigin="anonymous"
+            />
+          ) : null}
+
           <TrackingScripts
             enabledAnalytics={tracking?.enabledAnalytics}
             enabledAds={tracking?.enabledAds}
             enabledGtm={tracking?.enabledGtm}
             ga4MeasurementId={tracking?.ga4MeasurementId}
             googleAdsId={tracking?.googleAdsId}
-            googleAdsConversionLabel={tracking?.googleAdsConversionLabel}
+            googleAdsConversionLabel={
+              tracking?.googleAdsConversionLabel
+            }
             gtmContainerId={tracking?.gtmContainerId}
           />
 
