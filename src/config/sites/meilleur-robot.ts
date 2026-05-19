@@ -4,7 +4,7 @@ import type { SiteConfig } from "../site.types";
 export const meilleurRobot: SiteConfig = {
   id: "meilleur-robot",
   name: "Meilleur Robot",
-  domain: "https://meilleur-robot.com",
+  domain: "https://www.meilleur-robot.com",
   tagline: "Comparer, choisir, automatiser",
 
   brand: {
