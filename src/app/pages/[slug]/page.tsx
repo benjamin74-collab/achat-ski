@@ -238,6 +238,7 @@ export default async function PageDetail({ params }: { params: Params }) {
   const breadcrumbJsonLd = {
     "@context": "https://schema.org",
     "@type": "BreadcrumbList",
+	"@id": `${canonicalUrl}#breadcrumb`,
     itemListElement: breadcrumbItems,
   };
 

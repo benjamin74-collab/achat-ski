@@ -298,9 +298,14 @@ export default async function ProductPage({ params }: PageProps) {
           ...(product.Brand?.slug ? { url: `${site}/marques/${product.Brand.slug}` } : {}),
         }
       : undefined,
-    sku: product.skus?.[0]?.variant ?? undefined,
-    gtin13: product.skus?.[0]?.gtin ?? undefined,
-    category: product.category?.name ?? undefined,
+		sku: product.skus?.[0]?.variant ?? undefined,
+
+		...(product.skus?.[0]?.gtin &&
+		/^\d{13}$/.test(product.skus[0].gtin)
+		  ? { gtin13: product.skus[0].gtin }
+		  : {}),
+
+		category: product.category?.name ?? undefined,
     ...(offersFlat.length > 0
       ? {
           offers:
