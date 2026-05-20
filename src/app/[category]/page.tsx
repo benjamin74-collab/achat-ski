@@ -208,6 +208,7 @@ export default async function CategoryPage({
   const breadcrumbJsonLd = {
     "@context": "https://schema.org",
     "@type": "BreadcrumbList",
+	"@id": `${canonicalUrl}#breadcrumb`,
     itemListElement: breadcrumbItems,
   };
 
