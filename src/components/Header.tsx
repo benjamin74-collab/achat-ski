@@ -4,7 +4,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import Logo from "./Logo";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 
 type NavItem = {
   id: number;
@@ -22,6 +22,112 @@ type GuideNavItem = {
 type NavResponse = {
   categories: NavItem[];
   guideCategories: GuideNavItem[];
+};
+
+type AsideLink = {
+  label: string;
+  href: string;
+};
+
+type MegaAsideConfig = {
+  brands?: AsideLink[];
+  guides?: AsideLink[];
+};
+
+const MEGA_ASIDE_BY_SLUG: Record<string, MegaAsideConfig> = {
+  ski: {
+    brands: [
+      { label: "Rossignol", href: "/marques/rossignol" },
+      { label: "Salomon", href: "/marques/salomon" },
+      { label: "Atomic", href: "/marques/atomic" },
+      { label: "Head", href: "/marques/head" },
+      { label: "Fischer", href: "/marques/fischer" },
+      { label: "Dynastar", href: "/marques/dynastar" },
+    ],
+    guides: [
+      { label: "Comment choisir ses skis ?", href: "/pages" },
+      { label: "Quelle taille de ski choisir ?", href: "/pages" },
+      { label: "Ski piste ou all-mountain ?", href: "/pages" },
+      { label: "Comment choisir ses chaussures de ski ?", href: "/pages" },
+    ],
+  },
+  "ski-randonnee": {
+    brands: [
+      { label: "Dynafit", href: "/marques/dynafit" },
+      { label: "Scarpa", href: "/marques/scarpa" },
+      { label: "ATK", href: "/marques/atk" },
+      { label: "Plum", href: "/marques/plum" },
+      { label: "Pomoca", href: "/marques/pomoca" },
+      { label: "Black Crows", href: "/marques/black-crows" },
+    ],
+    guides: [
+      { label: "Débuter en ski de randonnée", href: "/pages" },
+      { label: "Choisir ses fixations de randonnée", href: "/pages" },
+      { label: "Choisir ses peaux de phoque", href: "/pages" },
+      { label: "Sécurité avalanche : les bases", href: "/pages" },
+    ],
+  },
+  snowboard: {
+    brands: [
+      { label: "Burton", href: "/marques/burton" },
+      { label: "Nitro", href: "/marques/nitro" },
+      { label: "Jones", href: "/marques/jones" },
+      { label: "Salomon", href: "/marques/salomon" },
+      { label: "Nidecker", href: "/marques/nidecker" },
+      { label: "K2", href: "/marques/k2" },
+    ],
+    guides: [
+      { label: "Comment choisir son snowboard ?", href: "/pages" },
+      { label: "Snowboard freestyle ou freeride ?", href: "/pages" },
+      { label: "Choisir ses boots snowboard", href: "/pages" },
+      { label: "Choisir ses fixations snowboard", href: "/pages" },
+    ],
+  },
+  "ski-nordique": {
+    brands: [
+      { label: "Rossignol", href: "/marques/rossignol" },
+      { label: "Fischer", href: "/marques/fischer" },
+      { label: "Salomon", href: "/marques/salomon" },
+      { label: "Atomic", href: "/marques/atomic" },
+      { label: "Madshus", href: "/marques/madshus" },
+      { label: "Alpina", href: "/marques/alpina" },
+    ],
+    guides: [
+      { label: "Skating ou classique : que choisir ?", href: "/pages" },
+      { label: "Choisir son matériel de ski nordique", href: "/pages" },
+      { label: "Comprendre le fartage nordique", href: "/pages" },
+    ],
+  },
+  "vetements-ski": {
+    brands: [
+      { label: "The North Face", href: "/marques/the-north-face" },
+      { label: "Patagonia", href: "/marques/patagonia" },
+      { label: "Columbia", href: "/marques/columbia" },
+      { label: "Picture", href: "/marques/picture" },
+      { label: "Millet", href: "/marques/millet" },
+      { label: "Ortovox", href: "/marques/ortovox" },
+    ],
+    guides: [
+      { label: "Comment s'habiller au ski ?", href: "/pages" },
+      { label: "Veste hardshell ou veste de ski ?", href: "/pages" },
+      { label: "Comprendre le système 3 couches", href: "/pages" },
+    ],
+  },
+  "protections-ski": {
+    brands: [
+      { label: "Oakley", href: "/marques/oakley" },
+      { label: "Smith", href: "/marques/smith" },
+      { label: "Giro", href: "/marques/giro" },
+      { label: "POC", href: "/marques/poc" },
+      { label: "Bollé", href: "/marques/bolle" },
+      { label: "Julbo", href: "/marques/julbo" },
+    ],
+    guides: [
+      { label: "Comment choisir son casque de ski ?", href: "/pages" },
+      { label: "Comment choisir son masque de ski ?", href: "/pages" },
+      { label: "Masque photochromique : avantages", href: "/pages" },
+    ],
+  },
 };
 
 function IconMenu(props: React.SVGProps<SVGSVGElement>) {
@@ -51,10 +157,136 @@ function IconSearch(props: React.SVGProps<SVGSVGElement>) {
 
 function getSearchPlaceholder(siteId: string | undefined) {
   if (siteId === "meilleur-robot") return "Rechercher un robot, modèle ou marque…";
+  if (siteId === "meilleur-running") return "Rechercher une chaussure, modèle ou marque…";
+  if (siteId === "meilleur-trail") return "Rechercher une chaussure, équipement ou marque…";
   return "Rechercher un ski, modèle ou marque…";
 }
 
-function MegaMenu({ item, align = "center" }: { item: NavItem; align?: "left" | "center" | "right" }) {
+function getMegaIntro(item: NavItem) {
+  const count = item.children?.length ?? 0;
+
+  if (item.slug === "ski") {
+    return "Tout le matériel de ski alpin au même endroit : skis, packs, chaussures, fixations et bâtons.";
+  }
+
+  if (item.slug === "ski-randonnee") {
+    return "L'équipement essentiel pour la montée, la descente et la sécurité : skis, packs, fixations, chaussures, peaux et avalanche.";
+  }
+
+  if (item.slug === "snowboard") {
+    return "Planches, splitboards, packs, fixations, boots et accessoires pour toutes les pratiques snowboard.";
+  }
+
+  if (item.slug === "ski-nordique") {
+    return "Skating, classique et entretien : accédez rapidement au bon matériel de ski nordique.";
+  }
+
+  if (item.slug === "vetements-ski") {
+    return "Vestes, pantalons et couches techniques pour composer une tenue de ski efficace et confortable.";
+  }
+
+  if (item.slug === "protections-ski") {
+    return "Casques, masques, dorsales, sacs et housses pour compléter votre équipement avec les bons accessoires.";
+  }
+
+  return count > 0
+    ? `Découvrez les principales familles de la catégorie ${item.name}.`
+    : `Accédez directement à la catégorie ${item.name}.`;
+}
+
+function getAsideConfig(item: NavItem, guideItems: GuideNavItem[], siteId?: string): MegaAsideConfig {
+  const custom = MEGA_ASIDE_BY_SLUG[item.slug];
+
+  if (siteId && siteId !== "meilleur-ski") {
+    return {
+      guides: guideItems.slice(0, 4).map((g) => ({
+        label: g.name,
+        href: `/pages#${g.slug}`,
+      })),
+    };
+  }
+
+  if (custom) return custom;
+
+  return {
+    guides: guideItems.slice(0, 4).map((g) => ({
+      label: g.name,
+      href: `/pages#${g.slug}`,
+    })),
+  };
+}
+
+function AsideContent({
+  config,
+  compact = false,
+}: {
+  config: MegaAsideConfig;
+  compact?: boolean;
+}) {
+  const hasBrands = (config.brands?.length ?? 0) > 0;
+  const hasGuides = (config.guides?.length ?? 0) > 0;
+
+  if (!hasBrands && !hasGuides) return null;
+
+  return (
+    <div className={compact ? "space-y-3" : "space-y-4"}>
+      {hasBrands ? (
+        <div className={compact ? "rounded-2xl bg-brand-700 p-4 text-white" : "rounded-2xl bg-white/10 p-4 ring-1 ring-white/15"}>
+          <p className={compact ? "text-sm font-bold text-white" : "text-sm font-bold text-white"}>Marques populaires</p>
+          <div className="mt-3 flex flex-wrap gap-2">
+            {config.brands?.map((brand) => (
+              <Link
+                key={`${brand.href}-${brand.label}`}
+                href={brand.href}
+                className={
+                  compact
+                    ? "rounded-full border border-white/20 bg-white/10 px-2.5 py-1 text-xs font-semibold text-white hover:bg-white/15"
+                    : "rounded-full border border-white/20 bg-white/10 px-2.5 py-1 text-xs font-semibold text-white hover:bg-white/15"
+                }
+              >
+                {brand.label}
+              </Link>
+            ))}
+          </div>
+        </div>
+      ) : null}
+
+      {hasGuides ? (
+        <div className={compact ? "rounded-2xl border border-ring bg-white p-4" : "rounded-2xl bg-white/10 p-4 ring-1 ring-white/15"}>
+          <p className={compact ? "text-sm font-bold text-ink" : "text-sm font-bold text-white"}>Guides utiles</p>
+          <div className="mt-3 space-y-2">
+            {config.guides?.map((guide) => (
+              <Link
+                key={`${guide.href}-${guide.label}`}
+                href={guide.href}
+                className={
+                  compact
+                    ? "flex items-center justify-between gap-3 text-sm font-medium text-slate-700 hover:text-brand-700"
+                    : "flex items-center justify-between gap-3 text-sm font-semibold text-white hover:text-white/85"
+                }
+              >
+                <span>{guide.label}</span>
+                <span className={compact ? "text-slate-400" : "text-white/50"}>→</span>
+              </Link>
+            ))}
+          </div>
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
+function MegaMenu({
+  item,
+  guideItems,
+  siteId,
+  align = "center",
+}: {
+  item: NavItem;
+  guideItems: GuideNavItem[];
+  siteId?: string;
+  align?: "left" | "center" | "right";
+}) {
   const positionClass =
     align === "left"
       ? "left-0"
@@ -62,86 +294,102 @@ function MegaMenu({ item, align = "center" }: { item: NavItem; align?: "left" | 
         ? "right-0"
         : "left-1/2 -translate-x-1/2";
 
+  const asideConfig = getAsideConfig(item, guideItems, siteId);
+  const hasAside = (asideConfig.brands?.length ?? 0) > 0 || (asideConfig.guides?.length ?? 0) > 0;
+
   return (
     <div
-      className={`absolute top-full z-50 w-[720px] max-w-[calc(100vw-2rem)] pt-3 opacity-0 pointer-events-none translate-y-2 group-hover:opacity-100 group-hover:pointer-events-auto group-hover:translate-y-0 transition-all duration-200 ${positionClass}`}
+      className={`absolute top-full z-50 w-[1040px] max-w-[calc(100vw-2rem)] pt-3 opacity-0 pointer-events-none translate-y-2 group-hover:opacity-100 group-hover:pointer-events-auto group-hover:translate-y-0 transition-all duration-200 ${positionClass}`}
     >
       <div className="overflow-hidden rounded-[1.35rem] border border-slate-200/80 bg-white shadow-[0_24px_70px_rgba(15,23,42,0.16)]">
-        <div className="grid grid-cols-[1fr_220px]">
-          <div className="p-4">
-            <div className="mb-3 flex items-center justify-between gap-4">
-              <div>
-                <p className="text-xs font-semibold uppercase tracking-[0.18em] text-brand-600">Catégorie</p>
-                <Link href={`/${item.slug}`} className="mt-1 block text-lg font-bold text-ink hover:text-brand-600">
-                  {item.name}
-                </Link>
-              </div>
-
-              <Link
-                href={`/${item.slug}`}
-                className="rounded-full border border-slate-200 px-3 py-1.5 text-xs font-semibold text-slate-700 hover:border-brand-300 hover:bg-brand-50 hover:text-brand-700"
-              >
-                Tout voir
+        <div className={hasAside ? "grid grid-cols-[minmax(0,1fr)_280px]" : "grid grid-cols-1"}>
+          <div className="p-6">
+            <div className="mb-5 border-b border-slate-200 pb-4">
+              <Link href={`/${item.slug}`} className="block text-xl font-extrabold tracking-[-0.02em] text-ink hover:text-brand-700">
+                {item.name}
               </Link>
+              <p className="mt-1.5 max-w-3xl text-sm leading-6 text-slate-500">{getMegaIntro(item)}</p>
             </div>
 
-            <div className="grid grid-cols-2 gap-2.5">
+            <div className="grid grid-cols-3 gap-x-8 gap-y-7">
               {item.children.map((child) => (
-                <div
-                  key={child.id}
-                  className="group/card rounded-2xl border border-slate-200 bg-white p-3.5 transition hover:border-brand-200 hover:bg-slate-50/80"
-                >
-                  <Link href={`/${child.slug}`} className="block text-sm font-bold text-slate-900 group-hover/card:text-brand-700">
-                    {child.name}
+                <div key={child.id} className="min-w-0">
+                  <Link
+                    href={`/${child.slug}`}
+                    className="flex items-center gap-2 text-sm font-extrabold text-slate-950 hover:text-brand-700"
+                  >
+                    <span className="h-2 w-2 rounded-full bg-sec-500" />
+                    <span>{child.name}</span>
                   </Link>
 
                   {(child.children?.length ?? 0) > 0 ? (
-                    <ul className="mt-2.5 space-y-1.5">
-                      {child.children.slice(0, 5).map((sub) => (
+                    <ul className="mt-3 space-y-1.5">
+                      {child.children.map((sub) => (
                         <li key={sub.id}>
-                          <Link href={`/${sub.slug}`} className="block text-sm leading-5 text-slate-600 hover:text-brand-700">
-                            {sub.name}
+                          <Link
+                            href={`/${sub.slug}`}
+                            className="inline-flex items-center gap-2 text-sm leading-5 text-slate-600 hover:text-brand-700"
+                          >
+                            <span className="h-1 w-1 rounded-full bg-slate-300" />
+                            <span>{sub.name}</span>
                           </Link>
                         </li>
                       ))}
-                      {child.children.length > 5 ? (
-                        <li className="pt-1 text-xs font-medium text-slate-400">
-                          + {child.children.length - 5} autres catégories
-                        </li>
-                      ) : null}
                     </ul>
-                  ) : (
-                    <p className="mt-2 text-xs leading-5 text-slate-500">Comparatifs, prix et meilleurs choix.</p>
-                  )}
+                  ) : null}
                 </div>
               ))}
             </div>
           </div>
 
-          <aside className="border-l border-slate-200 bg-slate-50/80 p-4">
-            <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">Accès rapide</p>
+          {hasAside ? (
+            <aside className="bg-gradient-to-b from-brand-900 to-brand-700 p-5 text-white">
+              <AsideContent config={asideConfig} />
+            </aside>
+          ) : null}
+        </div>
+      </div>
+    </div>
+  );
+}
 
-            <div className="mt-4 space-y-2">
-              <Link href={`/${item.slug}`} className="block rounded-2xl bg-white p-3 text-sm font-semibold text-slate-900 shadow-sm ring-1 ring-slate-200 hover:bg-brand-50 hover:text-brand-700 hover:ring-brand-200">
-                Voir toute la catégorie
-              </Link>
+function MobileCategoryPanel({
+  item,
+  guideItems,
+  siteId,
+}: {
+  item: NavItem;
+  guideItems: GuideNavItem[];
+  siteId?: string;
+}) {
+  const asideConfig = getAsideConfig(item, guideItems, siteId);
 
-              <Link href="/pages" className="block rounded-2xl bg-white p-3 text-sm font-semibold text-slate-900 shadow-sm ring-1 ring-slate-200 hover:bg-brand-50 hover:text-brand-700 hover:ring-brand-200">
-                Guides d’achat
-              </Link>
+  return (
+    <div className="bg-muted/30 px-3 pb-3 pt-1">
+      <div className="space-y-3">
+        {item.children.map((child) => (
+          <div key={child.id} className="border-t border-ring/60 pt-3 first:border-t-0 first:pt-2">
+            <Link href={`/${child.slug}`} className="flex items-center gap-2 text-sm font-bold text-ink">
+              <span className="h-1.5 w-1.5 rounded-full bg-sec-500" />
+              {child.name}
+            </Link>
 
-              <Link href="/search" className="block rounded-2xl bg-white p-3 text-sm font-semibold text-slate-900 shadow-sm ring-1 ring-slate-200 hover:bg-brand-50 hover:text-brand-700 hover:ring-brand-200">
-                Comparer les prix
-              </Link>
-            </div>
+            {(child.children?.length ?? 0) > 0 ? (
+              <ul className="ml-3 mt-2 space-y-1 border-l border-ring/60 pl-3">
+                {child.children.map((g) => (
+                  <li key={g.id}>
+                    <Link href={`/${g.slug}`} className="block py-0.5 text-sm text-slate-600">
+                      {g.name}
+                    </Link>
+                  </li>
+                ))}
+              </ul>
+            ) : null}
+          </div>
+        ))}
 
-            <div className="mt-5 rounded-2xl bg-white p-3 ring-1 ring-slate-200">
-              <p className="text-sm font-bold text-slate-900">Conseil expert</p>
-              <p className="mt-1 text-xs leading-5 text-slate-500">
-                Comparez les modèles, les marques et les prix avant d’acheter votre matériel.
-              </p>
-            </div>
-          </aside>
+        <div className="pt-2">
+          <AsideContent config={asideConfig} compact />
         </div>
       </div>
     </div>
@@ -151,6 +399,7 @@ function MegaMenu({ item, align = "center" }: { item: NavItem; align?: "left" | 
 export default function Header() {
   const pathname = usePathname();
 
+  const [siteId, setSiteId] = useState<string | undefined>();
   const [searchPlaceholder, setSearchPlaceholder] = useState("Rechercher…");
   const [navItems, setNavItems] = useState<NavItem[]>([]);
   const [guideItems, setGuideItems] = useState<GuideNavItem[]>([]);
@@ -158,8 +407,9 @@ export default function Header() {
   const [openIds, setOpenIds] = useState<Record<string, boolean>>({});
 
   useEffect(() => {
-    const siteId = document.documentElement.dataset.siteId;
-    setSearchPlaceholder(getSearchPlaceholder(siteId));
+    const currentSiteId = document.documentElement.dataset.siteId;
+    setSiteId(currentSiteId);
+    setSearchPlaceholder(getSearchPlaceholder(currentSiteId));
   }, []);
 
   useEffect(() => {
@@ -213,6 +463,8 @@ export default function Header() {
     }`;
 
   const isActivePath = (slug: string) => Boolean(pathname?.startsWith(`/${slug}`));
+
+  const orderedNavItems = useMemo(() => navItems, [navItems]);
 
   return (
     <header className="sticky top-0 z-50 border-b border-ring clean-links">
@@ -275,12 +527,41 @@ export default function Header() {
         <div className="mx-auto max-w-6xl px-4">
           <nav className="hidden lg:block">
             <div className="flex min-h-13 items-center justify-center gap-1">
+              {orderedNavItems.map((n, index) => {
+                const href = `/${n.slug}`;
+                const active = Boolean(pathname?.startsWith(href));
+                const hasChildren = (n.children?.length ?? 0) > 0;
+
+                if (!hasChildren) {
+                  return (
+                    <Link key={n.id} href={href} className={navLinkClass(active)}>
+                      {n.name}
+                    </Link>
+                  );
+                }
+
+                return (
+                  <div key={n.id} className="group relative">
+                    <Link href={href} className={navLinkClass(active)} aria-haspopup="menu">
+                      {n.name}
+                    </Link>
+
+                    <MegaMenu
+                      item={n}
+                      guideItems={guideItems}
+                      siteId={siteId}
+                      align={index <= 1 ? "left" : index >= orderedNavItems.length - 2 ? "right" : "center"}
+                    />
+                  </div>
+                );
+              })}
+
               <div className="group relative">
                 <Link href="/pages" className={navLinkClass(Boolean(pathname?.startsWith("/pages")))} aria-haspopup="menu">
                   Guides
                 </Link>
 
-                <div className="absolute left-0 top-full z-50 w-[420px] max-w-[calc(100vw-2rem)] pt-3 opacity-0 pointer-events-none translate-y-2 group-hover:opacity-100 group-hover:pointer-events-auto group-hover:translate-y-0 transition-all duration-200">
+                <div className="absolute right-0 top-full z-50 w-[420px] max-w-[calc(100vw-2rem)] pt-3 opacity-0 pointer-events-none translate-y-2 group-hover:opacity-100 group-hover:pointer-events-auto group-hover:translate-y-0 transition-all duration-200">
                   <div className="rounded-[1.35rem] border border-slate-200/80 bg-white p-4 shadow-[0_24px_70px_rgba(15,23,42,0.16)]">
                     <p className="text-xs font-semibold uppercase tracking-[0.18em] text-brand-600">Guides</p>
 
@@ -303,29 +584,9 @@ export default function Header() {
                 </div>
               </div>
 
-              {navItems.map((n, index) => {
-                const href = `/${n.slug}`;
-                const active = Boolean(pathname?.startsWith(href));
-                const hasChildren = (n.children?.length ?? 0) > 0;
-
-                if (!hasChildren) {
-                  return (
-                    <Link key={n.id} href={href} className={navLinkClass(active)}>
-                      {n.name}
-                    </Link>
-                  );
-                }
-
-                return (
-                  <div key={n.id} className="group relative">
-                    <Link href={href} className={navLinkClass(active)} aria-haspopup="menu">
-                      {n.name}
-                    </Link>
-
-                    <MegaMenu item={n} align={index <= 1 ? "left" : index >= navItems.length - 2 ? "right" : "center"} />
-                  </div>
-                );
-              })}
+              <Link href="/marques" className={navLinkClass(Boolean(pathname?.startsWith("/marques")))}>
+                Marques
+              </Link>
             </div>
           </nav>
         </div>
@@ -335,7 +596,7 @@ export default function Header() {
         <div className="lg:hidden">
           <div className="fixed inset-0 z-50 bg-black/40" onClick={() => setMobileOpen(false)} />
 
-          <div className="fixed right-0 top-0 z-50 h-full w-[86%] max-w-sm border-l border-ring bg-white shadow-card">
+          <div className="fixed right-0 top-0 z-50 h-full w-[88%] max-w-sm border-l border-ring bg-white shadow-card">
             <div className="flex items-center justify-between border-b border-ring px-4 py-3">
               <span className="text-sm font-semibold text-slate-800">Menu</span>
               <button
@@ -348,45 +609,15 @@ export default function Header() {
               </button>
             </div>
 
-            <div className="h-[calc(100vh-65px)] overflow-y-auto p-4">
+            <div className="h-[calc(100vh-65px)] overflow-y-auto bg-slate-50 p-4">
               <div className="space-y-2">
-                <div className="overflow-hidden rounded-xl border border-ring/70">
-                  <div className="flex items-center">
-                    <Link href="/pages" className={`flex-1 px-3 py-2 text-sm font-medium ${pathname?.startsWith("/pages") ? "bg-brand-500/15" : "bg-white"}`}>
-                      Guides
-                    </Link>
-                    <button type="button" onClick={() => toggleOpen("guides")} className="px-3 py-2 text-sm text-slate-600 hover:bg-muted" aria-expanded={Boolean(openIds.guides)}>
-                      {openIds.guides ? "–" : "+"}
-                    </button>
-                  </div>
-
-                  {openIds.guides ? (
-                    <div className="bg-muted/30 px-3 pb-2 pt-1">
-                      <ul className="space-y-1">
-                        <li>
-                          <Link href="/pages" className="block py-1 text-sm text-ink">
-                            Tous les guides
-                          </Link>
-                        </li>
-                        {guideItems.map((g) => (
-                          <li key={g.id}>
-                            <Link href={`/pages#${g.slug}`} className="block py-1 text-sm text-ink">
-                              {g.name}
-                            </Link>
-                          </li>
-                        ))}
-                      </ul>
-                    </div>
-                  ) : null}
-                </div>
-
-                {navItems.map((n) => {
+                {orderedNavItems.map((n) => {
                   const hasChildren = (n.children?.length ?? 0) > 0;
                   const active = isActivePath(n.slug);
 
                   if (!hasChildren) {
                     return (
-                      <Link key={n.id} href={`/${n.slug}`} className={`block rounded-xl px-3 py-2 text-sm font-medium ${active ? "bg-brand-500/15 text-ink" : "text-slate-700 hover:bg-muted"}`}>
+                      <Link key={n.id} href={`/${n.slug}`} className={`block rounded-xl px-3 py-2 text-sm font-medium ${active ? "bg-brand-500/15 text-ink" : "bg-white text-slate-700 hover:bg-muted"}`}>
                         {n.name}
                       </Link>
                     );
@@ -396,44 +627,59 @@ export default function Header() {
                   const opened = Boolean(openIds[key]);
 
                   return (
-                    <div key={n.id} className="overflow-hidden rounded-xl border border-ring/70">
+                    <div key={n.id} className="overflow-hidden rounded-2xl border border-ring bg-white">
                       <div className="flex items-center">
-                        <Link href={`/${n.slug}`} className={`flex-1 px-3 py-2 text-sm font-medium ${active ? "bg-brand-500/15" : "bg-white"}`}>
+                        <Link href={`/${n.slug}`} className={`flex-1 px-3 py-3 text-sm font-bold ${active ? "bg-brand-500/15 text-ink" : "bg-white text-ink"}`}>
                           {n.name}
                         </Link>
-                        <button type="button" onClick={() => toggleOpen(key)} className="px-3 py-2 text-sm text-slate-600 hover:bg-muted" aria-expanded={opened}>
+                        <button
+                          type="button"
+                          onClick={() => toggleOpen(key)}
+                          className="px-4 py-3 text-lg font-semibold text-slate-600 hover:bg-muted"
+                          aria-expanded={opened}
+                        >
                           {opened ? "–" : "+"}
                         </button>
                       </div>
 
-                      {opened ? (
-                        <div className="bg-muted/30 px-3 pb-2 pt-1">
-                          <ul className="space-y-1">
-                            {n.children.map((c) => (
-                              <li key={c.id}>
-                                <Link href={`/${c.slug}`} className="block py-1 text-sm font-medium text-ink">
-                                  {c.name}
-                                </Link>
-
-                                {(c.children?.length ?? 0) > 0 ? (
-                                  <ul className="ml-3 mt-1 space-y-1 border-l border-ring/60 pl-3">
-                                    {c.children.map((g) => (
-                                      <li key={g.id}>
-                                        <Link href={`/${g.slug}`} className="block py-0.5 text-sm text-slate-600">
-                                          {g.name}
-                                        </Link>
-                                      </li>
-                                    ))}
-                                  </ul>
-                                ) : null}
-                              </li>
-                            ))}
-                          </ul>
-                        </div>
-                      ) : null}
+                      {opened ? <MobileCategoryPanel item={n} guideItems={guideItems} siteId={siteId} /> : null}
                     </div>
                   );
                 })}
+
+                <div className="overflow-hidden rounded-2xl border border-ring bg-white">
+                  <div className="flex items-center">
+                    <Link href="/pages" className={`flex-1 px-3 py-3 text-sm font-bold ${pathname?.startsWith("/pages") ? "bg-brand-500/15 text-ink" : "bg-white text-ink"}`}>
+                      Guides
+                    </Link>
+                    <button type="button" onClick={() => toggleOpen("guides")} className="px-4 py-3 text-lg font-semibold text-slate-600 hover:bg-muted" aria-expanded={Boolean(openIds.guides)}>
+                      {openIds.guides ? "–" : "+"}
+                    </button>
+                  </div>
+
+                  {openIds.guides ? (
+                    <div className="bg-muted/30 px-3 pb-3 pt-1">
+                      <ul className="space-y-1">
+                        <li>
+                          <Link href="/pages" className="block py-1 text-sm font-medium text-ink">
+                            Tous les guides
+                          </Link>
+                        </li>
+                        {guideItems.map((g) => (
+                          <li key={g.id}>
+                            <Link href={`/pages#${g.slug}`} className="block py-1 text-sm text-slate-600">
+                              {g.name}
+                            </Link>
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  ) : null}
+                </div>
+
+                <Link href="/marques" className={`block rounded-2xl border border-ring bg-white px-3 py-3 text-sm font-bold ${pathname?.startsWith("/marques") ? "bg-brand-500/15 text-ink" : "text-ink"}`}>
+                  Marques
+                </Link>
               </div>
             </div>
           </div>
