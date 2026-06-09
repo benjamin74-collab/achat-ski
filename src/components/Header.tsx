@@ -285,19 +285,12 @@ function MegaMenu({
   guideItems: GuideNavItem[];
   siteId?: string;
 }) {
-  const positionClass =
-    align === "left"
-      ? "left-0"
-      : align === "right"
-        ? "right-0"
-        : "left-1/2 -translate-x-1/2";
-
   const asideConfig = getAsideConfig(item, guideItems, siteId);
   const hasAside = (asideConfig.brands?.length ?? 0) > 0 || (asideConfig.guides?.length ?? 0) > 0;
 
   return (
     <div
-		className="fixed left-1/2 top-[118px] z-50 w-[1040px] max-w-[calc(100vw-2rem)] -translate-x-1/2 pt-3 opacity-0 pointer-events-none translate-y-2 group-hover:opacity-100 group-hover:pointer-events-auto group-hover:translate-y-0 transition-all duration-200"
+      className="fixed left-1/2 top-[118px] z-50 w-[1040px] max-w-[calc(100vw-2rem)] -translate-x-1/2 pt-3 opacity-0 pointer-events-none translate-y-2 group-hover:opacity-100 group-hover:pointer-events-auto group-hover:translate-y-0 transition-all duration-200"
     >
       <div className="overflow-hidden rounded-[1.35rem] border border-slate-200/80 bg-white shadow-[0_24px_70px_rgba(15,23,42,0.16)]">
         <div className={hasAside ? "grid grid-cols-[minmax(0,1fr)_280px]" : "grid grid-cols-1"}>
