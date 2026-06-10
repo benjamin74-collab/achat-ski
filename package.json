@@ -15,7 +15,9 @@
     "db:migrate:deploy": "prisma migrate deploy",
     "db:generate": "prisma generate",
     "prisma:push": "prisma db push",
-
+    "seed:brands": "tsx prisma/seed-brands.ts",
+	"prisma:seed:categories:sprint": "tsx prisma/seed-categories-ski-snowboard-rando-sprint.ts",
+	"prisma:seed:menu-structure": "tsx prisma/seed-categories-menu-structure.ts",
     "prisma:seed": "tsx prisma/seed.ts",
     "prisma:seed:design": "tsx prisma/seed-design.ts",
 

@@ -1,0 +1,965 @@
+[
+  {
+    "slug": "ski",
+    "name": "Ski",
+    "parentSlug": null,
+    "order": 1,
+    "isInMenu": true,
+    "published": true,
+    "createIfMissing": true,
+    "intro": "L’univers Ski regroupe les skis, packs skis, chaussures, fixations et bâtons pour toutes les pratiques alpines : piste, all-mountain, freeride, freestyle et junior.",
+    "metaTitle": "Ski : skis, chaussures, fixations et bâtons | Meilleur-Ski",
+    "metaDescription": "Explorez l’univers ski : skis, packs, chaussures, fixations et bâtons. Comparez les catégories et trouvez le meilleur équipement au meilleur prix.",
+    "content": "<p>L’univers <strong>Ski</strong> regroupe l’ensemble du matériel indispensable pour pratiquer le ski alpin en station : <a href=\"/skis\">skis</a>, <a href=\"/packs-skis\">packs skis</a>, <a href=\"/chaussures-ski\">chaussures de ski</a>, <a href=\"/fixations-ski\">fixations</a> et <a href=\"/batons-ski\">bâtons de ski</a>.</p><p>Cette page sert de porte d’entrée vers les grandes familles de matériel. Elle permet de distinguer les besoins selon la pratique : piste, all-mountain, freeride, freestyle ou junior.</p><h2>Choisir son matériel de ski</h2><p>Pour construire un équipement cohérent, commencez par identifier votre pratique dominante, puis comparez les catégories adaptées. Les skieurs de piste privilégieront la précision, les all-mountain la polyvalence, les freeriders la portance et les juniors la facilité de progression.</p><h2>Comparer les catégories ski</h2><p>Sur Meilleur-Ski, vous pouvez comparer les <a href=\"/skis-piste\">skis de piste</a>, les <a href=\"/skis-all-mountain\">skis all-mountain</a>, les <a href=\"/skis-freeride\">skis freeride</a>, les <a href=\"/packs-skis\">packs skis + fixations</a>, les chaussures, les fixations et les bâtons adaptés à votre pratique.</p><h2>FAQ – Univers Ski</h2><dl><dt><strong>Quelle catégorie consulter en premier ?</strong></dt><dd>Commencez par les skis si vous cherchez une paire, ou par les packs skis si vous souhaitez un ensemble skis + fixations.</dd><dt><strong>Le ski de randonnée est-il inclus ici ?</strong></dt><dd>Le ski de randonnée dispose d’un univers séparé, car le matériel et les intentions de recherche sont spécifiques.</dd></dl>",
+    "mapKwanko": [],
+    "mapEkosport": [],
+    "mapSnowleader": [],
+    "mapGlisshop": [],
+    "aliases": []
+  },
+  {
+    "slug": "ski-randonnee",
+    "name": "Ski de randonnée",
+    "parentSlug": null,
+    "order": 2,
+    "isInMenu": true,
+    "published": true,
+    "createIfMissing": false
+  },
+  {
+    "slug": "snowboard",
+    "name": "Snowboard",
+    "parentSlug": null,
+    "order": 3,
+    "isInMenu": true,
+    "published": true,
+    "createIfMissing": false
+  },
+  {
+    "slug": "ski-nordique",
+    "name": "Ski nordique",
+    "parentSlug": null,
+    "order": 4,
+    "isInMenu": true,
+    "published": true,
+    "createIfMissing": false
+  },
+  {
+    "slug": "vetements-ski",
+    "name": "Vêtements de ski",
+    "parentSlug": null,
+    "order": 5,
+    "isInMenu": true,
+    "published": true,
+    "createIfMissing": false
+  },
+  {
+    "slug": "protections-ski",
+    "name": "Protections & accessoires ski",
+    "parentSlug": null,
+    "order": 6,
+    "isInMenu": true,
+    "published": true,
+    "createIfMissing": false
+  },
+  {
+    "slug": "skis",
+    "name": "Skis",
+    "parentSlug": "ski",
+    "order": 1,
+    "isInMenu": true,
+    "published": true,
+    "createIfMissing": false
+  },
+  {
+    "slug": "packs-skis",
+    "name": "Packs skis",
+    "parentSlug": "ski",
+    "order": 2,
+    "isInMenu": true,
+    "published": true,
+    "createIfMissing": false
+  },
+  {
+    "slug": "chaussures-ski",
+    "name": "Chaussures ski",
+    "parentSlug": "ski",
+    "order": 3,
+    "isInMenu": true,
+    "published": true,
+    "createIfMissing": false
+  },
+  {
+    "slug": "fixations-ski",
+    "name": "Fixations ski",
+    "parentSlug": "ski",
+    "order": 4,
+    "isInMenu": true,
+    "published": true,
+    "createIfMissing": false
+  },
+  {
+    "slug": "batons-ski",
+    "name": "Bâtons ski",
+    "parentSlug": "ski",
+    "order": 5,
+    "isInMenu": true,
+    "published": true,
+    "createIfMissing": false
+  },
+  {
+    "slug": "skis-piste",
+    "name": "Skis piste",
+    "parentSlug": "skis",
+    "order": 1,
+    "isInMenu": true,
+    "published": true,
+    "createIfMissing": false
+  },
+  {
+    "slug": "skis-all-mountain",
+    "name": "Skis all mountain",
+    "parentSlug": "skis",
+    "order": 2,
+    "isInMenu": true,
+    "published": true,
+    "createIfMissing": false
+  },
+  {
+    "slug": "skis-freeride",
+    "name": "Skis freeride",
+    "parentSlug": "skis",
+    "order": 3,
+    "isInMenu": true,
+    "published": true,
+    "createIfMissing": false
+  },
+  {
+    "slug": "skis-freestyle",
+    "name": "Skis freestyle",
+    "parentSlug": "skis",
+    "order": 4,
+    "isInMenu": true,
+    "published": true,
+    "createIfMissing": false
+  },
+  {
+    "slug": "skis-junior",
+    "name": "Skis junior",
+    "parentSlug": "skis",
+    "order": 5,
+    "isInMenu": true,
+    "published": true,
+    "createIfMissing": false
+  },
+  {
+    "slug": "packs-skis-piste",
+    "name": "Packs skis piste",
+    "parentSlug": "packs-skis",
+    "order": 1,
+    "isInMenu": true,
+    "published": true,
+    "createIfMissing": false
+  },
+  {
+    "slug": "packs-skis-all-mountain",
+    "name": "Packs skis all mountain",
+    "parentSlug": "packs-skis",
+    "order": 2,
+    "isInMenu": true,
+    "published": true,
+    "createIfMissing": false
+  },
+  {
+    "slug": "packs-skis-freeride",
+    "name": "Packs skis freeride",
+    "parentSlug": "packs-skis",
+    "order": 3,
+    "isInMenu": true,
+    "published": true,
+    "createIfMissing": false
+  },
+  {
+    "slug": "packs-skis-freestyle",
+    "name": "Packs skis freestyle",
+    "parentSlug": "packs-skis",
+    "order": 4,
+    "isInMenu": true,
+    "published": true,
+    "createIfMissing": false
+  },
+  {
+    "slug": "packs-skis-junior",
+    "name": "Packs skis junior",
+    "parentSlug": "packs-skis",
+    "order": 5,
+    "isInMenu": true,
+    "published": true,
+    "createIfMissing": false
+  },
+  {
+    "slug": "chaussures-ski-piste",
+    "name": "Chaussures ski piste",
+    "parentSlug": "chaussures-ski",
+    "order": 1,
+    "isInMenu": true,
+    "published": true,
+    "createIfMissing": false
+  },
+  {
+    "slug": "chaussures-ski-freeride",
+    "name": "Chaussures ski freeride",
+    "parentSlug": "chaussures-ski",
+    "order": 2,
+    "isInMenu": true,
+    "published": true,
+    "createIfMissing": false
+  },
+  {
+    "slug": "chaussures-ski-performance",
+    "name": "Chaussures ski performance",
+    "parentSlug": "chaussures-ski",
+    "order": 3,
+    "isInMenu": true,
+    "published": true,
+    "createIfMissing": false
+  },
+  {
+    "slug": "chaussures-ski-junior",
+    "name": "Chaussures ski junior",
+    "parentSlug": "chaussures-ski",
+    "order": 4,
+    "isInMenu": true,
+    "published": true,
+    "createIfMissing": false
+  },
+  {
+    "slug": "fixations-ski-piste",
+    "name": "Fixations ski piste",
+    "parentSlug": "fixations-ski",
+    "order": 1,
+    "isInMenu": true,
+    "published": true,
+    "createIfMissing": false
+  },
+  {
+    "slug": "fixations-ski-all-mountain",
+    "name": "Fixations ski all mountain",
+    "parentSlug": "fixations-ski",
+    "order": 2,
+    "isInMenu": true,
+    "published": true,
+    "createIfMissing": false
+  },
+  {
+    "slug": "fixations-ski-freeride",
+    "name": "Fixations ski freeride",
+    "parentSlug": "fixations-ski",
+    "order": 3,
+    "isInMenu": true,
+    "published": true,
+    "createIfMissing": false
+  },
+  {
+    "slug": "batons-ski-piste",
+    "name": "Bâtons ski piste",
+    "parentSlug": "batons-ski",
+    "order": 1,
+    "isInMenu": true,
+    "published": true,
+    "createIfMissing": false
+  },
+  {
+    "slug": "batons-ski-freeride",
+    "name": "Bâtons ski freeride",
+    "parentSlug": "batons-ski",
+    "order": 2,
+    "isInMenu": true,
+    "published": true,
+    "createIfMissing": false
+  },
+  {
+    "slug": "batons-ski-junior",
+    "name": "Bâtons ski junior",
+    "parentSlug": "batons-ski",
+    "order": 3,
+    "isInMenu": true,
+    "published": true,
+    "createIfMissing": false
+  },
+  {
+    "slug": "skis-randonnee",
+    "name": "Skis randonnée",
+    "parentSlug": "ski-randonnee",
+    "order": 1,
+    "isInMenu": true,
+    "published": true,
+    "createIfMissing": false
+  },
+  {
+    "slug": "skis-randonnee-legers",
+    "name": "Skis randonnée légers",
+    "parentSlug": "skis-randonnee",
+    "order": 1,
+    "isInMenu": true,
+    "published": true,
+    "createIfMissing": false
+  },
+  {
+    "slug": "skis-freerando",
+    "name": "Skis freerando",
+    "parentSlug": "skis-randonnee",
+    "order": 2,
+    "isInMenu": true,
+    "published": true,
+    "createIfMissing": false
+  },
+  {
+    "slug": "packs-ski-randonnee",
+    "name": "Packs ski randonnée",
+    "parentSlug": "skis-randonnee",
+    "order": 3,
+    "isInMenu": true,
+    "published": true,
+    "createIfMissing": false
+  },
+  {
+    "slug": "packs-ski-freerando",
+    "name": "Packs freerando",
+    "parentSlug": "skis-randonnee",
+    "order": 4,
+    "isInMenu": true,
+    "published": true,
+    "createIfMissing": false
+  },
+  {
+    "slug": "fixations-ski-randonnee",
+    "name": "Fixations ski randonnée",
+    "parentSlug": "ski-randonnee",
+    "order": 2,
+    "isInMenu": true,
+    "published": true,
+    "createIfMissing": false
+  },
+  {
+    "slug": "fixations-inserts",
+    "name": "Fixations inserts",
+    "parentSlug": "fixations-ski-randonnee",
+    "order": 1,
+    "isInMenu": true,
+    "published": true,
+    "createIfMissing": false
+  },
+  {
+    "slug": "fixations-hybrides",
+    "name": "Fixations hybrides",
+    "parentSlug": "fixations-ski-randonnee",
+    "order": 2,
+    "isInMenu": true,
+    "published": true,
+    "createIfMissing": false
+  },
+  {
+    "slug": "fixations-chassis",
+    "name": "Fixations châssis",
+    "parentSlug": "fixations-ski-randonnee",
+    "order": 3,
+    "isInMenu": true,
+    "published": true,
+    "createIfMissing": false
+  },
+  {
+    "slug": "chaussures-ski-randonnee",
+    "name": "Chaussures ski randonnée",
+    "parentSlug": "ski-randonnee",
+    "order": 3,
+    "isInMenu": true,
+    "published": true,
+    "createIfMissing": false
+  },
+  {
+    "slug": "chaussures-ski-rando-legeres",
+    "name": "Chaussures ski randonnée légères",
+    "parentSlug": "chaussures-ski-randonnee",
+    "order": 1,
+    "isInMenu": true,
+    "published": true,
+    "createIfMissing": false
+  },
+  {
+    "slug": "chaussures-freerando",
+    "name": "Chaussures freerando",
+    "parentSlug": "chaussures-ski-randonnee",
+    "order": 2,
+    "isInMenu": true,
+    "published": true,
+    "createIfMissing": false
+  },
+  {
+    "slug": "peaux-phoque",
+    "name": "Peaux de phoque",
+    "parentSlug": "ski-randonnee",
+    "order": 4,
+    "isInMenu": true,
+    "published": true,
+    "createIfMissing": false
+  },
+  {
+    "slug": "peaux-avec-colle",
+    "name": "Peaux avec colle",
+    "parentSlug": "peaux-phoque",
+    "order": 1,
+    "isInMenu": true,
+    "published": true,
+    "createIfMissing": false
+  },
+  {
+    "slug": "peaux-sans-colle",
+    "name": "Peaux sans colle",
+    "parentSlug": "peaux-phoque",
+    "order": 2,
+    "isInMenu": true,
+    "published": true,
+    "createIfMissing": false
+  },
+  {
+    "slug": "couteaux-ski-rando",
+    "name": "Couteaux ski rando",
+    "parentSlug": "ski-randonnee",
+    "order": 5,
+    "isInMenu": true,
+    "published": true,
+    "createIfMissing": false
+  },
+  {
+    "slug": "freins-leash-ski-rando",
+    "name": "Freins & leash ski rando",
+    "parentSlug": "ski-randonnee",
+    "order": 6,
+    "isInMenu": true,
+    "published": true,
+    "createIfMissing": false
+  },
+  {
+    "slug": "batons-ski-randonnee",
+    "name": "Bâtons ski randonnée",
+    "parentSlug": "ski-randonnee",
+    "order": 7,
+    "isInMenu": true,
+    "published": true,
+    "createIfMissing": false
+  },
+  {
+    "slug": "securite-avalanche",
+    "name": "Sécurité avalanche",
+    "parentSlug": "ski-randonnee",
+    "order": 8,
+    "isInMenu": true,
+    "published": true,
+    "createIfMissing": false
+  },
+  {
+    "slug": "dva-arva",
+    "name": "DVA / ARVA",
+    "parentSlug": "securite-avalanche",
+    "order": 1,
+    "isInMenu": true,
+    "published": true,
+    "createIfMissing": false
+  },
+  {
+    "slug": "pelles-avalanche",
+    "name": "Pelles avalanche",
+    "parentSlug": "securite-avalanche",
+    "order": 2,
+    "isInMenu": true,
+    "published": true,
+    "createIfMissing": false
+  },
+  {
+    "slug": "sondes-avalanche",
+    "name": "Sondes avalanche",
+    "parentSlug": "securite-avalanche",
+    "order": 3,
+    "isInMenu": true,
+    "published": true,
+    "createIfMissing": false
+  },
+  {
+    "slug": "sacs-airbag",
+    "name": "Sacs airbag",
+    "parentSlug": "securite-avalanche",
+    "order": 4,
+    "isInMenu": true,
+    "published": true,
+    "createIfMissing": true,
+    "intro": "Les sacs airbag avalanche complètent le trio DVA, pelle et sonde pour réduire le risque d’ensevelissement en cas d’avalanche.",
+    "metaTitle": "Sacs airbag avalanche : comparer les meilleurs modèles | Meilleur-Ski",
+    "metaDescription": "Comparez les sacs airbag avalanche pour le ski de randonnée et le freeride. Conseils pour choisir volume, système de déclenchement et meilleur prix.",
+    "content": "<p>Les <strong>sacs airbag avalanche</strong> sont des équipements de sécurité destinés aux pratiquants de <a href=\"/ski-randonnee\">ski de randonnée</a>, freerando et hors-piste. Ils ne remplacent jamais le trio <a href=\"/dva-arva\">DVA</a>, <a href=\"/pelles-avalanche\">pelle</a> et <a href=\"/sondes-avalanche\">sonde</a>, mais ils peuvent réduire le risque d’ensevelissement complet en cas d’avalanche.</p><p>Le choix d’un sac airbag dépend du volume, du poids, du système de déclenchement et de votre pratique. Les modèles électriques permettent plusieurs déclenchements, tandis que les systèmes à cartouche restent répandus et éprouvés.</p><h2>Comment choisir un sac airbag avalanche ?</h2><ul><li><strong>Volume :</strong> 20 à 25 litres pour les sorties courtes, 25 à 35 litres pour la randonnée classique.</li><li><strong>Système :</strong> cartouche ou électrique selon vos préférences et contraintes de voyage.</li><li><strong>Poids :</strong> important pour les longues montées.</li><li><strong>Organisation :</strong> compartiments pour le matériel de sécurité et les accessoires.</li></ul><h2>Les meilleures marques de sacs airbag</h2><p>Arva, Mammut, Ortovox, Scott, BCA, Black Diamond et ABS font partie des marques reconnues sur ce marché.</p><h2>FAQ – Sacs airbag avalanche</h2><dl><dt><strong>Un sac airbag remplace-t-il un DVA ?</strong></dt><dd>Non, il complète le matériel de sécurité mais ne remplace jamais DVA, pelle et sonde.</dd><dt><strong>Cartouche ou électrique ?</strong></dt><dd>Les deux systèmes sont pertinents. L’électrique facilite les tests et les déclenchements multiples, la cartouche reste simple et éprouvée.</dd></dl>",
+    "mapKwanko": [],
+    "mapEkosport": [],
+    "mapSnowleader": [],
+    "mapGlisshop": [],
+    "aliases": []
+  },
+  {
+    "slug": "planches-snowboard",
+    "name": "Planches snowboard",
+    "parentSlug": "snowboard",
+    "order": 1,
+    "isInMenu": true,
+    "published": true,
+    "createIfMissing": false
+  },
+  {
+    "slug": "snowboard-freestyle",
+    "name": "Snowboard freestyle",
+    "parentSlug": "planches-snowboard",
+    "order": 1,
+    "isInMenu": true,
+    "published": true,
+    "createIfMissing": false
+  },
+  {
+    "slug": "snowboard-all-mountain",
+    "name": "Snowboard all-mountain",
+    "parentSlug": "planches-snowboard",
+    "order": 2,
+    "isInMenu": true,
+    "published": true,
+    "createIfMissing": false
+  },
+  {
+    "slug": "snowboard-freeride",
+    "name": "Snowboard freeride",
+    "parentSlug": "planches-snowboard",
+    "order": 3,
+    "isInMenu": true,
+    "published": true,
+    "createIfMissing": false
+  },
+  {
+    "slug": "splitboard",
+    "name": "Splitboard",
+    "parentSlug": "snowboard",
+    "order": 2,
+    "isInMenu": true,
+    "published": true,
+    "createIfMissing": false
+  },
+  {
+    "slug": "packs-snowboard",
+    "name": "Packs snowboard",
+    "parentSlug": "snowboard",
+    "order": 3,
+    "isInMenu": true,
+    "published": true,
+    "createIfMissing": false
+  },
+  {
+    "slug": "fixations-snowboard",
+    "name": "Fixations snowboard",
+    "parentSlug": "snowboard",
+    "order": 4,
+    "isInMenu": true,
+    "published": true,
+    "createIfMissing": false
+  },
+  {
+    "slug": "fixations-snowboard-straps",
+    "name": "Fixations snowboard straps",
+    "parentSlug": "fixations-snowboard",
+    "order": 1,
+    "isInMenu": true,
+    "published": true,
+    "createIfMissing": false
+  },
+  {
+    "slug": "fixations-snowboard-rear-entry",
+    "name": "Fixations snowboard rear-entry",
+    "parentSlug": "fixations-snowboard",
+    "order": 2,
+    "isInMenu": true,
+    "published": true,
+    "createIfMissing": false
+  },
+  {
+    "slug": "fixations-splitboard",
+    "name": "Fixations splitboard",
+    "parentSlug": "fixations-snowboard",
+    "order": 3,
+    "isInMenu": true,
+    "published": true,
+    "createIfMissing": false
+  },
+  {
+    "slug": "boots-snowboard",
+    "name": "Boots snowboard",
+    "parentSlug": "snowboard",
+    "order": 5,
+    "isInMenu": true,
+    "published": true,
+    "createIfMissing": false
+  },
+  {
+    "slug": "boots-snowboard-freestyle",
+    "name": "Boots snowboard freestyle",
+    "parentSlug": "boots-snowboard",
+    "order": 1,
+    "isInMenu": true,
+    "published": true,
+    "createIfMissing": false
+  },
+  {
+    "slug": "boots-snowboard-freeride",
+    "name": "Boots snowboard freeride",
+    "parentSlug": "boots-snowboard",
+    "order": 2,
+    "isInMenu": true,
+    "published": true,
+    "createIfMissing": false
+  },
+  {
+    "slug": "accessoires-snowboard",
+    "name": "Accessoires snowboard",
+    "parentSlug": "snowboard",
+    "order": 6,
+    "isInMenu": true,
+    "published": true,
+    "createIfMissing": false
+  },
+  {
+    "slug": "casques-snowboard",
+    "name": "Casques snowboard",
+    "parentSlug": "accessoires-snowboard",
+    "order": 1,
+    "isInMenu": true,
+    "published": true,
+    "createIfMissing": false
+  },
+  {
+    "slug": "masques-snowboard",
+    "name": "Masques snowboard",
+    "parentSlug": "accessoires-snowboard",
+    "order": 2,
+    "isInMenu": true,
+    "published": true,
+    "createIfMissing": false
+  },
+  {
+    "slug": "sacs-snowboard",
+    "name": "Sacs snowboard",
+    "parentSlug": "accessoires-snowboard",
+    "order": 3,
+    "isInMenu": true,
+    "published": true,
+    "createIfMissing": false
+  },
+  {
+    "slug": "ski-skating",
+    "name": "Ski skating",
+    "parentSlug": "ski-nordique",
+    "order": 1,
+    "isInMenu": true,
+    "published": true,
+    "createIfMissing": false
+  },
+  {
+    "slug": "chaussures-skating",
+    "name": "Chaussures skating",
+    "parentSlug": "ski-skating",
+    "order": 1,
+    "isInMenu": true,
+    "published": true,
+    "createIfMissing": false
+  },
+  {
+    "slug": "fixations-skating",
+    "name": "Fixations skating",
+    "parentSlug": "ski-skating",
+    "order": 2,
+    "isInMenu": true,
+    "published": true,
+    "createIfMissing": false
+  },
+  {
+    "slug": "packs-skating",
+    "name": "Packs skating",
+    "parentSlug": "ski-skating",
+    "order": 3,
+    "isInMenu": true,
+    "published": true,
+    "createIfMissing": false
+  },
+  {
+    "slug": "ski-classique",
+    "name": "Ski classique",
+    "parentSlug": "ski-nordique",
+    "order": 2,
+    "isInMenu": true,
+    "published": true,
+    "createIfMissing": false
+  },
+  {
+    "slug": "chaussures-classique",
+    "name": "Chaussures classique",
+    "parentSlug": "ski-classique",
+    "order": 1,
+    "isInMenu": true,
+    "published": true,
+    "createIfMissing": false
+  },
+  {
+    "slug": "fixations-classique",
+    "name": "Fixations classique",
+    "parentSlug": "ski-classique",
+    "order": 2,
+    "isInMenu": true,
+    "published": true,
+    "createIfMissing": false
+  },
+  {
+    "slug": "packs-ski-classique",
+    "name": "Packs ski classique",
+    "parentSlug": "ski-classique",
+    "order": 3,
+    "isInMenu": true,
+    "published": true,
+    "createIfMissing": false
+  },
+  {
+    "slug": "entretien-ski-nordique",
+    "name": "Entretien ski nordique",
+    "parentSlug": "ski-nordique",
+    "order": 3,
+    "isInMenu": true,
+    "published": true,
+    "createIfMissing": false
+  },
+  {
+    "slug": "fart-glisse",
+    "name": "Fart de glisse",
+    "parentSlug": "entretien-ski-nordique",
+    "order": 1,
+    "isInMenu": true,
+    "published": true,
+    "createIfMissing": false
+  },
+  {
+    "slug": "fart-retenue",
+    "name": "Fart de retenue",
+    "parentSlug": "entretien-ski-nordique",
+    "order": 2,
+    "isInMenu": true,
+    "published": true,
+    "createIfMissing": false
+  },
+  {
+    "slug": "outils-fartage",
+    "name": "Outils de fartage",
+    "parentSlug": "entretien-ski-nordique",
+    "order": 3,
+    "isInMenu": true,
+    "published": true,
+    "createIfMissing": false
+  },
+  {
+    "slug": "vestes-ski",
+    "name": "Vestes de ski",
+    "parentSlug": "vetements-ski",
+    "order": 1,
+    "isInMenu": true,
+    "published": true,
+    "createIfMissing": false
+  },
+  {
+    "slug": "vestes-hardshell",
+    "name": "Vestes hardshell",
+    "parentSlug": "vestes-ski",
+    "order": 1,
+    "isInMenu": true,
+    "published": true,
+    "createIfMissing": false
+  },
+  {
+    "slug": "vestes-ski-randonnee",
+    "name": "Vestes ski randonnée",
+    "parentSlug": "vestes-ski",
+    "order": 2,
+    "isInMenu": true,
+    "published": true,
+    "createIfMissing": false
+  },
+  {
+    "slug": "pantalons-ski",
+    "name": "Pantalons de ski",
+    "parentSlug": "vetements-ski",
+    "order": 2,
+    "isInMenu": true,
+    "published": true,
+    "createIfMissing": false
+  },
+  {
+    "slug": "pantalons-hardshell",
+    "name": "Pantalons hardshell",
+    "parentSlug": "pantalons-ski",
+    "order": 1,
+    "isInMenu": true,
+    "published": true,
+    "createIfMissing": false
+  },
+  {
+    "slug": "couches-intermediaires-ski",
+    "name": "Couches intermédiaires",
+    "parentSlug": "vetements-ski",
+    "order": 3,
+    "isInMenu": true,
+    "published": true,
+    "createIfMissing": true,
+    "intro": "Les couches intermédiaires regroupent les sous-vêtements techniques, polaires et doudounes pour rester au chaud et gérer l’humidité au ski.",
+    "metaTitle": "Couches intermédiaires ski : sous-vêtements, polaires, doudounes | Meilleur-Ski",
+    "metaDescription": "Comparez les couches intermédiaires de ski : sous-vêtements techniques, polaires et doudounes. Conseils pour rester au chaud et skier confortablement.",
+    "content": "<p>Les <strong>couches intermédiaires de ski</strong> jouent un rôle essentiel dans le confort thermique. Elles complètent les <a href=\"/vestes-ski\">vestes de ski</a> et les <a href=\"/pantalons-ski\">pantalons de ski</a> en aidant à conserver la chaleur tout en évacuant l’humidité.</p><p>Cette famille regroupe les <a href=\"/sous-vetements-techniques\">sous-vêtements techniques</a>, les <a href=\"/polaires\">polaires</a> et les <a href=\"/doudounes\">doudounes</a>. Le bon choix dépend de la météo, de l’intensité de l’effort et de votre sensibilité au froid.</p><h2>Comment choisir ses couches intermédiaires ?</h2><ul><li>Les sous-vêtements techniques gèrent la transpiration au contact de la peau.</li><li>Les polaires apportent chaleur, respirabilité et confort.</li><li>Les doudounes offrent une isolation élevée par temps froid ou en pause.</li></ul><h2>FAQ – Couches intermédiaires ski</h2><dl><dt><strong>Faut-il porter plusieurs couches ?</strong></dt><dd>Oui, le système trois couches reste la base pour adapter sa tenue aux conditions.</dd><dt><strong>Polaire ou doudoune ?</strong></dt><dd>La polaire respire mieux pendant l’effort, la doudoune isole davantage par temps froid.</dd></dl>",
+    "mapKwanko": [],
+    "mapEkosport": [],
+    "mapSnowleader": [],
+    "mapGlisshop": [],
+    "aliases": []
+  },
+  {
+    "slug": "sous-vetements-techniques",
+    "name": "Sous-vêtements techniques",
+    "parentSlug": "couches-intermediaires-ski",
+    "order": 1,
+    "isInMenu": true,
+    "published": true,
+    "createIfMissing": false
+  },
+  {
+    "slug": "polaires",
+    "name": "Polaires",
+    "parentSlug": "couches-intermediaires-ski",
+    "order": 2,
+    "isInMenu": true,
+    "published": true,
+    "createIfMissing": false
+  },
+  {
+    "slug": "doudounes",
+    "name": "Doudounes",
+    "parentSlug": "couches-intermediaires-ski",
+    "order": 3,
+    "isInMenu": true,
+    "published": true,
+    "createIfMissing": false
+  },
+  {
+    "slug": "casques-ski",
+    "name": "Casques ski",
+    "parentSlug": "protections-ski",
+    "order": 1,
+    "isInMenu": true,
+    "published": true,
+    "createIfMissing": false
+  },
+  {
+    "slug": "casques-ski-visiere",
+    "name": "Casques ski avec visière",
+    "parentSlug": "casques-ski",
+    "order": 1,
+    "isInMenu": true,
+    "published": true,
+    "createIfMissing": false
+  },
+  {
+    "slug": "casques-ski-randonnee",
+    "name": "Casques ski randonnée",
+    "parentSlug": "casques-ski",
+    "order": 2,
+    "isInMenu": true,
+    "published": true,
+    "createIfMissing": false
+  },
+  {
+    "slug": "masques-ski",
+    "name": "Masques ski",
+    "parentSlug": "protections-ski",
+    "order": 2,
+    "isInMenu": true,
+    "published": true,
+    "createIfMissing": false
+  },
+  {
+    "slug": "masques-photochromiques",
+    "name": "Masques photochromiques",
+    "parentSlug": "masques-ski",
+    "order": 1,
+    "isInMenu": true,
+    "published": true,
+    "createIfMissing": false
+  },
+  {
+    "slug": "masques-otg",
+    "name": "Masques OTG",
+    "parentSlug": "masques-ski",
+    "order": 2,
+    "isInMenu": true,
+    "published": true,
+    "createIfMissing": false
+  },
+  {
+    "slug": "ecrans-masque-ski",
+    "name": "Écrans de masque de ski",
+    "parentSlug": "masques-ski",
+    "order": 3,
+    "isInMenu": true,
+    "published": true,
+    "createIfMissing": false
+  },
+  {
+    "slug": "dorsales-ski",
+    "name": "Dorsales ski",
+    "parentSlug": "protections-ski",
+    "order": 3,
+    "isInMenu": true,
+    "published": true,
+    "createIfMissing": false
+  },
+  {
+    "slug": "sacs-ski",
+    "name": "Sacs & housses",
+    "parentSlug": "protections-ski",
+    "order": 4,
+    "isInMenu": true,
+    "published": true,
+    "createIfMissing": false
+  },
+  {
+    "slug": "housses-skis",
+    "name": "Housses de skis",
+    "parentSlug": "sacs-ski",
+    "order": 1,
+    "isInMenu": true,
+    "published": true,
+    "createIfMissing": false
+  },
+  {
+    "slug": "housses-snowboard",
+    "name": "Housses snowboard",
+    "parentSlug": "sacs-ski",
+    "order": 2,
+    "isInMenu": true,
+    "published": true,
+    "createIfMissing": false
+  },
+  {
+    "slug": "housses-chaussures",
+    "name": "Housses chaussures",
+    "parentSlug": "sacs-ski",
+    "order": 3,
+    "isInMenu": true,
+    "published": true,
+    "createIfMissing": false
+  }
+]

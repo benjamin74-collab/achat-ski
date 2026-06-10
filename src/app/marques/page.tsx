@@ -1,17 +1,9 @@
-import Link from "next/link";
 import { prisma } from "@/lib/prisma";
 import Breadcrumbs from "@/components/Breadcrumbs";
 import { getCurrentSiteUrl } from "@/lib/currentSite";
+import BrandsDirectory from "@/components/brands/BrandsDirectory";
 
 export const revalidate = 300;
-
-function getSiteUrl() {
-  const env = process.env.NEXT_PUBLIC_SITE_URL;
-  if (env) return env.replace(/\/+$/, "");
-  const vercel = process.env.VERCEL_URL;
-  if (vercel) return `https://${vercel}`.replace(/\/+$/, "");
-  return "https://meilleur-ski.com";
-}
 
 export default async function BrandsDirectoryPage() {
   const site = await getCurrentSiteUrl();
@@ -20,7 +12,19 @@ export default async function BrandsDirectoryPage() {
   const brands = await prisma.brand.findMany({
     where: { active: true },
     orderBy: { name: "asc" },
-    select: { id: true, name: true, slug: true, logoUrl: true },
+    select: {
+      id: true,
+      name: true,
+      slug: true,
+      logoUrl: true,
+      metaDescription: true,
+      showOnHomepage: true,
+      _count: {
+        select: {
+          products: true,
+        },
+      },
+    },
   });
 
   const breadcrumbJsonLd = {
@@ -35,17 +39,17 @@ export default async function BrandsDirectoryPage() {
   const itemListJsonLd = {
     "@context": "https://schema.org",
     "@type": "ItemList",
-    name: "Annuaire des marques",
+    name: "Annuaire des marques de ski et outdoor",
     numberOfItems: brands.length,
-    itemListElement: brands.slice(0, 500).map((b, idx) => ({
+    itemListElement: brands.slice(0, 500).map((brand, index) => ({
       "@type": "ListItem",
-      position: idx + 1,
-      url: `${site}/marques/${b.slug}`,
+      position: index + 1,
+      url: `${site}/marques/${brand.slug}`,
       item: {
-        "@type": "Organization",
-        name: b.name,
-        url: `${site}/marques/${b.slug}`,
-        ...(b.logoUrl ? { logo: b.logoUrl } : {}),
+        "@type": "Brand",
+        name: brand.name,
+        url: `${site}/marques/${brand.slug}`,
+        ...(brand.logoUrl ? { logo: brand.logoUrl } : {}),
       },
     })),
   };
@@ -53,23 +57,24 @@ export default async function BrandsDirectoryPage() {
   return (
     <div className="container-page py-8">
       <link rel="canonical" href={canonicalUrl} />
-      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbJsonLd) }} />
-      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(itemListJsonLd) }} />
 
-      <Breadcrumbs items={[{ href: "/", label: "Accueil" }, { label: "Marques" }]} />
-      <h1 className="text-xl font-bold mb-4">Toutes les marques</h1>
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbJsonLd) }}
+      />
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(itemListJsonLd) }}
+      />
 
-      <ul className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-4">
-        {brands.map((b) => (
-          <li key={b.id} className="rounded-xl border p-4 hover:bg-accent/30 flex flex-col items-center gap-2">
-            {b.logoUrl ? <img src={b.logoUrl} alt="" width={60} height={60} /> : null}
-            <Link href={`/marques/${b.slug}`} className="font-medium">
-              {b.name}
-            </Link>
-          </li>
-        ))}
-        {brands.length === 0 && <li className="text-neutral-500">Aucune marque active</li>}
-      </ul>
+      <Breadcrumbs
+        items={[
+          { href: "/", label: "Accueil" },
+          { label: "Marques" },
+        ]}
+      />
+
+      <BrandsDirectory brands={brands} />
     </div>
   );
 }
