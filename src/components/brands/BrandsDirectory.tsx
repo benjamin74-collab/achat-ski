@@ -85,27 +85,27 @@ export default function BrandsDirectory({ brands }: { brands: Brand[] }) {
         </p>
       </header>
 
-      <nav className="sticky top-0 z-20 mt-6 rounded-2xl border border-ring bg-white/90 p-3 backdrop-blur">
-        <div className="flex gap-2 overflow-x-auto">
-          {ALPHABET.map((letter) => {
-            const disabled = !availableLetters.includes(letter);
+		<nav className="sticky top-0 z-20 mt-6 rounded-2xl border border-ring bg-white/90 p-2 backdrop-blur">
+		  <div className="grid grid-cols-[repeat(13,minmax(0,1fr))] gap-1 sm:grid-cols-[repeat(26,minmax(0,1fr))]">
+			{ALPHABET.map((letter) => {
+			  const disabled = !availableLetters.includes(letter);
 
-            return (
-              <a
-                key={letter}
-                href={disabled ? undefined : `#letter-${letter}`}
-                className={
-                  disabled
-                    ? "flex h-9 min-w-9 items-center justify-center rounded-lg text-sm font-semibold text-neutral-300"
-                    : "flex h-9 min-w-9 items-center justify-center rounded-lg bg-neutral-100 text-sm font-semibold text-neutral-800 transition hover:bg-blue-600 hover:text-white"
-                }
-              >
-                {letter}
-              </a>
-            );
-          })}
-        </div>
-      </nav>
+			  return (
+				<a
+				  key={letter}
+				  href={disabled ? undefined : `#letter-${letter}`}
+				  className={
+					disabled
+					  ? "flex h-8 items-center justify-center rounded-lg text-xs font-semibold text-neutral-300 sm:h-9 sm:text-sm"
+					  : "flex h-8 items-center justify-center rounded-lg bg-neutral-100 text-xs font-semibold text-neutral-800 transition hover:bg-blue-600 hover:text-white sm:h-9 sm:text-sm"
+				  }
+				>
+				  {letter}
+				</a>
+			  );
+			})}
+		  </div>
+		</nav>
 
       {featuredBrands.length > 0 && !query && (
         <section className="mt-10">
@@ -194,22 +194,7 @@ function BrandCard({
         featured ? "border-blue-200" : "border-ring"
       }`}
     >
-      <div className="flex h-20 items-center justify-center rounded-2xl bg-neutral-50 p-4">
-        {brand.logoUrl ? (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img
-            src={brand.logoUrl}
-            alt={`Logo ${brand.name}`}
-            className="max-h-12 max-w-full object-contain"
-          />
-        ) : (
-          <span className="text-center text-lg font-bold text-neutral-900">
-            {brand.name}
-          </span>
-        )}
-      </div>
-
-      <div className="mt-4">
+      <div>
         <h3 className="text-lg font-bold group-hover:text-blue-600">
           {brand.name}
         </h3>
