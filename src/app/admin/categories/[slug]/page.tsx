@@ -13,21 +13,34 @@ export default async function EditCategoryPage({ params }: { params: Promise<Pag
 
   const { slug } = await params;
 
-  const [cat, parents] = await Promise.all([
+  const [cat, parents, pages, brands] = await Promise.all([
     prisma.category.findUnique({
       where: { slug },
       select: {
-        id: true, slug: true, name: true,
-        intro: true, content: true,
+        id: true, slug: true, name: true, intro: true, content: true,
         metaTitle: true, metaDescription: true, thumbnailUrl: true,
         parentId: true, isInMenu: true, order: true, published: true,
         mapKwanko: true, mapEkosport: true, mapSnowleader: true, mapGlisshop: true, aliases: true,
+        featuredLinks: {
+          orderBy: [{ type: "asc" }, { order: "asc" }, { id: "asc" }],
+          select: { id: true, type: true, order: true, pageId: true, brandId: true },
+        },
       },
     }),
     prisma.category.findMany({
       where: { slug: { not: slug } },
       orderBy: { name: "asc" },
       select: { id: true, name: true },
+    }),
+    prisma.page.findMany({
+      where: { published: true },
+      orderBy: [{ title: "asc" }],
+      select: { id: true, title: true, slug: true },
+    }),
+    prisma.brand.findMany({
+      where: { active: true },
+      orderBy: [{ name: "asc" }],
+      select: { id: true, name: true, slug: true },
     }),
   ]);
 
@@ -36,7 +49,7 @@ export default async function EditCategoryPage({ params }: { params: Promise<Pag
   return (
     <div className="p-6 space-y-6">
       <h1 className="text-2xl font-semibold">Modifier la catégorie</h1>
-      <EditCategoryForm initial={cat} parents={parents} />
+      <EditCategoryForm initial={cat} parents={parents} pages={pages} brands={brands} />
     </div>
   );
 }

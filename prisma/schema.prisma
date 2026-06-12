@@ -126,7 +126,7 @@ model Brand {
   updatedAt   DateTime    @updatedAt
 
   showOnHomepage Boolean @default(false)
-
+  featuredInCategories CategoryFeaturedLink[]
   products Product[]
 }
 
@@ -180,7 +180,7 @@ model Page {
   metaDescription String?
 
   tags String[]
-
+  featuredInCategories CategoryFeaturedLink[]
   comments PageComment[]
 
   @@index([kind, published])
@@ -398,7 +398,8 @@ model Category {
 
   products Product[]
   pages    Page[]
-
+  featuredLinks CategoryFeaturedLink[]
+  
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
@@ -569,4 +570,32 @@ model TrackingSettings {
   updatedAt                DateTime @updatedAt
 
   @@index([siteId])
+}
+
+model CategoryFeaturedLink {
+  id Int @id @default(autoincrement())
+
+  categoryId Int
+  category   Category @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+
+  pageId Int?
+  page   Page? @relation(fields: [pageId], references: [id], onDelete: Cascade)
+
+  brandId Int?
+  brand   Brand? @relation(fields: [brandId], references: [id], onDelete: Cascade)
+
+  type  FeaturedLinkType
+  order Int @default(0)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([categoryId])
+  @@index([type])
+  @@index([order])
+}
+
+enum FeaturedLinkType {
+  GUIDE
+  BRAND
 }

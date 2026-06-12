@@ -6,11 +6,16 @@ import { usePathname } from "next/navigation";
 import Logo from "./Logo";
 import { useEffect, useMemo, useState } from "react";
 
+type FeaturedGuide = { id: number; title: string; slug: string };
+type FeaturedBrand = { id: number; name: string; slug: string };
+
 type NavItem = {
   id: number;
   name: string;
   slug: string;
   children: NavItem[];
+  featuredGuides?: FeaturedGuide[];
+  featuredBrands?: FeaturedBrand[];
 };
 
 type GuideNavItem = {
@@ -32,102 +37,6 @@ type AsideLink = {
 type MegaAsideConfig = {
   brands?: AsideLink[];
   guides?: AsideLink[];
-};
-
-const MEGA_ASIDE_BY_SLUG: Record<string, MegaAsideConfig> = {
-  ski: {
-    brands: [
-      { label: "Rossignol", href: "/marques/rossignol" },
-      { label: "Salomon", href: "/marques/salomon" },
-      { label: "Atomic", href: "/marques/atomic" },
-      { label: "Head", href: "/marques/head" },
-      { label: "Fischer", href: "/marques/fischer" },
-      { label: "Dynastar", href: "/marques/dynastar" },
-    ],
-    guides: [
-      { label: "Comment choisir ses skis ?", href: "/pages" },
-      { label: "Quelle taille de ski choisir ?", href: "/pages" },
-      { label: "Ski piste ou all-mountain ?", href: "/pages" },
-      { label: "Comment choisir ses chaussures de ski ?", href: "/pages" },
-    ],
-  },
-  "ski-randonnee": {
-    brands: [
-      { label: "Dynafit", href: "/marques/dynafit" },
-      { label: "Scarpa", href: "/marques/scarpa" },
-      { label: "ATK", href: "/marques/atk" },
-      { label: "Plum", href: "/marques/plum" },
-      { label: "Pomoca", href: "/marques/pomoca" },
-      { label: "Black Crows", href: "/marques/black-crows" },
-    ],
-    guides: [
-      { label: "Débuter en ski de randonnée", href: "/pages" },
-      { label: "Choisir ses fixations de randonnée", href: "/pages" },
-      { label: "Choisir ses peaux de phoque", href: "/pages" },
-      { label: "Sécurité avalanche : les bases", href: "/pages" },
-    ],
-  },
-  snowboard: {
-    brands: [
-      { label: "Burton", href: "/marques/burton" },
-      { label: "Nitro", href: "/marques/nitro" },
-      { label: "Jones", href: "/marques/jones" },
-      { label: "Salomon", href: "/marques/salomon" },
-      { label: "Nidecker", href: "/marques/nidecker" },
-      { label: "K2", href: "/marques/k2" },
-    ],
-    guides: [
-      { label: "Comment choisir son snowboard ?", href: "/pages" },
-      { label: "Snowboard freestyle ou freeride ?", href: "/pages" },
-      { label: "Choisir ses boots snowboard", href: "/pages" },
-      { label: "Choisir ses fixations snowboard", href: "/pages" },
-    ],
-  },
-  "ski-nordique": {
-    brands: [
-      { label: "Rossignol", href: "/marques/rossignol" },
-      { label: "Fischer", href: "/marques/fischer" },
-      { label: "Salomon", href: "/marques/salomon" },
-      { label: "Atomic", href: "/marques/atomic" },
-      { label: "Madshus", href: "/marques/madshus" },
-      { label: "Alpina", href: "/marques/alpina" },
-    ],
-    guides: [
-      { label: "Skating ou classique : que choisir ?", href: "/pages" },
-      { label: "Choisir son matériel de ski nordique", href: "/pages" },
-      { label: "Comprendre le fartage nordique", href: "/pages" },
-    ],
-  },
-  "vetements-ski": {
-    brands: [
-      { label: "The North Face", href: "/marques/the-north-face" },
-      { label: "Patagonia", href: "/marques/patagonia" },
-      { label: "Columbia", href: "/marques/columbia" },
-      { label: "Picture", href: "/marques/picture" },
-      { label: "Millet", href: "/marques/millet" },
-      { label: "Ortovox", href: "/marques/ortovox" },
-    ],
-    guides: [
-      { label: "Comment s'habiller au ski ?", href: "/pages" },
-      { label: "Veste hardshell ou veste de ski ?", href: "/pages" },
-      { label: "Comprendre le système 3 couches", href: "/pages" },
-    ],
-  },
-  "protections-ski": {
-    brands: [
-      { label: "Oakley", href: "/marques/oakley" },
-      { label: "Smith", href: "/marques/smith" },
-      { label: "Giro", href: "/marques/giro" },
-      { label: "POC", href: "/marques/poc" },
-      { label: "Bollé", href: "/marques/bolle" },
-      { label: "Julbo", href: "/marques/julbo" },
-    ],
-    guides: [
-      { label: "Comment choisir son casque de ski ?", href: "/pages" },
-      { label: "Comment choisir son masque de ski ?", href: "/pages" },
-      { label: "Masque photochromique : avantages", href: "/pages" },
-    ],
-  },
 };
 
 function IconMenu(props: React.SVGProps<SVGSVGElement>) {
@@ -194,19 +103,18 @@ function getMegaIntro(item: NavItem) {
     : `Accédez directement à la catégorie ${item.name}.`;
 }
 
-function getAsideConfig(item: NavItem, guideItems: GuideNavItem[], siteId?: string): MegaAsideConfig {
-  const custom = MEGA_ASIDE_BY_SLUG[item.slug];
+function getAsideConfig(item: NavItem, guideItems: GuideNavItem[]): MegaAsideConfig {
+  const brands = item.featuredBrands?.map((brand) => ({
+    label: brand.name,
+    href: `/marques/${brand.slug}`,
+  })) ?? [];
 
-  if (siteId && siteId !== "meilleur-ski") {
-    return {
-      guides: guideItems.slice(0, 4).map((g) => ({
-        label: g.name,
-        href: `/pages#${g.slug}`,
-      })),
-    };
-  }
+  const guides = item.featuredGuides?.map((guide) => ({
+    label: guide.title,
+    href: `/pages/${guide.slug}`,
+  })) ?? [];
 
-  if (custom) return custom;
+  if (brands.length > 0 || guides.length > 0) return { brands, guides };
 
   return {
     guides: guideItems.slice(0, 4).map((g) => ({
@@ -279,13 +187,11 @@ function AsideContent({
 function MegaMenu({
   item,
   guideItems,
-  siteId,
 }: {
   item: NavItem;
   guideItems: GuideNavItem[];
-  siteId?: string;
 }) {
-  const asideConfig = getAsideConfig(item, guideItems, siteId);
+  const asideConfig = getAsideConfig(item, guideItems);
   const hasAside = (asideConfig.brands?.length ?? 0) > 0 || (asideConfig.guides?.length ?? 0) > 0;
 
   return (
@@ -347,13 +253,11 @@ function MegaMenu({
 function MobileCategoryPanel({
   item,
   guideItems,
-  siteId,
 }: {
   item: NavItem;
   guideItems: GuideNavItem[];
-  siteId?: string;
 }) {
-  const asideConfig = getAsideConfig(item, guideItems, siteId);
+  const asideConfig = getAsideConfig(item, guideItems);
 
   return (
     <div className="bg-muted/30 px-3 pb-3 pt-1">
@@ -540,7 +444,6 @@ export default function Header() {
                     <MegaMenu
                       item={n}
                       guideItems={guideItems}
-                      siteId={siteId}
                     />
                   </div>
                 );
@@ -632,7 +535,7 @@ export default function Header() {
                         </button>
                       </div>
 
-                      {opened ? <MobileCategoryPanel item={n} guideItems={guideItems} siteId={siteId} /> : null}
+                      {opened ? <MobileCategoryPanel item={n} guideItems={guideItems} /> : null}
                     </div>
                   );
                 })}
