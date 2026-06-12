@@ -294,7 +294,6 @@ function MobileCategoryPanel({
 export default function Header() {
   const pathname = usePathname();
 
-  const [siteId, setSiteId] = useState<string | undefined>();
   const [searchPlaceholder, setSearchPlaceholder] = useState("Rechercher…");
   const [navItems, setNavItems] = useState<NavItem[]>([]);
   const [guideItems, setGuideItems] = useState<GuideNavItem[]>([]);
@@ -303,7 +302,6 @@ export default function Header() {
 
   useEffect(() => {
     const currentSiteId = document.documentElement.dataset.siteId;
-    setSiteId(currentSiteId);
     setSearchPlaceholder(getSearchPlaceholder(currentSiteId));
   }, []);
 
@@ -422,7 +420,7 @@ export default function Header() {
         <div className="mx-auto max-w-6xl px-4">
           <nav className="hidden lg:block">
             <div className="flex min-h-13 items-center justify-center gap-1">
-              {orderedNavItems.map((n, index) => {
+              {orderedNavItems.map((n) => {
                 const href = `/${n.slug}`;
                 const active = Boolean(pathname?.startsWith(href));
                 const hasChildren = (n.children?.length ?? 0) > 0;

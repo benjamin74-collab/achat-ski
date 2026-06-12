@@ -88,7 +88,7 @@ export default function EditCategoryForm({ initial, parents = [], pages = [], br
         <div className="grid gap-1"><label className="text-sm">Publié ?</label><select name="published" defaultValue={initial.published ? "true" : "false"} className="rounded-xl border border-ring px-3 py-2"><option value="true">Oui</option><option value="false">Non</option></select></div>
       </div>
       <div className="rounded-2xl border border-ring bg-muted/30 p-4 space-y-4">
-        <div><h2 className="text-lg font-semibold">Méga-menu : liens mis en avant</h2><p className="mt-1 text-sm text-slate-500">Ces guides et marques s'afficheront dans la colonne droite du méga-menu de cette catégorie.</p></div>
+        <div><h2 className="text-lg font-semibold">Méga-menu : liens mis en avant</h2><p className="mt-1 text-sm text-slate-500">Ces guides et marques s&rsquo;afficheront dans la colonne droite du méga-menu de cette catégorie.</p></div>
         <SelectRow label="Guides utiles" name="featuredGuideIds" options={pages} values={selectedGuideIds} max={4} getLabel={(p) => `${p.title} /${p.slug}`} />
         <SelectRow label="Marques populaires" name="featuredBrandIds" options={brands} values={selectedBrandIds} max={8} getLabel={(b) => `${b.name} /${b.slug}`} />
       </div>
