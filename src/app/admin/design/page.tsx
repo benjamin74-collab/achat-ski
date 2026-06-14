@@ -24,9 +24,9 @@ export default async function AdminDesignPage() {
 
   const name = settings?.name ?? siteConfig.name;
   const tagline = settings?.tagline ?? "";
-  const logoSrc = settings?.logoSrc ?? siteConfig.brand.logoSrc;
-  const logoAlt = settings?.logoAlt ?? siteConfig.brand.logoAlt;
-  const faviconSrc = settings?.faviconSrc ?? siteConfig.brand.faviconSrc ?? "";
+  const logoSrc = settings?.logoSrc ?? siteConfig.brand?.logoSrc ?? "";
+  const logoAlt = settings?.logoAlt ?? siteConfig.brand?.logoAlt ?? siteConfig.name;
+  const faviconSrc = settings?.faviconSrc ?? siteConfig.brand?.faviconSrc ?? "";
 
   const primary = settings?.primary ?? siteConfig.colors.primary;
   const secondary = settings?.secondary ?? siteConfig.colors.secondary;
