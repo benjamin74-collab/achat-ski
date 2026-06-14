@@ -77,8 +77,8 @@ export async function saveDesign(formData: FormData) {
   const mutedForeground = asString(raw.mutedForeground, siteConfig.colors?.mutedForeground ?? "#6b7280");
   const border = asString(raw.border, siteConfig.colors?.border ?? "#e5e7eb");
 
-  const fontSans = asFontKey(raw.fontSans, siteConfig.fonts?.sans ?? "inter");
-  const fontDisplay = asFontKey(raw.fontDisplay, siteConfig.fonts?.display ?? "manrope");
+  const fontSans = asString(raw.fontSans, siteConfig.fonts?.sans ?? "inter");
+  const fontDisplay = asString(raw.fontDisplay, siteConfig.fonts?.display ?? "manrope"); 
 
   const heroTitle = asString(raw.heroTitle, "");
   const heroHighlight = asString(raw.heroHighlight, "");
