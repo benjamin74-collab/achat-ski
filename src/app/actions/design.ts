@@ -1,4 +1,3 @@
-// src/app/actions/design.ts
 "use server";
 
 import { prisma } from "@/lib/prisma";
@@ -20,6 +19,7 @@ function asJson(v: unknown): Json | null {
   if (typeof v === "string") {
     const s = v.trim();
     if (!s) return null;
+
     try {
       return JSON.parse(s) as Json;
     } catch {
@@ -63,30 +63,41 @@ export async function saveDesign(formData: FormData) {
   const raw = formDataToObject(formData);
 
   const name = asString(raw.name, siteConfig.name);
-  const tagline = asString(raw.tagline, "");
-  const logoSrc = asString(raw.logoSrc, siteConfig.brand?.logoSrc ?? "");
-  const logoAlt = asString(raw.logoAlt, siteConfig.brand?.logoAlt ?? siteConfig.name);
-  const faviconSrc = asString(raw.faviconSrc, siteConfig.brand?.faviconSrc ?? "");
+  const tagline = asString(raw.tagline);
+  const logoSrc = asString(raw.logoSrc);
+  const logoAlt = asString(raw.logoAlt, siteConfig.name);
+  const faviconSrc = asString(raw.faviconSrc);
 
-  const primary = asString(raw.primary, siteConfig.colors?.primary ?? "#2563EB");
-  const secondary = asString(raw.secondary, siteConfig.colors?.secondary ?? "#111827");
-  const accent = asString(raw.accent, siteConfig.colors?.accent ?? "#f97316");
-  const background = asString(raw.background, siteConfig.colors?.background ?? "#ffffff");
-  const foreground = asString(raw.foreground, siteConfig.colors?.foreground ?? "#0b1220");
-  const muted = asString(raw.muted, siteConfig.colors?.muted ?? "#f3f4f6");
-  const mutedForeground = asString(raw.mutedForeground, siteConfig.colors?.mutedForeground ?? "#6b7280");
-  const border = asString(raw.border, siteConfig.colors?.border ?? "#e5e7eb");
+  const primary = asString(raw.primary);
+  const secondary = asString(raw.secondary);
+  const accent = asString(raw.accent);
+  const background = asString(raw.background);
+  const foreground = asString(raw.foreground);
+  const muted = asString(raw.muted);
+  const mutedForeground = asString(raw.mutedForeground);
+  const border = asString(raw.border);
 
-  const fontSans = asString(raw.fontSans, siteConfig.fonts?.sans ?? "inter");
-  const fontDisplay = asString(raw.fontDisplay, siteConfig.fonts?.display ?? "manrope"); 
+  const fontSans = asString(raw.fontSans);
+  const fontDisplay = asString(raw.fontDisplay);
 
-  const heroTitle = asString(raw.heroTitle, "");
-  const heroHighlight = asString(raw.heroHighlight, "");
-  const heroSubtitle = asString(raw.heroSubtitle, "");
+  const heroTitle = asString(raw.heroTitle);
+  const heroHighlight = asString(raw.heroHighlight);
+  const heroSubtitle = asString(raw.heroSubtitle);
 
-  const showCategories = asBool(raw.showCategories === "on" || raw.showCategories === "true", true);
-  const showLatestGuides = asBool(raw.showLatestGuides === "on" || raw.showLatestGuides === "true", true);
-  const showTopBrands = asBool(raw.showTopBrands === "on" || raw.showTopBrands === "true", true);
+  const showCategories = asBool(
+    raw.showCategories === "on" || raw.showCategories === "true",
+    true,
+  );
+
+  const showLatestGuides = asBool(
+    raw.showLatestGuides === "on" || raw.showLatestGuides === "true",
+    true,
+  );
+
+  const showTopBrands = asBool(
+    raw.showTopBrands === "on" || raw.showTopBrands === "true",
+    true,
+  );
 
   const robotsIndex = raw.robotsIndex === "on" || raw.robotsIndex === "true";
   const robotsFollow = raw.robotsFollow === "on" || raw.robotsFollow === "true";
@@ -101,13 +112,13 @@ export async function saveDesign(formData: FormData) {
     .map((slug, index) => ({
       slug,
       title: asString(raw[`homeCategoryTitle_${slug}`], slug),
-      desc: asString(raw[`homeCategoryDesc_${slug}`], ""),
+      desc: asString(raw[`homeCategoryDesc_${slug}`]),
       cta: asString(raw[`homeCategoryCta_${slug}`], "Comparer les prix"),
-      img: asString(raw[`homeCategoryImg_${slug}`], ""),
+      img: asString(raw[`homeCategoryImg_${slug}`]),
       order: numberFromRaw(raw[`homeCategoryOrder_${slug}`], index + 1),
     }))
     .sort((a, b) => a.order - b.order)
-    .map(({ order, ...item }) => item);
+    .map(({ order: _order, ...item }) => item);
 
   const brandsFromDb = await prisma.brand.findMany({
     where: { slug: { in: selectedBrandSlugs } },
@@ -131,7 +142,7 @@ export async function saveDesign(formData: FormData) {
       };
     })
     .sort((a, b) => a.order - b.order)
-    .map(({ order, ...item }) => item);
+    .map(({ order: _order, ...item }) => item);
 
   await prisma.siteSettings.upsert({
     where: { siteId },
