@@ -64,9 +64,9 @@ export async function saveDesign(formData: FormData) {
 
   const name = asString(raw.name, siteConfig.name);
   const tagline = asString(raw.tagline, "");
-  const logoSrc = asString(raw.logoSrc, siteConfig.brand.logoSrc);
-  const logoAlt = asString(raw.logoAlt, siteConfig.brand.logoAlt);
-  const faviconSrc = asString(raw.faviconSrc, siteConfig.brand.faviconSrc ?? "");
+  const logoSrc = asString(raw.logoSrc, siteConfig.brand?.logoSrc ?? "");
+  const logoAlt = asString(raw.logoAlt, siteConfig.brand?.logoAlt ?? siteConfig.name);
+  const faviconSrc = asString(raw.faviconSrc, siteConfig.brand?.faviconSrc ?? "");
 
   const primary = asString(raw.primary, siteConfig.colors.primary);
   const secondary = asString(raw.secondary, siteConfig.colors.secondary);
