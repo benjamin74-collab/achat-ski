@@ -8,14 +8,33 @@ export const meilleurRobot: SiteConfig = {
   domain: "https://www.meilleur-robot.com",
   tagline: "Comparer & gagner",
 
-  // Fallback uniquement.
-  // Toutes les données (logo, favicon, couleurs,
-  // homepage, catégories, marques, SEO...)
-  // sont gérées depuis le backoffice.
-
   brand: {
-    logoSrc: "/brands/meilleur-robot/logo-meilleur-robot.png",
+    logoSrc: "",
     logoAlt: "Meilleur Robot",
-    faviconSrc: "/brands/meilleur-robot/favicon.ico",
+    faviconSrc: "",
+  },
+
+  colors: {
+    primary: "",
+    secondary: "",
+    accent: "",
+    background: "",
+    foreground: "",
+    muted: "",
+    mutedForeground: "",
+    border: "",
+  },
+
+  fonts: {
+    sans: "inter",
+    display: "inter",
+  },
+
+  home: {
+    sections: {
+      categories: true,
+      latestGuides: true,
+      topBrands: true,
+    },
   },
 };
