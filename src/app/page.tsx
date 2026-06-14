@@ -254,9 +254,6 @@ export default async function HomePage() {
         <section id="categories" className="container-page mt-12 md:mt-16">
           <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
             <h2 className="text-xl font-bold text-ink sm:text-2xl">Catégories populaires</h2>
-            <p className="max-w-2xl text-sm text-slate-600">
-              Les catégories mises en avant depuis le backoffice.
-            </p>
           </div>
 
           {homepageCategories.length ? (

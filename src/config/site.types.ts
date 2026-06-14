@@ -3,28 +3,28 @@
 export type FontKey = "inter" | "manrope" | "plusJakarta";
 
 export type BrandTokens = {
-  logoSrc: string; // ex: "/brands/meilleur-ski/logo.svg"
-  logoAlt: string; // ex: "Meilleur Ski"
-  faviconSrc?: string; // ex: "/brands/meilleur-ski/favicon.ico"
+  logoSrc?: string;
+  logoAlt?: string;
+  faviconSrc?: string;
 };
 
 export type ColorTokens = {
-  primary: string; // ex: "#0ea5e9"
-  secondary: string; // ex: "#111827"
-  accent: string; // ex: "#f97316"
+  primary?: string;
+  secondary?: string;
+  accent?: string;
 
-  background: string; // ex: "#ffffff"
-  foreground: string; // ex: "#0b1220"
+  background?: string;
+  foreground?: string;
 
-  muted: string; // ex: "#f3f4f6"
-  mutedForeground: string; // ex: "#6b7280"
+  muted?: string;
+  mutedForeground?: string;
 
-  border: string; // ex: "#e5e7eb"
+  border?: string;
 };
 
 export type FontTokens = {
-  sans: FontKey;
-  display: FontKey;
+  sans?: FontKey;
+  display?: FontKey;
 };
 
 export type HomeCta = {
@@ -34,22 +34,22 @@ export type HomeCta = {
 };
 
 export type HomeTile = {
-  slug: string; // slug catégorie utilisé pour "/c/{slug}"
+  slug: string;
   title: string;
   desc: string;
   cta: string;
-  img?: string; // chemin dans /public (ex: "/categories/xxx.jpg")
+  img?: string;
 };
 
 export type HomeBrand = {
   name: string;
-  slug: string; // url marque => "/marques/{slug}"
-  logo?: string; // url logo externe ou interne
+  slug: string;
+  logo?: string;
 };
 
 export type HomeConfig = {
   hero?: {
-    title: string;
+    title?: string;
     highlight?: string;
     subtitle?: string;
     ctas?: HomeCta[];
@@ -71,10 +71,9 @@ export type SiteConfig = {
   domain: string;
   tagline?: string;
 
-  brand: BrandTokens;
-  colors: ColorTokens;
-  fonts: FontTokens;
-
-  // ✅ contenu home spécifique au site
+  // Fallbacks uniquement si la base/backoffice ne répond pas
+  brand?: BrandTokens;
+  colors?: ColorTokens;
+  fonts?: FontTokens;
   home?: HomeConfig;
 };
