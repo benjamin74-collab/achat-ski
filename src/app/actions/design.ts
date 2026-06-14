@@ -68,17 +68,17 @@ export async function saveDesign(formData: FormData) {
   const logoAlt = asString(raw.logoAlt, siteConfig.brand?.logoAlt ?? siteConfig.name);
   const faviconSrc = asString(raw.faviconSrc, siteConfig.brand?.faviconSrc ?? "");
 
-  const primary = asString(raw.primary, siteConfig.colors.primary);
-  const secondary = asString(raw.secondary, siteConfig.colors.secondary);
-  const accent = asString(raw.accent, siteConfig.colors.accent);
-  const background = asString(raw.background, siteConfig.colors.background);
-  const foreground = asString(raw.foreground, siteConfig.colors.foreground);
-  const muted = asString(raw.muted, siteConfig.colors.muted);
-  const mutedForeground = asString(raw.mutedForeground, siteConfig.colors.mutedForeground);
-  const border = asString(raw.border, siteConfig.colors.border);
+  const primary = asString(raw.primary, siteConfig.colors?.primary ?? "#2563EB");
+  const secondary = asString(raw.secondary, siteConfig.colors?.secondary ?? "#111827");
+  const accent = asString(raw.accent, siteConfig.colors?.accent ?? "#f97316");
+  const background = asString(raw.background, siteConfig.colors?.background ?? "#ffffff");
+  const foreground = asString(raw.foreground, siteConfig.colors?.foreground ?? "#0b1220");
+  const muted = asString(raw.muted, siteConfig.colors?.muted ?? "#f3f4f6");
+  const mutedForeground = asString(raw.mutedForeground, siteConfig.colors?.mutedForeground ?? "#6b7280");
+  const border = asString(raw.border, siteConfig.colors?.border ?? "#e5e7eb");
 
-  const fontSans = asString(raw.fontSans, siteConfig.fonts.sans);
-  const fontDisplay = asString(raw.fontDisplay, siteConfig.fonts.display);
+  const fontSans = asFontKey(raw.fontSans, siteConfig.fonts?.sans ?? "inter");
+  const fontDisplay = asFontKey(raw.fontDisplay, siteConfig.fonts?.display ?? "manrope");
 
   const heroTitle = asString(raw.heroTitle, "");
   const heroHighlight = asString(raw.heroHighlight, "");
