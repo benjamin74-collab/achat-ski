@@ -3,28 +3,28 @@
 export type FontKey = "inter" | "manrope" | "plusJakarta";
 
 export type BrandTokens = {
-  logoSrc?: string;
-  logoAlt?: string;
+  logoSrc: string;
+  logoAlt: string;
   faviconSrc?: string;
 };
 
 export type ColorTokens = {
-  primary?: string;
-  secondary?: string;
-  accent?: string;
+  primary: string;
+  secondary: string;
+  accent: string;
 
-  background?: string;
-  foreground?: string;
+  background: string;
+  foreground: string;
 
-  muted?: string;
-  mutedForeground?: string;
+  muted: string;
+  mutedForeground: string;
 
-  border?: string;
+  border: string;
 };
 
 export type FontTokens = {
-  sans?: FontKey;
-  display?: FontKey;
+  sans: FontKey;
+  display: FontKey;
 };
 
 export type HomeCta = {
@@ -71,9 +71,15 @@ export type SiteConfig = {
   domain: string;
   tagline?: string;
 
-  // Fallbacks uniquement si la base/backoffice ne répond pas
-  brand?: BrandTokens;
-  colors?: ColorTokens;
-  fonts?: FontTokens;
+  /**
+   * Fallback uniquement.
+   * Les valeurs réelles proviennent de SiteSettings (backoffice).
+   * Ces propriétés restent obligatoires pour éviter
+   * les erreurs TypeScript dans toute l'application.
+   */
+  brand: BrandTokens;
+  colors: ColorTokens;
+  fonts: FontTokens;
+
   home?: HomeConfig;
 };
