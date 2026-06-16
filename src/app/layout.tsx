@@ -7,7 +7,6 @@ import CookieBanner from "@/components/cookies/CookieBanner";
 import TrackingScripts from "@/components/tracking/TrackingScripts";
 import { prisma } from "@/lib/prisma";
 import { getSiteConfig } from "@/config/site";
-import type { SiteConfig } from "@/config/site.types";
 import { getFontClasses, getFontFamilyVar } from "@/config/fonts";
 import { getCurrentSiteId, getCurrentSiteUrl } from "@/lib/currentSite";
 import Script from "next/script";
@@ -21,6 +20,8 @@ export async function generateMetadata(): Promise<Metadata> {
     prisma.siteSettings.findUnique({
       where: { siteId },
       select: {
+        name: true,
+        tagline: true,
         robotsIndex: true,
         robotsFollow: true,
         robotsNoarchive: true,
@@ -42,19 +43,18 @@ export async function generateMetadata(): Promise<Metadata> {
       ? adSettings.adsenseClient
       : null;
 
+  const siteName = settings?.name || siteConfig.name;
+  const siteTagline = settings?.tagline || siteConfig.tagline;
   const favicon =
-    settings?.faviconSrc ||
-    siteConfig.brand.faviconSrc ||
-    "/favicon.ico";
+    settings?.faviconSrc || siteConfig.brand.faviconSrc || "/favicon.ico";
 
   return {
     metadataBase: new URL(siteUrl),
 
-    title: `${siteConfig.name} — Comparez les meilleurs produits au meilleur prix`,
+    title: `${siteName} — Comparez les meilleurs produits au meilleur prix`,
 
     description:
-      siteConfig.tagline ||
-      `Comparez les meilleurs produits sur ${siteConfig.name}.`,
+      siteTagline || `Comparez les meilleurs produits sur ${siteName}.`,
 
     robots: {
       index: settings?.robotsIndex ?? true,
@@ -89,6 +89,7 @@ type CSSVars = React.CSSProperties & Record<`--${string}`, string>;
 
 function hexToRgbTriplet(hex: string): string {
   const h = hex.replace("#", "").trim();
+
   const full =
     h.length === 3
       ? h
@@ -110,18 +111,8 @@ function hexToRgbTriplet(hex: string): string {
   return `${r} ${g} ${b}`;
 }
 
-function getBranding(cfg: SiteConfig): {
-  name: string;
-  tagline: string;
-  logoSrc: string;
-  logoAlt: string;
-} {
-  return {
-    name: cfg.name || "Meilleur X",
-    tagline: cfg.tagline || "Comparer & gagner",
-    logoSrc: cfg.brand?.logoSrc || "",
-    logoAlt: cfg.brand?.logoAlt || cfg.name || "Meilleur X",
-  };
+function firstFilled(...values: Array<string | null | undefined>): string {
+  return values.find((value) => typeof value === "string" && value.trim() !== "") ?? "";
 }
 
 export default async function RootLayout({
@@ -132,7 +123,11 @@ export default async function RootLayout({
   const siteId = await getCurrentSiteId();
   const siteConfig = getSiteConfig(siteId);
 
-  const [tracking, adSettings] = await Promise.all([
+  const [settings, tracking, adSettings] = await Promise.all([
+    prisma.siteSettings.findUnique({
+      where: { siteId },
+    }),
+
     prisma.trackingSettings.findUnique({
       where: { siteId },
       select: {
@@ -155,30 +150,34 @@ export default async function RootLayout({
     }),
   ]);
 
+  const fontSans = firstFilled(settings?.fontSans, siteConfig.fonts.sans);
+  const fontDisplay = firstFilled(settings?.fontDisplay, siteConfig.fonts.display);
+
   const cssVars: CSSVars = {
-    "--primary": hexToRgbTriplet(siteConfig.colors.primary),
-    "--secondary": hexToRgbTriplet(siteConfig.colors.secondary),
-    "--accent": hexToRgbTriplet(siteConfig.colors.accent),
-    "--background": hexToRgbTriplet(siteConfig.colors.background),
-    "--foreground": hexToRgbTriplet(siteConfig.colors.foreground),
-    "--muted": hexToRgbTriplet(siteConfig.colors.muted),
+    "--primary": hexToRgbTriplet(firstFilled(settings?.primary, siteConfig.colors.primary)),
+    "--secondary": hexToRgbTriplet(firstFilled(settings?.secondary, siteConfig.colors.secondary)),
+    "--accent": hexToRgbTriplet(firstFilled(settings?.accent, siteConfig.colors.accent)),
+    "--background": hexToRgbTriplet(firstFilled(settings?.background, siteConfig.colors.background)),
+    "--foreground": hexToRgbTriplet(firstFilled(settings?.foreground, siteConfig.colors.foreground)),
+    "--muted": hexToRgbTriplet(firstFilled(settings?.muted, siteConfig.colors.muted)),
     "--muted-foreground": hexToRgbTriplet(
-      siteConfig.colors.mutedForeground
+      firstFilled(settings?.mutedForeground, siteConfig.colors.mutedForeground),
     ),
-    "--border": hexToRgbTriplet(siteConfig.colors.border),
-    "--font-sans": getFontFamilyVar(siteConfig.fonts.sans),
-    "--font-display": getFontFamilyVar(siteConfig.fonts.display),
+    "--border": hexToRgbTriplet(firstFilled(settings?.border, siteConfig.colors.border)),
+    "--font-sans": getFontFamilyVar(fontSans as never),
+    "--font-display": getFontFamilyVar(fontDisplay as never),
   };
 
-  const branding = getBranding(siteConfig);
+  const branding = {
+    name: firstFilled(settings?.name, siteConfig.name, "Meilleur X"),
+    tagline: firstFilled(settings?.tagline, siteConfig.tagline, "Comparer & gagner"),
+    logoSrc: firstFilled(settings?.logoSrc, siteConfig.brand.logoSrc),
+    logoAlt: firstFilled(settings?.logoAlt, siteConfig.brand.logoAlt, siteConfig.name, "Meilleur X"),
+  };
 
-  const fontClasses = getFontClasses([
-    siteConfig.fonts.sans,
-    siteConfig.fonts.display,
-  ]);
+  const fontClasses = getFontClasses([fontSans as never, fontDisplay as never]);
 
-  const hasGoogleCmp =
-    !!adSettings?.enabled && !!adSettings.adsenseClient;
+  const hasGoogleCmp = !!adSettings?.enabled && !!adSettings.adsenseClient;
 
   return (
     <html
@@ -192,10 +191,7 @@ export default async function RootLayout({
       data-site-logo={branding.logoSrc}
       data-site-logo-alt={branding.logoAlt}
     >
-      <body
-        className="min-h-screen bg-white text-ink antialiased"
-        suppressHydrationWarning
-      >
+      <body className="min-h-screen bg-white text-ink antialiased" suppressHydrationWarning>
         <Providers>
           {hasGoogleCmp ? (
             <Script
@@ -203,7 +199,7 @@ export default async function RootLayout({
               async
               strategy="afterInteractive"
               src={`https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=${encodeURIComponent(
-                adSettings!.adsenseClient!
+                adSettings!.adsenseClient!,
               )}`}
               crossOrigin="anonymous"
             />
@@ -215,9 +211,7 @@ export default async function RootLayout({
             enabledGtm={tracking?.enabledGtm}
             ga4MeasurementId={tracking?.ga4MeasurementId}
             googleAdsId={tracking?.googleAdsId}
-            googleAdsConversionLabel={
-              tracking?.googleAdsConversionLabel
-            }
+            googleAdsConversionLabel={tracking?.googleAdsConversionLabel}
             gtmContainerId={tracking?.gtmContainerId}
           />
 
