@@ -45,7 +45,7 @@ export default function Logo({ asLink = true }: { asLink?: boolean }) {
       )}
 
       <div className="leading-tight">
-        <div className="text-ink font-extrabold tracking-tight text-lg">
+        <div className="text-white font-extrabold tracking-tight text-lg">
           {brand.siteName}
         </div>
         {brand.tagline ? (
