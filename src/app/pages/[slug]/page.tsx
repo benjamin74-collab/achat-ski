@@ -475,9 +475,8 @@ export default async function PageDetail({ params }: { params: Params }) {
             ) : null}
           </article>
 
-          <aside className="space-y-5 lg:col-span-4">
-            {hasAdsense && adSettings.slotPageSidebar ? (
-              <section className="lg:sticky lg:top-28">
+			<aside className="space-y-5 lg:sticky lg:top-28 lg:col-span-4">            {hasAdsense && adSettings.slotPageSidebar ? (
+              <section>
                 {adBox(<AdsenseUnit client={adSettings.adsenseClient!} slot={adSettings.slotPageSidebar} />)}
               </section>
             ) : null}
