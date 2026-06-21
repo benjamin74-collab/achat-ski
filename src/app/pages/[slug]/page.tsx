@@ -238,7 +238,7 @@ export default async function PageDetail({ params }: { params: Params }) {
   const breadcrumbJsonLd = {
     "@context": "https://schema.org",
     "@type": "BreadcrumbList",
-	"@id": `${canonicalUrl}#breadcrumb`,
+    "@id": `${canonicalUrl}#breadcrumb`,
     itemListElement: breadcrumbItems,
   };
 
@@ -292,7 +292,7 @@ export default async function PageDetail({ params }: { params: Params }) {
 
         <header className="mt-5 overflow-hidden rounded-[2rem] border border-slate-200 bg-white shadow-sm">
           <div className="grid grid-cols-1 lg:grid-cols-12">
-            <div className="p-5 md:p-8 lg:col-span-7 lg:p-10">
+            <div className="p-5 md:p-7 lg:col-span-7 lg:p-8">
               <div className="flex flex-wrap items-center gap-2">
                 <span className="rounded-full bg-brand-50 px-3 py-1 text-xs font-bold text-brand-700 ring-1 ring-brand-200">
                   {kindLabel(page.kind)}
@@ -311,17 +311,17 @@ export default async function PageDetail({ params }: { params: Params }) {
                 ) : null}
               </div>
 
-              <h1 className="mt-5 max-w-3xl text-3xl font-black leading-tight tracking-tight text-slate-950 md:text-5xl">
+              <h1 className="mt-4 max-w-3xl text-3xl font-black leading-tight tracking-tight text-slate-950 md:text-4xl">
                 {page.title}
               </h1>
 
               {page.intro ? (
-                <p className="mt-5 max-w-3xl text-base leading-8 text-slate-700 md:text-lg">
+                <p className="mt-4 max-w-3xl text-base leading-7 text-slate-700">
                   {page.intro}
                 </p>
               ) : null}
 
-              <div className="mt-6 flex flex-wrap items-center gap-x-4 gap-y-2 text-sm text-slate-600">
+              <div className="mt-5 flex flex-wrap items-center gap-x-4 gap-y-2 text-sm text-slate-600">
                 <span>
                   Publié le{" "}
                   <time dateTime={page.createdAt.toISOString()} className="font-semibold text-slate-800">
@@ -340,7 +340,7 @@ export default async function PageDetail({ params }: { params: Params }) {
                 ) : null}
               </div>
 
-              <div className="mt-7 flex flex-wrap items-center gap-3">
+              <div className="mt-6 flex flex-wrap items-center gap-3">
                 <ShareButtons title={page.title} url={canonicalUrl} />
 
                 {toc.length > 0 ? (
@@ -356,12 +356,12 @@ export default async function PageDetail({ params }: { params: Params }) {
 
             <div className="bg-slate-100 lg:col-span-5">
               {heroSrc ? (
-                <div className="h-full min-h-[260px] lg:min-h-full">
+                <div className="h-full min-h-[220px] lg:min-h-full">
                   {/* eslint-disable-next-line @next/next/no-img-element */}
                   <img src={heroSrc} alt={page.title} className="h-full w-full object-cover" />
                 </div>
               ) : (
-                <div className="flex h-full min-h-[260px] items-center justify-center bg-[radial-gradient(circle_at_30%_20%,rgba(14,165,233,.18),transparent_35%),linear-gradient(135deg,#f8fafc,#e2e8f0)] p-10 text-center">
+                <div className="flex h-full min-h-[220px] items-center justify-center bg-[radial-gradient(circle_at_30%_20%,rgba(14,165,233,.18),transparent_35%),linear-gradient(135deg,#f8fafc,#e2e8f0)] p-10 text-center">
                   <div>
                     <p className="text-xs font-semibold uppercase tracking-[0.18em] text-brand-600">
                       Guide expert
@@ -475,7 +475,13 @@ export default async function PageDetail({ params }: { params: Params }) {
             ) : null}
           </article>
 
-          <aside className="space-y-5 lg:sticky lg:top-28 lg:col-span-4">
+          <aside className="space-y-5 lg:col-span-4">
+            {hasAdsense && adSettings.slotPageSidebar ? (
+              <section className="lg:sticky lg:top-28">
+                {adBox(<AdsenseUnit client={adSettings.adsenseClient!} slot={adSettings.slotPageSidebar} />)}
+              </section>
+            ) : null}
+
             {toc.length > 0 ? (
               <div id="sommaire" className="rounded-[2rem] border border-slate-200 bg-white shadow-sm">
                 <div className="p-5">
@@ -553,12 +559,6 @@ export default async function PageDetail({ params }: { params: Params }) {
                   </div>
                 </Link>
               </div>
-            ) : null}
-
-            {hasAdsense && adSettings.slotPageSidebar ? (
-              <section>
-                {adBox(<AdsenseUnit client={adSettings.adsenseClient!} slot={adSettings.slotPageSidebar} />)}
-              </section>
             ) : null}
           </aside>
         </div>
