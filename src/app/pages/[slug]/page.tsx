@@ -345,8 +345,17 @@ export default async function PageDetail({ params }: { params: Params }) {
 
                 {toc.length > 0 ? (
                   <a
+                    href="#sommaire-mobile"
+                    className="inline-flex rounded-full border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-800 shadow-sm hover:border-brand-200 hover:bg-brand-50 hover:text-brand-700 lg:hidden"
+                  >
+                    Voir le sommaire
+                  </a>
+                ) : null}
+
+                {toc.length > 0 ? (
+                  <a
                     href="#sommaire"
-                    className="inline-flex rounded-full border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-800 shadow-sm hover:border-brand-200 hover:bg-brand-50 hover:text-brand-700"
+                    className="hidden rounded-full border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-800 shadow-sm hover:border-brand-200 hover:bg-brand-50 hover:text-brand-700 lg:inline-flex"
                   >
                     Aller au sommaire
                   </a>
@@ -378,6 +387,48 @@ export default async function PageDetail({ params }: { params: Params }) {
           <section className="mt-6">
             {adBox(<AdsenseUnit client={adSettings.adsenseClient!} slot={adSettings.slotPageTop} />)}
           </section>
+        ) : null}
+
+        {toc.length > 0 ? (
+          <details
+            id="sommaire-mobile"
+            className="mt-6 rounded-3xl border border-slate-200 bg-white shadow-sm lg:hidden"
+          >
+            <summary className="cursor-pointer list-none p-5">
+              <div className="flex items-center justify-between gap-3">
+                <div>
+                  <p className="text-xs font-semibold uppercase tracking-[0.18em] text-brand-600">
+                    Navigation
+                  </p>
+                  <h2 className="mt-1 text-base font-black text-slate-950">
+                    Sommaire
+                  </h2>
+                </div>
+                <span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-bold text-slate-600">
+                  Ouvrir
+                </span>
+              </div>
+            </summary>
+
+            <nav className="border-t border-slate-100 px-5 pb-5">
+              <ul className="space-y-1.5 text-sm">
+                {toc.map((item) => (
+                  <li key={item.id} className={item.level === 3 ? "pl-4" : ""}>
+                    <a
+                      href={`#${item.id}`}
+                      className={`block rounded-xl px-3 py-2 leading-snug transition hover:bg-brand-50 hover:text-brand-700 ${
+                        item.level === 3
+                          ? "text-sm text-slate-500"
+                          : "font-semibold text-slate-800"
+                      }`}
+                    >
+                      {item.text}
+                    </a>
+                  </li>
+                ))}
+              </ul>
+            </nav>
+          </details>
         ) : null}
 
         <div className="mt-8 grid grid-cols-1 items-start gap-7 lg:grid-cols-12">
@@ -475,7 +526,8 @@ export default async function PageDetail({ params }: { params: Params }) {
             ) : null}
           </article>
 
-			<aside className="space-y-5 lg:sticky lg:top-28 lg:col-span-4">            {hasAdsense && adSettings.slotPageSidebar ? (
+          <aside className="hidden space-y-5 lg:sticky lg:top-28 lg:col-span-4 lg:block">
+            {hasAdsense && adSettings.slotPageSidebar ? (
               <section>
                 {adBox(<AdsenseUnit client={adSettings.adsenseClient!} slot={adSettings.slotPageSidebar} />)}
               </section>
