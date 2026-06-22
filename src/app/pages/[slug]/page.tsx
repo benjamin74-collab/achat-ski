@@ -392,25 +392,18 @@ export default async function PageDetail({ params }: { params: Params }) {
         {toc.length > 0 ? (
           <details
             id="sommaire-mobile"
-            className="mt-6 rounded-3xl border border-slate-200 bg-white shadow-sm lg:hidden"
+            className="sticky top-16 z-40 mt-6 overflow-hidden rounded-2xl border border-brand-700 bg-white shadow-lg lg:hidden"
           >
-            <summary className="cursor-pointer list-none p-5">
-              <div className="flex items-center justify-between gap-3">
-                <div>
-                  <p className="text-xs font-semibold uppercase tracking-[0.18em] text-brand-600">
-                    Navigation
-                  </p>
-                  <h2 className="mt-1 text-base font-black text-slate-950">
-                    Sommaire
-                  </h2>
-                </div>
-                <span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-bold text-slate-600">
-                  Ouvrir
-                </span>
-              </div>
-            </summary>
+            <summary className="cursor-pointer list-none bg-brand-700 px-5 py-3 text-white">
+			  <div className="flex items-center justify-between gap-3">
+				<span className="text-sm font-black uppercase tracking-[0.18em]">
+				  Sommaire
+				</span>
+				<span className="text-lg leading-none">⌄</span>
+			  </div>
+			</summary>
 
-            <nav className="border-t border-slate-100 px-5 pb-5">
+            <nav className="max-h-[60vh] overflow-y-auto border-t border-slate-100 bg-white px-4 py-4">
               <ul className="space-y-1.5 text-sm">
                 {toc.map((item) => (
                   <li key={item.id} className={item.level === 3 ? "pl-4" : ""}>
