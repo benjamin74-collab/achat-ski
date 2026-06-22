@@ -342,20 +342,17 @@ export default async function PageDetail({ params }: { params: Params }) {
               </div>
 
               <div className="mt-6 flex flex-wrap items-center gap-3">
-                <ShareButtons title={page.title} url={canonicalUrl} />
+				  <ShareButtons title={page.title} url={canonicalUrl} />
 
-                {toc.length > 0 ? (
-                ) : null}
-
-                {toc.length > 0 ? (
-                  <a
-                    href="#sommaire"
-                    className="hidden rounded-full border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-800 shadow-sm hover:border-brand-200 hover:bg-brand-50 hover:text-brand-700 lg:inline-flex"
-                  >
-                    Aller au sommaire
-                  </a>
-                ) : null}
-              </div>
+				  {toc.length > 0 ? (
+					<a
+					  href="#sommaire"
+					  className="hidden rounded-full border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-800 shadow-sm hover:border-brand-200 hover:bg-brand-50 hover:text-brand-700 lg:inline-flex"
+					>
+					  Aller au sommaire
+					</a>
+				  ) : null}
+				</div>
             </div>
 
             <div className="bg-slate-100 lg:col-span-5">
