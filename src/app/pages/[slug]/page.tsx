@@ -10,6 +10,7 @@ import ShareButtons from "@/components/ShareButtons";
 import RelatedArticles from "@/components/RelatedArticles";
 import AdsenseUnit from "@/components/ads/AdsenseUnit";
 import { injectInlineAdMarker, splitHtmlByMarker } from "@/lib/ads";
+import MobileToc from "@/components/MobileToc";
 
 export const revalidate = 300;
 
@@ -344,12 +345,6 @@ export default async function PageDetail({ params }: { params: Params }) {
                 <ShareButtons title={page.title} url={canonicalUrl} />
 
                 {toc.length > 0 ? (
-                  <a
-                    href="#sommaire-mobile"
-                    className="inline-flex rounded-full border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-800 shadow-sm hover:border-brand-200 hover:bg-brand-50 hover:text-brand-700 lg:hidden"
-                  >
-                    Voir le sommaire
-                  </a>
                 ) : null}
 
                 {toc.length > 0 ? (
@@ -390,38 +385,7 @@ export default async function PageDetail({ params }: { params: Params }) {
         ) : null}
 
         {toc.length > 0 ? (
-          <details
-            id="sommaire-mobile"
-            className="sticky top-16 z-40 mt-6 overflow-hidden rounded-2xl border border-brand-700 bg-white shadow-lg lg:hidden"
-          >
-            <summary className="cursor-pointer list-none bg-brand-700 px-5 py-3 text-white">
-			  <div className="flex items-center justify-between gap-3">
-				<span className="text-sm font-black uppercase tracking-[0.18em]">
-				  Sommaire
-				</span>
-				<span className="text-lg leading-none">⌄</span>
-			  </div>
-			</summary>
-
-            <nav className="max-h-[60vh] overflow-y-auto border-t border-slate-100 bg-white px-4 py-4">
-              <ul className="space-y-1.5 text-sm">
-                {toc.map((item) => (
-                  <li key={item.id} className={item.level === 3 ? "pl-4" : ""}>
-                    <a
-                      href={`#${item.id}`}
-                      className={`block rounded-xl px-3 py-2 leading-snug transition hover:bg-brand-50 hover:text-brand-700 ${
-                        item.level === 3
-                          ? "text-sm text-slate-500"
-                          : "font-semibold text-slate-800"
-                      }`}
-                    >
-                      {item.text}
-                    </a>
-                  </li>
-                ))}
-              </ul>
-            </nav>
-          </details>
+          <MobileToc items={toc} />
         ) : null}
 
         <div className="mt-8 grid grid-cols-1 items-start gap-7 lg:grid-cols-12">
