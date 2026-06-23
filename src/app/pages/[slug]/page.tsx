@@ -387,8 +387,8 @@ export default async function PageDetail({ params }: { params: Params }) {
 
         <div className="mt-8 grid grid-cols-1 items-start gap-7 lg:grid-cols-12">
           <article className="lg:col-span-8">
-            <div className="overflow-hidden rounded-[2rem] border border-slate-200 bg-white shadow-sm">
-              <div className="p-5 md:p-8 lg:p-10">
+            <div className="bg-white md:overflow-hidden md:rounded-[2rem] md:border md:border-slate-200 md:shadow-sm">
+              <div className="px-4 py-6 md:p-8 lg:p-10">
                 <div className="prose max-w-none prose-headings:scroll-mt-28">
                   <div dangerouslySetInnerHTML={{ __html: htmlBeforeAd }} />
 
