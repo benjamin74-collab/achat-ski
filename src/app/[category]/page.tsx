@@ -208,7 +208,7 @@ export default async function CategoryPage({
   const breadcrumbJsonLd = {
     "@context": "https://schema.org",
     "@type": "BreadcrumbList",
-	"@id": `${canonicalUrl}#breadcrumb`,
+    "@id": `${canonicalUrl}#breadcrumb`,
     itemListElement: breadcrumbItems,
   };
 
@@ -414,38 +414,6 @@ export default async function CategoryPage({
             </div>
           </header>
 
-          {safeHtml && (
-            <section className="rounded-3xl border border-ring bg-surface/60 p-5 md:p-6 shadow-card">
-              <h2 className="text-xl font-semibold text-slate-900">Guide et présentation</h2>
-              <article
-                className="prose prose-slate max-w-none mt-4"
-                dangerouslySetInnerHTML={{ __html: safeHtml }}
-              />
-            </section>
-          )}
-
-          {cat.children.length > 0 && (
-            <section className="rounded-3xl border border-ring bg-white p-5 md:p-6 shadow-card">
-              <h2 className="text-xl font-semibold text-slate-900">Sous-catégories</h2>
-              <p className="mt-2 text-sm text-slate-600">
-                Explore les sous-catégories liées à {cat.name} pour affiner ta recherche.
-              </p>
-
-              <ul className="mt-4 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
-                {cat.children.map((sc) => (
-                  <li key={sc.id}>
-                    <Link
-                      href={`/${sc.slug}`}
-                      className="block rounded-2xl border border-ring bg-muted/20 px-4 py-4 font-medium text-slate-900 transition hover:bg-muted/40"
-                    >
-                      {sc.name}
-                    </Link>
-                  </li>
-                ))}
-              </ul>
-            </section>
-          )}
-
           <section id="produits" className="space-y-4">
             <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
               <div>
@@ -505,6 +473,38 @@ export default async function CategoryPage({
                 Suivant →
               </Link>
             </nav>
+          )}
+
+          {cat.children.length > 0 && (
+            <section className="rounded-3xl border border-ring bg-white p-5 md:p-6 shadow-card">
+              <h2 className="text-xl font-semibold text-slate-900">Sous-catégories</h2>
+              <p className="mt-2 text-sm text-slate-600">
+                Explore les sous-catégories liées à {cat.name} pour affiner ta recherche.
+              </p>
+
+              <ul className="mt-4 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
+                {cat.children.map((sc) => (
+                  <li key={sc.id}>
+                    <Link
+                      href={`/${sc.slug}`}
+                      className="block rounded-2xl border border-ring bg-muted/20 px-4 py-4 font-medium text-slate-900 transition hover:bg-muted/40"
+                    >
+                      {sc.name}
+                    </Link>
+                  </li>
+                ))}
+              </ul>
+            </section>
+          )}
+
+          {safeHtml && (
+            <section className="rounded-3xl border border-ring bg-surface/60 p-5 md:p-6 shadow-card">
+              <h2 className="text-xl font-semibold text-slate-900">Guide et présentation</h2>
+              <article
+                className="prose prose-slate max-w-none mt-4"
+                dangerouslySetInnerHTML={{ __html: safeHtml }}
+              />
+            </section>
           )}
 
           <section className="rounded-3xl border border-ring bg-white p-5 md:p-6 shadow-card">
