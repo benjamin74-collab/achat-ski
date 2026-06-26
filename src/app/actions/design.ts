@@ -104,6 +104,13 @@ export async function saveDesign(formData: FormData) {
   const robotsNoarchive = raw.robotsNoarchive === "on" || raw.robotsNoarchive === "true";
 
   const heroCtas = asJson(raw.heroCtas);
+  const footerTrustTitle = asString(raw.footerTrustTitle);
+  const footerTrustItems = asJson(raw.footerTrustItems);
+  const footerColumns = asJson(raw.footerColumns);
+  const footerExplorerTitle = asString(raw.footerExplorerTitle);
+  const footerExplorerColumns = asJson(raw.footerExplorerColumns);
+  const footerLegalLinks = asJson(raw.footerLegalLinks);
+  const footerCopyright = asString(raw.footerCopyright);
 
   const selectedCategorySlugs = getAllStrings(formData, "homeCategorySlugs");
   const selectedBrandSlugs = getAllStrings(formData, "homeBrandSlugs");
@@ -182,6 +189,14 @@ export async function saveDesign(formData: FormData) {
       categoryTiles,
       topBrands,
 
+	  footerTrustTitle: footerTrustTitle || null,
+	  footerTrustItems: footerTrustItems ?? undefined,
+	  footerColumns: footerColumns ?? undefined,
+	  footerExplorerTitle: footerExplorerTitle || null,
+  	  footerExplorerColumns: footerExplorerColumns ?? undefined,
+	  footerLegalLinks: footerLegalLinks ?? undefined,
+	  footerCopyright: footerCopyright || null,
+
       updatedAt: new Date(),
     },
     update: {
@@ -218,6 +233,14 @@ export async function saveDesign(formData: FormData) {
 
       categoryTiles,
       topBrands,
+
+	  footerTrustTitle: footerTrustTitle || null,
+	  footerTrustItems: footerTrustItems ?? undefined,
+	  footerColumns: footerColumns ?? undefined,
+	  footerExplorerTitle: footerExplorerTitle || null,
+	  footerExplorerColumns: footerExplorerColumns ?? undefined,
+	  footerLegalLinks: footerLegalLinks ?? undefined,
+	  footerCopyright: footerCopyright || null,
 
       updatedAt: new Date(),
     },

@@ -120,6 +120,9 @@ model Brand {
 
   metaTitle       String?
   metaDescription String?
+  
+  showInFooter Boolean @default(false)
+  footerOrder  Int     @default(0)
 
   active      Boolean     @default(true)
   createdAt   DateTime    @default(now())
@@ -178,6 +181,9 @@ model Page {
 
   metaTitle       String?
   metaDescription String?
+
+  showInFooter Boolean @default(false)
+  footerOrder  Int     @default(0)
 
   tags String[]
   featuredInCategories CategoryFeaturedLink[]
@@ -387,6 +393,9 @@ model Category {
   isInMenu  Boolean @default(true)
   order     Int     @default(0)
   published Boolean @default(true)
+  
+  showInFooter Boolean @default(false)
+  footerOrder  Int     @default(0)
 
   mapKwanko     String[]
   mapEkosport   String[]
@@ -451,6 +460,10 @@ model SiteSettings {
 
   categoryTiles Json?
   topBrands     Json?
+  
+  footerTrustTitle     String?
+  footerTrustItems     Json?
+  footerCopyright      String?
   
   robotsIndex     Boolean @default(true)
   robotsFollow    Boolean @default(true)

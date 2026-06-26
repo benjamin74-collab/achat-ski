@@ -82,6 +82,14 @@ export default async function AdminDesignPage() {
   const heroSubtitle = settings.heroSubtitle ?? "";
   const heroCtas = safeJsonStringify(settings.heroCtas, "[]");
 
+  const footerTrustTitle = settings.footerTrustTitle ?? "";
+  const footerTrustItems = safeJsonStringify(settings.footerTrustItems, "[]");
+  const footerColumns = safeJsonStringify(settings.footerColumns, "[]");
+  const footerExplorerTitle = settings.footerExplorerTitle ?? "";
+  const footerExplorerColumns = safeJsonStringify(settings.footerExplorerColumns, "[]");
+  const footerLegalLinks = safeJsonStringify(settings.footerLegalLinks, "[]");
+  const footerCopyright = settings.footerCopyright ?? "";
+
   const showCategories = settings.showCategories;
   const showLatestGuides = settings.showLatestGuides;
   const showTopBrands = settings.showTopBrands;
@@ -289,6 +297,82 @@ export default async function AdminDesignPage() {
             </div>
           </div>
         </section>
+
+		<section className="rounded-2xl border border-ring bg-white p-5">
+		  <h2 className="text-base font-semibold text-ink">Footer</h2>
+		  <p className="mt-1 text-sm text-slate-600">
+			Configuration multisite du footer : bloc confiance, colonnes, bloc Explorer et liens légaux.
+		  </p>
+
+		  <div className="mt-4 grid grid-cols-1 gap-4 md:grid-cols-2">
+			<label className="block md:col-span-2">
+			  <span className="text-sm font-medium text-ink">Titre du bloc confiance</span>
+			  <input
+				name="footerTrustTitle"
+				defaultValue={footerTrustTitle}
+				className="mt-2 w-full rounded-xl border border-ring bg-white px-3 py-2 text-sm"
+			  />
+			</label>
+
+			<label className="block md:col-span-2">
+			  <span className="text-sm font-medium text-ink">Items du bloc confiance JSON</span>
+			  <textarea
+				name="footerTrustItems"
+				defaultValue={footerTrustItems}
+				className="mt-2 w-full rounded-xl border border-ring bg-white px-3 py-2 font-mono text-xs"
+				rows={6}
+			  />
+			</label>
+
+			<label className="block md:col-span-2">
+			  <span className="text-sm font-medium text-ink">Colonnes principales JSON</span>
+			  <textarea
+				name="footerColumns"
+				defaultValue={footerColumns}
+				className="mt-2 w-full rounded-xl border border-ring bg-white px-3 py-2 font-mono text-xs"
+				rows={10}
+			  />
+			</label>
+
+			<label className="block md:col-span-2">
+			  <span className="text-sm font-medium text-ink">Titre du bloc Explorer</span>
+			  <input
+				name="footerExplorerTitle"
+				defaultValue={footerExplorerTitle}
+				className="mt-2 w-full rounded-xl border border-ring bg-white px-3 py-2 text-sm"
+			  />
+			</label>
+
+			<label className="block md:col-span-2">
+			  <span className="text-sm font-medium text-ink">Colonnes Explorer JSON</span>
+			  <textarea
+				name="footerExplorerColumns"
+				defaultValue={footerExplorerColumns}
+				className="mt-2 w-full rounded-xl border border-ring bg-white px-3 py-2 font-mono text-xs"
+				rows={10}
+			  />
+			</label>
+
+			<label className="block md:col-span-2">
+			  <span className="text-sm font-medium text-ink">Liens légaux JSON</span>
+			  <textarea
+				name="footerLegalLinks"
+				defaultValue={footerLegalLinks}
+				className="mt-2 w-full rounded-xl border border-ring bg-white px-3 py-2 font-mono text-xs"
+				rows={6}
+			  />
+			</label>
+
+			<label className="block md:col-span-2">
+			  <span className="text-sm font-medium text-ink">Copyright</span>
+			  <input
+				name="footerCopyright"
+				defaultValue={footerCopyright}
+				className="mt-2 w-full rounded-xl border border-ring bg-white px-3 py-2 text-sm"
+			  />
+			</label>
+		  </div>
+		</section>
 
         <section className="rounded-2xl border border-ring bg-white p-5">
           <h2 className="text-base font-semibold text-ink">SEO / Robots</h2>
