@@ -5,7 +5,7 @@ import Link from "next/link";
 import type { PageKind } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { sanitizeHtml } from "@/lib/sanitize";
-import { getCurrentSiteId, getCurrentSiteUrl } from "@/lib/currentSite";
+import { getCurrentSiteUrl } from "@/lib/currentSite";
 import ShareButtons from "@/components/ShareButtons";
 import RelatedArticles from "@/components/RelatedArticles";
 import AdSlot from "@/components/ads/AdSlot";
@@ -121,10 +121,8 @@ export async function generateMetadata({ params }: { params: Params }): Promise<
 
 export default async function PageDetail({ params }: { params: Params }) {
   const site = await getCurrentSiteUrl();
-  const siteId = await getCurrentSiteId();
 
-  const [page, adSettings] = await Promise.all([
-    prisma.page.findFirst({
+	const page = await prisma.page.findFirst({
       where: { slug: params.slug, published: true },
       include: {
         author: { select: { id: true, name: true } },
@@ -133,8 +131,7 @@ export default async function PageDetail({ params }: { params: Params }) {
         category: { select: { id: true, name: true } },
         guideCategory: { select: { id: true, name: true, slug: true } },
       },
-    }),
-  ]);
+    });
 
   if (!page) return notFound();
 
