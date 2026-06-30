@@ -134,12 +134,6 @@ export default async function PageDetail({ params }: { params: Params }) {
         guideCategory: { select: { id: true, name: true, slug: true } },
       },
     }),
-    prisma.adSettings.findUnique({
-	  where: { siteId },
-	  select: {
-		enabled: true,
-	  },
-	}),
   ]);
 
   if (!page) return notFound();
@@ -245,8 +239,6 @@ export default async function PageDetail({ params }: { params: Params }) {
       url: site,
     },
   };
-
-  const hasAdsense = !!adSettings?.enabled && !!adSettings.adsenseClient;
 
   return (
     <section id="top" className="bg-slate-50/70 pb-12">
