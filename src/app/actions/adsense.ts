@@ -3,6 +3,9 @@
 
 import { prisma } from "@/lib/prisma";
 import { revalidatePath } from "next/cache";
+import type { AdPlacementType } from "@prisma/client";
+
+const PLACEMENTS = ["pageTop", "pageInline", "pageSidebar", "pageBottom"] as const;
 
 function normalizeString(value: FormDataEntryValue | null): string | null {
   if (typeof value !== "string") return null;
@@ -20,7 +23,24 @@ function isValidSlot(value: string | null): boolean {
   return /^\d{6,20}$/.test(value);
 }
 
-export async function saveAdsenseSettings(formData: FormData) {
+function placementValue(formData: FormData, key: string, field: string) {
+  return normalizeString(formData.get(`${key}_${field}`));
+}
+
+function placementBool(formData: FormData, key: string, field: string) {
+  return formData.get(`${key}_${field}`) === "on";
+}
+
+function placementType(formData: FormData, key: string): AdPlacementType {
+  const raw = placementValue(formData, key, "type");
+
+  if (raw === "AFFILIATE_BANNER") return "AFFILIATE_BANNER";
+  if (raw === "CUSTOM_HTML") return "CUSTOM_HTML";
+
+  return "ADSENSE";
+}
+
+export async function saveAdvertisingSettings(formData: FormData) {
   const siteIdRaw = formData.get("siteId");
   const siteId = typeof siteIdRaw === "string" ? siteIdRaw.trim() : "";
 
@@ -29,31 +49,10 @@ export async function saveAdsenseSettings(formData: FormData) {
   }
 
   const enabled = formData.get("enabled") === "on";
-
   const adsenseClient = normalizeString(formData.get("adsenseClient"));
-  const slotPageTop = normalizeString(formData.get("slotPageTop"));
-  const slotPageInline = normalizeString(formData.get("slotPageInline"));
-  const slotPageSidebar = normalizeString(formData.get("slotPageSidebar"));
-  const slotPageBottom = normalizeString(formData.get("slotPageBottom"));
 
   if (!isValidAdsenseClient(adsenseClient)) {
     throw new Error("Le client Adsense est invalide. Format attendu : ca-pub-xxxxxxxxxxxxxxxx");
-  }
-
-  if (!isValidSlot(slotPageTop)) {
-    throw new Error("Le slot haut de page est invalide.");
-  }
-
-  if (!isValidSlot(slotPageInline)) {
-    throw new Error("Le slot dans l’article est invalide.");
-  }
-
-  if (!isValidSlot(slotPageSidebar)) {
-    throw new Error("Le slot sidebar est invalide.");
-  }
-
-  if (!isValidSlot(slotPageBottom)) {
-    throw new Error("Le slot bas de page est invalide.");
   }
 
   await prisma.adSettings.upsert({
@@ -61,22 +60,77 @@ export async function saveAdsenseSettings(formData: FormData) {
     update: {
       enabled,
       adsenseClient,
-      slotPageTop,
-      slotPageInline,
-      slotPageSidebar,
-      slotPageBottom,
     },
     create: {
       siteId,
       enabled,
       adsenseClient,
-      slotPageTop,
-      slotPageInline,
-      slotPageSidebar,
-      slotPageBottom,
     },
   });
 
-  revalidatePath("/admin/monetization/adsense");
+  for (const key of PLACEMENTS) {
+    const type = placementType(formData, key);
+    const placementEnabled = placementBool(formData, key, "enabled");
+
+    const adsenseSlot = placementValue(formData, key, "adsenseSlot");
+
+    const bannerImageUrl = placementValue(formData, key, "bannerImageUrl");
+    const bannerAlt = placementValue(formData, key, "bannerAlt");
+    const bannerLinkUrl = placementValue(formData, key, "bannerLinkUrl");
+    const bannerTitle = placementValue(formData, key, "bannerTitle");
+
+    const customHtml = placementValue(formData, key, "customHtml");
+
+    const openInNewTab = placementBool(formData, key, "openInNewTab");
+    const nofollow = placementBool(formData, key, "nofollow");
+    const sponsored = placementBool(formData, key, "sponsored");
+
+    if (type === "ADSENSE" && !isValidSlot(adsenseSlot)) {
+      throw new Error(`Le slot Adsense de l’emplacement ${key} est invalide.`);
+    }
+
+    await prisma.adPlacement.upsert({
+      where: {
+        siteId_key: {
+          siteId,
+          key,
+        },
+      },
+      update: {
+        enabled: placementEnabled,
+        type,
+        adsenseSlot,
+        bannerImageUrl,
+        bannerAlt,
+        bannerLinkUrl,
+        bannerTitle,
+        customHtml,
+        openInNewTab,
+        nofollow,
+        sponsored,
+      },
+      create: {
+        siteId,
+        key,
+        enabled: placementEnabled,
+        type,
+        adsenseSlot,
+        bannerImageUrl,
+        bannerAlt,
+        bannerLinkUrl,
+        bannerTitle,
+        customHtml,
+        openInNewTab,
+        nofollow,
+        sponsored,
+      },
+    });
+  }
+
+  revalidatePath("/");
   revalidatePath("/pages");
+  revalidatePath("/admin/monetization/adsense");
 }
+
+// Alias temporaire pour ne pas casser l’import existant
+export const saveAdsenseSettings = saveAdvertisingSettings;

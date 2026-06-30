@@ -8,7 +8,7 @@ import { sanitizeHtml } from "@/lib/sanitize";
 import { getCurrentSiteId, getCurrentSiteUrl } from "@/lib/currentSite";
 import ShareButtons from "@/components/ShareButtons";
 import RelatedArticles from "@/components/RelatedArticles";
-import AdsenseUnit from "@/components/ads/AdsenseUnit";
+import AdSlot from "@/components/ads/AdSlot";
 import { injectInlineAdMarker, splitHtmlByMarker } from "@/lib/ads";
 import MobileToc from "@/components/MobileToc";
 
@@ -74,17 +74,6 @@ function readingTime(html: string) {
   return Math.max(1, Math.ceil(words / 220));
 }
 
-function adBox(children: React.ReactNode) {
-  return (
-    <div className="overflow-hidden rounded-3xl border border-slate-200 bg-white p-3 shadow-sm md:p-4">
-      <div className="mb-2 text-center text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-400">
-        Publicité
-      </div>
-      {children}
-    </div>
-  );
-}
-
 export async function generateMetadata({ params }: { params: Params }): Promise<Metadata> {
   const p = await prisma.page.findFirst({
     where: { slug: params.slug, published: true },
@@ -146,16 +135,11 @@ export default async function PageDetail({ params }: { params: Params }) {
       },
     }),
     prisma.adSettings.findUnique({
-      where: { siteId },
-      select: {
-        enabled: true,
-        adsenseClient: true,
-        slotPageTop: true,
-        slotPageInline: true,
-        slotPageSidebar: true,
-        slotPageBottom: true,
-      },
-    }),
+	  where: { siteId },
+	  select: {
+		enabled: true,
+	  },
+	}),
   ]);
 
   if (!page) return notFound();
@@ -375,11 +359,9 @@ export default async function PageDetail({ params }: { params: Params }) {
           </div>
         </header>
 
-        {hasAdsense && adSettings.slotPageTop ? (
-          <section className="mt-6">
-            {adBox(<AdsenseUnit client={adSettings.adsenseClient!} slot={adSettings.slotPageTop} />)}
-          </section>
-        ) : null}
+        <section className="mt-6">
+		  <AdSlot slotKey="pageTop" />
+		</section>
 
         {toc.length > 0 ? (
           <MobileToc items={toc} />
@@ -392,22 +374,22 @@ export default async function PageDetail({ params }: { params: Params }) {
                 <div className="prose max-w-none prose-headings:scroll-mt-28">
                   <div dangerouslySetInnerHTML={{ __html: htmlBeforeAd }} />
 
-                  {hasAdsense && adSettings.slotPageInline && hasMarker ? (
-                    <div className="not-prose my-8">
-                      {adBox(<AdsenseUnit client={adSettings.adsenseClient!} slot={adSettings.slotPageInline} />)}
-                    </div>
-                  ) : null}
+                  {hasMarker ? (
+					  <div className="not-prose my-8">
+						<AdSlot slotKey="pageInline" />
+					  </div>
+					) : null}
 
                   {htmlAfterAd ? <div dangerouslySetInnerHTML={{ __html: htmlAfterAd }} /> : null}
                 </div>
               </div>
             </div>
 
-            {hasAdsense && adSettings.slotPageInline && !hasMarker ? (
-              <section className="my-7">
-                {adBox(<AdsenseUnit client={adSettings.adsenseClient!} slot={adSettings.slotPageInline} />)}
-              </section>
-            ) : null}
+            {!hasMarker ? (
+			  <section className="my-7">
+				<AdSlot slotKey="pageInline" />
+			  </section>
+			) : null}
 
             <section className="mt-10">
               <RelatedArticles currentSlug={page.slug} max={6} />
@@ -473,19 +455,15 @@ export default async function PageDetail({ params }: { params: Params }) {
               <ShareButtons title={page.title} url={canonicalUrl} />
             </div>
 
-            {hasAdsense && adSettings.slotPageBottom ? (
-              <section className="mt-7">
-                {adBox(<AdsenseUnit client={adSettings.adsenseClient!} slot={adSettings.slotPageBottom} />)}
-              </section>
-            ) : null}
+            <section className="mt-7">
+			  <AdSlot slotKey="pageBottom" />
+			</section>
           </article>
 
           <aside className="hidden space-y-5 lg:sticky lg:top-28 lg:col-span-4 lg:block">
-            {hasAdsense && adSettings.slotPageSidebar ? (
-              <section>
-                {adBox(<AdsenseUnit client={adSettings.adsenseClient!} slot={adSettings.slotPageSidebar} />)}
-              </section>
-            ) : null}
+            <section>
+			  <AdSlot slotKey="pageSidebar" />
+			</section>
 
             {toc.length > 0 ? (
               <div id="sommaire" className="rounded-[2rem] border border-slate-200 bg-white shadow-sm">

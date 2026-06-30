@@ -566,6 +566,40 @@ model AdSettings {
   @@index([siteId])
 }
 
+enum AdPlacementType {
+  ADSENSE
+  AFFILIATE_BANNER
+  CUSTOM_HTML
+}
+
+model AdPlacement {
+  id      Int    @id @default(autoincrement())
+  siteId  String
+  key     String
+  enabled Boolean @default(true)
+
+  type AdPlacementType @default(ADSENSE)
+
+  adsenseSlot String?
+  customHtml String? @db.Text
+
+  bannerImageUrl String?
+  bannerAlt      String?
+  bannerLinkUrl  String?
+  bannerTitle    String?
+
+  openInNewTab Boolean @default(true)
+  nofollow     Boolean @default(true)
+  sponsored    Boolean @default(true)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([siteId, key])
+  @@index([siteId])
+  @@index([key])
+}
+
 model TrackingSettings {
   id                       Int      @id @default(autoincrement())
   siteId                   String   @unique
