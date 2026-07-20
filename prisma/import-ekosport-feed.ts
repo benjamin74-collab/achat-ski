@@ -1,7 +1,7 @@
 import { PrismaClient } from "@prisma/client";
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
-
+import type { Prisma } from "@prisma/client";
 import { parseCsv } from "../src/lib/catalog/csv";
 import { normalizeEkosportFeed } from "../src/lib/catalog/import-ekosport";
 import { importNormalizedFeedItem } from "../src/lib/catalog/import-service";
@@ -81,7 +81,7 @@ async function main() {
         manufacturerRef: item.manufacturerReference,
         title: item.title,
         brand: item.brand,
-        rawData: item.rawData,
+        rawData: item.rawData as Prisma.InputJsonValue,
         processed: false,
       },
     });
