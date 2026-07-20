@@ -1,25 +1,28 @@
-// src/app/contact/page.tsx
-import { getSiteConfig } from "@/config/site";
+import type { Metadata } from "next";
+import { LegalPageType } from "@prisma/client";
 
-export const revalidate = 3600;
+import LegalPageView from "@/components/legal/LegalPageView";
+import { getPublicLegalPage } from "@/lib/getPublicLegalPage";
 
-export default function ContactPage() {
-  const site = getSiteConfig();
-  const host = new URL(site.domain).hostname;
-  const contactEmail = `contact@${host}`;
+export async function generateMetadata(): Promise<Metadata> {
+  const page = await getPublicLegalPage(LegalPageType.CONTACT);
+
+  return {
+    title: page.metaTitle || page.title,
+    description: page.metaDescription || undefined,
+  };
+}
+
+export default async function ContactPage() {
+  const page = await getPublicLegalPage(LegalPageType.CONTACT);
 
   return (
-    <main className="container-page py-8">
-      <h1 className="text-2xl font-bold">Contact</h1>
-
-      <div className="mt-4 space-y-2 text-neutral-700 max-w-2xl">
-        <p>
-          Une question, un bug, une demande partenaire ?
-        </p>
-        <p>
-          Écrivez-nous : <strong>{contactEmail}</strong>
-        </p>
-      </div>
-    </main>
+    <LegalPageView
+      title={page.title}
+      content={page.content}
+      version={page.version}
+      effectiveDate={page.effectiveDate}
+      updatedAt={page.updatedAt}
+    />
   );
 }

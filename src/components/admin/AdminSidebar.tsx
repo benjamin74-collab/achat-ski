@@ -18,6 +18,7 @@ const NAV: Item[] = [
   { href: "/admin/guide-categories", label: "Catégories de guides", desc: "Classer les guides et gérer le menu Guides" },
   { href: "/admin/media", label: "Médiathèque", desc: "Uploader & gérer les images" },
   { href: "/admin/cookies", label: "Cookies (RGPD)", desc: "Consentement & liste des cookies" },
+  { href: "/admin/legal-pages", label: "Pages légales", desc: "Mentions, confidentialité, cookies, CGU et contact",},
   { href: "/admin/design", label: "Design", desc: "Identité, couleurs et polices" },
   { href: "/admin/content", label: "Contenus", desc: "Textes propres à chaque site" },
   { href: "/admin/monetization/adsense", label: "Adsense", desc: "Publicité de Google" },

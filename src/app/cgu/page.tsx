@@ -1,40 +1,28 @@
-// src/app/cgu/page.tsx
-import { getSiteConfig } from "@/config/site";
+import type { Metadata } from "next";
+import { LegalPageType } from "@prisma/client";
 
-export const revalidate = 86400;
+import LegalPageView from "@/components/legal/LegalPageView";
+import { getPublicLegalPage } from "@/lib/getPublicLegalPage";
 
-export default function CguPage() {
-  const site = getSiteConfig();
-  const host = new URL(site.domain).hostname;
-  const contactEmail = `contact@${host}`;
+export async function generateMetadata(): Promise<Metadata> {
+  const page = await getPublicLegalPage(LegalPageType.TERMS_OF_USE);
+
+  return {
+    title: page.metaTitle || page.title,
+    description: page.metaDescription || undefined,
+  };
+}
+
+export default async function TermsOfUsePage() {
+  const page = await getPublicLegalPage(LegalPageType.TERMS_OF_USE);
 
   return (
-    <main className="container-page py-8">
-      <h1 className="text-2xl font-bold">Conditions Générales d’Utilisation</h1>
-
-      <div className="mt-4 space-y-3 text-neutral-700 max-w-2xl">
-        <p>
-          <strong>Éditeur :</strong> {host}
-        </p>
-        <p>
-          <strong>Contact :</strong> {contactEmail}
-        </p>
-
-        <p>
-          Le site propose des contenus (guides, comparatifs, avis) et des liens vers des offres de marchands partenaires.
-          Certains liens peuvent être affiliés.
-        </p>
-
-        <p>
-          <strong>Responsabilité :</strong> les prix, stocks et informations affichés peuvent évoluer chez les marchands.
-          Les décisions d’achat relèvent de l’utilisateur.
-        </p>
-
-        <p className="text-sm text-neutral-500">
-          (Contenu à compléter : propriété intellectuelle, modération des avis, disponibilité du service, droit applicable,
-          etc.)
-        </p>
-      </div>
-    </main>
+    <LegalPageView
+      title={page.title}
+      content={page.content}
+      version={page.version}
+      effectiveDate={page.effectiveDate}
+      updatedAt={page.updatedAt}
+    />
   );
 }

@@ -820,3 +820,35 @@ enum FeaturedLinkType {
   GUIDE
   BRAND
 }
+
+model LegalPage {
+  id     Int    @id @default(autoincrement())
+  siteId String
+  type   LegalPageType
+
+  title   String
+  content String @db.Text
+
+  metaTitle       String?
+  metaDescription String?
+
+  published Boolean @default(false)
+
+  version       String?
+  effectiveDate DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([siteId, type])
+  @@index([siteId])
+  @@index([siteId, published])
+}
+
+enum LegalPageType {
+  LEGAL_NOTICE
+  PRIVACY_POLICY
+  COOKIE_POLICY
+  TERMS_OF_USE
+  CONTACT
+}

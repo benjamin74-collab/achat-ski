@@ -1,35 +1,28 @@
-// src/app/cookies/page.tsx
-import { getSiteConfig } from "@/config/site";
+import type { Metadata } from "next";
+import { LegalPageType } from "@prisma/client";
 
-export const revalidate = 86400;
+import LegalPageView from "@/components/legal/LegalPageView";
+import { getPublicLegalPage } from "@/lib/getPublicLegalPage";
 
-export default function CookiesPage() {
-  const site = getSiteConfig();
-  const contactEmail = `contact@${new URL(site.domain).hostname}`;
+export async function generateMetadata(): Promise<Metadata> {
+  const page = await getPublicLegalPage(LegalPageType.COOKIE_POLICY);
+
+  return {
+    title: page.metaTitle || page.title,
+    description: page.metaDescription || undefined,
+  };
+}
+
+export default async function CookiePolicyPage() {
+  const page = await getPublicLegalPage(LegalPageType.COOKIE_POLICY);
 
   return (
-    <main className="container-page py-8">
-      <h1 className="text-2xl font-bold">Cookies</h1>
-
-      <div className="mt-4 space-y-3 text-neutral-700 max-w-2xl">
-        <p>
-          <strong>{site.name}</strong> peut utiliser des cookies et technologies similaires pour assurer le bon
-          fonctionnement du site, mesurer l’audience et améliorer l’expérience utilisateur.
-        </p>
-
-        <p>
-          <strong>Gestion des cookies :</strong> vous pouvez limiter ou bloquer les cookies via les paramètres de votre
-          navigateur.
-        </p>
-
-        <p>
-          <strong>Contact :</strong> {contactEmail}
-        </p>
-
-        <p className="text-sm text-neutral-500">
-          (Contenu à compléter : liste des cookies, durée, finalités, consentement, etc.)
-        </p>
-      </div>
-    </main>
+    <LegalPageView
+      title={page.title}
+      content={page.content}
+      version={page.version}
+      effectiveDate={page.effectiveDate}
+      updatedAt={page.updatedAt}
+    />
   );
 }

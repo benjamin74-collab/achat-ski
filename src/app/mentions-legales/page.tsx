@@ -1,32 +1,28 @@
-// src/app/mentions-legales/page.tsx
-import { getSiteConfig } from "@/config/site";
+import type { Metadata } from "next";
+import { LegalPageType } from "@prisma/client";
 
-export const revalidate = 86400;
+import LegalPageView from "@/components/legal/LegalPageView";
+import { getPublicLegalPage } from "@/lib/getPublicLegalPage";
 
-export default function MentionsPage() {
-  const site = getSiteConfig();
-  const host = new URL(site.domain).hostname;
-  const contactEmail = `contact@${host}`;
+export async function generateMetadata(): Promise<Metadata> {
+  const page = await getPublicLegalPage(LegalPageType.LEGAL_NOTICE);
+
+  return {
+    title: page.metaTitle || page.title,
+    description: page.metaDescription || undefined,
+  };
+}
+
+export default async function LegalNoticePage() {
+  const page = await getPublicLegalPage(LegalPageType.LEGAL_NOTICE);
 
   return (
-    <div className="container-page py-10">
-      <h1 className="text-2xl font-bold">Mentions légales</h1>
-
-      <div className="mt-4 space-y-3 text-neutral-700 max-w-2xl">
-        <p>
-          <strong>Éditeur :</strong> {host}
-        </p>
-        <p>
-          <strong>Contact :</strong> {contactEmail}
-        </p>
-        <p>
-          <strong>Hébergement :</strong> Vercel Inc., 440 N Barranca Ave #4133, Covina, CA 91723, USA
-        </p>
-        <p>
-          <strong>Responsabilité :</strong> Les informations (prix, stock) sont fournies à titre indicatif et peuvent
-          varier chez les marchands.
-        </p>
-      </div>
-    </div>
+    <LegalPageView
+      title={page.title}
+      content={page.content}
+      version={page.version}
+      effectiveDate={page.effectiveDate}
+      updatedAt={page.updatedAt}
+    />
   );
 }
