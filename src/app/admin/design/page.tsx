@@ -81,6 +81,7 @@ export default async function AdminDesignPage() {
   const heroHighlight = settings.heroHighlight ?? "";
   const heroSubtitle = settings.heroSubtitle ?? "";
   const heroCtas = safeJsonStringify(settings.heroCtas, "[]");
+  const pagesContent = safeJsonStringify(settings.pagesContent, "{}");
 
   const footerTrustTitle = settings.footerTrustTitle ?? "";
   const footerTrustItems = safeJsonStringify(settings.footerTrustItems, "[]");
@@ -293,6 +294,24 @@ export default async function AdminDesignPage() {
             </div>
           </div>
         </section>
+		
+		<section className="rounded-2xl border border-ring bg-white p-5">
+		  <h2 className="text-base font-semibold text-ink">Pages système</h2>
+		  <p className="mt-1 text-sm text-slate-600">
+			Contenus personnalisés par site pour les pages automatiques : marques,
+			catégories, guides, recherche, etc.
+		  </p>
+
+		  <label className="mt-4 block">
+			<span className="text-sm font-medium text-ink">Contenus des pages JSON</span>
+			<textarea
+			  name="pagesContent"
+			  defaultValue={pagesContent}
+			  className="mt-2 w-full rounded-xl border border-ring bg-white px-3 py-2 font-mono text-xs"
+			  rows={18}
+			/>
+		  </label>
+		</section>
 
 		<section className="rounded-2xl border border-ring bg-white p-5">
 		  <h2 className="text-base font-semibold text-ink">Footer</h2>

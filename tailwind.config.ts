@@ -1,4 +1,4 @@
-// tailwind.config.ts
+import typography from "@tailwindcss/typography";
 import type { Config } from "tailwindcss";
 
 const config: Config = {
@@ -6,10 +6,6 @@ const config: Config = {
   theme: {
     extend: {
       colors: {
-        /**
-         * ✅ Couleurs sémantiques multi-sites (via variables injectées dans <html>)
-         * - On évite "accent" car tu as déjà une palette "accent" (50..900)
-         */
         primary: "rgb(var(--primary) / <alpha-value>)",
         secondary: "rgb(var(--secondary) / <alpha-value>)",
         siteAccent: "rgb(var(--accent) / <alpha-value>)",
@@ -20,21 +16,19 @@ const config: Config = {
         mutedForeground: "rgb(var(--muted-foreground) / <alpha-value>)",
         border: "rgb(var(--border) / <alpha-value>)",
 
-        // ✅ Palette principale (flashy)
         brand: {
           50: "#fff3e6",
           100: "#ffe3c7",
           200: "#ffc78f",
           300: "#ffa85a",
           400: "#ff8e2e",
-          500: "#ff6a00", // primaire
+          500: "#ff6a00",
           600: "#e55f00",
           700: "#b74b00",
           800: "#8a3900",
           900: "#552200",
         },
 
-        // ✅ Bleu accent (palette existante)
         accent: {
           50: "#e6f7ff",
           100: "#cceeff",
@@ -48,7 +42,6 @@ const config: Config = {
           900: "#00334d",
         },
 
-        // ✅ Vert accent (palette existante)
         leaf: {
           50: "#e9fbf1",
           100: "#c7f5dc",
@@ -62,10 +55,6 @@ const config: Config = {
           900: "#043d2a",
         },
 
-        /**
-         * Tokens legacy (utilisés par ton globals.css actuel)
-         * On les garde pour ne rien casser.
-         */
         bg: "#ffffff",
         surface: "#f8fafc",
         ring: "#e2e8f0",
@@ -81,7 +70,7 @@ const config: Config = {
       },
     },
   },
-  plugins: [require("@tailwindcss/typography")],
+  plugins: [typography],
 };
 
 export default config;

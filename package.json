@@ -4,10 +4,8 @@
   "private": true,
   "scripts": {
     "dev": "next dev --turbopack",
-
     "build": "next build",
     "start": "next start",
-
     "lint": "eslint",
 
     "postinstall": "prisma generate",
@@ -15,13 +13,16 @@
     "db:migrate:deploy": "prisma migrate deploy",
     "db:generate": "prisma generate",
     "prisma:push": "prisma db push",
+
     "seed:brands": "tsx prisma/seed-brands.ts",
-	"prisma:seed:categories:sprint": "tsx prisma/seed-categories-ski-snowboard-rando-sprint.ts",
-	"prisma:seed:menu-structure": "tsx prisma/seed-categories-menu-structure.ts",
+    "prisma:seed:categories:sprint": "tsx prisma/seed-categories-ski-snowboard-rando-sprint.ts",
+    "prisma:seed:menu-structure": "tsx prisma/seed-categories-menu-structure.ts",
     "prisma:seed": "tsx prisma/seed.ts",
     "prisma:seed:design": "tsx prisma/seed-design.ts",
+    "prisma:seed:rando": "tsx prisma/seed-categories-ski-rando.ts",
 
-	"prisma:seed:rando": "tsx prisma/seed-categories-ski-rando.ts"
+    "feed:import:ekosport": "tsx prisma/import-ekosport-feed.ts",
+    "feed:import:tonton": "tsx prisma/import-tonton-feed.ts"
   },
   "dependencies": {
     "@next-auth/prisma-adapter": "^1.0.7",

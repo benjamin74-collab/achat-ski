@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useMemo, useState } from "react";
+import type { BrandsPageContent } from "@/config/site.types";
 
 type Brand = {
   id: number;
@@ -17,106 +18,147 @@ type Brand = {
 
 const ALPHABET = "ABCDEFGHIJKLMNOPQRSTUVWXYZ".split("");
 
-export default function BrandsDirectory({ brands }: { brands: Brand[] }) {
+export default function BrandsDirectory({
+  brands,
+  content,
+}: {
+  brands: Brand[];
+  content: BrandsPageContent;
+}) {
   const [query, setQuery] = useState("");
 
   const filteredBrands = useMemo(() => {
     const q = query.trim().toLowerCase();
 
-    if (!q) return brands;
+    if (!q) {
+      return brands;
+    }
 
     return brands.filter((brand) =>
-      brand.name.toLowerCase().includes(q)
+      brand.name.toLowerCase().includes(q),
     );
   }, [brands, query]);
 
   const groupedBrands = useMemo(() => {
-    return filteredBrands.reduce<Record<string, Brand[]>>((acc, brand) => {
-      const firstLetter = brand.name.charAt(0).toUpperCase();
-      const key = /^[A-Z]$/.test(firstLetter) ? firstLetter : "#";
+    return filteredBrands.reduce<Record<string, Brand[]>>(
+      (acc, brand) => {
+        const firstLetter = brand.name.charAt(0).toUpperCase();
+        const key = /^[A-Z]$/.test(firstLetter)
+          ? firstLetter
+          : "#";
 
-      if (!acc[key]) acc[key] = [];
-      acc[key].push(brand);
+        if (!acc[key]) {
+          acc[key] = [];
+        }
 
-      return acc;
-    }, {});
+        acc[key].push(brand);
+
+        return acc;
+      },
+      {},
+    );
   }, [filteredBrands]);
 
   const availableLetters = Object.keys(groupedBrands).sort();
 
-  const featuredBrands = brands.filter((brand) => brand.showOnHomepage);
+  const featuredBrands = brands.filter(
+    (brand) => brand.showOnHomepage,
+  );
+
+  const multipleResults = filteredBrands.length !== 1;
 
   return (
     <>
       <header className="mt-6 rounded-3xl border border-ring bg-surface p-6 shadow-card md:p-10">
         <p className="text-sm font-semibold uppercase tracking-wide text-blue-600">
-          Marques ski & outdoor
+          {content.eyebrow}
         </p>
 
         <h1 className="mt-3 text-3xl font-bold tracking-tight md:text-5xl">
-          Toutes les marques de ski, montagne et outdoor
+          {content.title}
         </h1>
 
         <p className="mt-5 max-w-3xl text-base leading-8 text-neutral-600 md:text-lg">
-          Retrouvez les principales marques de skis, chaussures, fixations,
-          textile technique, sécurité avalanche, ski de randonnée, freeride et
-          équipement outdoor référencées sur Meilleur-Ski.
+          {content.description}
         </p>
 
         <div className="mt-8 max-w-2xl">
-          <label htmlFor="brand-search" className="sr-only">
-            Rechercher une marque
+          <label
+            htmlFor="brand-search"
+            className="sr-only"
+          >
+            {content.searchLabel}
           </label>
 
           <input
             id="brand-search"
             type="search"
             value={query}
-            onChange={(event) => setQuery(event.target.value)}
-            placeholder="Rechercher une marque : Rossignol, Salomon, Patagonia..."
+            onChange={(event) =>
+              setQuery(event.target.value)
+            }
+            placeholder={content.searchPlaceholder}
             className="w-full rounded-2xl border border-ring bg-white px-5 py-4 text-base outline-none transition focus:border-blue-500 focus:ring-4 focus:ring-blue-100"
           />
         </div>
 
         <p className="mt-4 text-sm text-neutral-500">
-          {filteredBrands.length} marque
-          {filteredBrands.length > 1 ? "s" : ""} affichée
-          {filteredBrands.length > 1 ? "s" : ""}.
+          {filteredBrands.length}{" "}
+          {multipleResults
+            ? content.resultPlural
+            : content.resultSingular}{" "}
+          {multipleResults
+            ? content.displayedPlural
+            : content.displayedSingular}
+          .
         </p>
       </header>
 
-		<nav className="sticky top-0 z-20 mt-6 rounded-2xl border border-ring bg-white/90 p-2 backdrop-blur">
-		  <div className="grid grid-cols-[repeat(13,minmax(0,1fr))] gap-1 sm:grid-cols-[repeat(26,minmax(0,1fr))]">
-			{ALPHABET.map((letter) => {
-			  const disabled = !availableLetters.includes(letter);
+      <nav className="sticky top-0 z-20 mt-6 rounded-2xl border border-ring bg-white/90 p-2 backdrop-blur">
+        <div className="grid grid-cols-[repeat(13,minmax(0,1fr))] gap-1 sm:grid-cols-[repeat(26,minmax(0,1fr))]">
+          {ALPHABET.map((letter) => {
+            const disabled =
+              !availableLetters.includes(letter);
 
-			  return (
-				<a
-				  key={letter}
-				  href={disabled ? undefined : `#letter-${letter}`}
-				  className={
-					disabled
-					  ? "flex h-8 items-center justify-center rounded-lg text-xs font-semibold text-neutral-300 sm:h-9 sm:text-sm"
-					  : "flex h-8 items-center justify-center rounded-lg bg-neutral-100 text-xs font-semibold text-neutral-800 transition hover:bg-blue-600 hover:text-white sm:h-9 sm:text-sm"
-				  }
-				>
-				  {letter}
-				</a>
-			  );
-			})}
-		  </div>
-		</nav>
+            return (
+              <a
+                key={letter}
+                href={
+                  disabled
+                    ? undefined
+                    : `#letter-${letter}`
+                }
+                className={
+                  disabled
+                    ? "flex h-8 items-center justify-center rounded-lg text-xs font-semibold text-neutral-300 sm:h-9 sm:text-sm"
+                    : "flex h-8 items-center justify-center rounded-lg bg-neutral-100 text-xs font-semibold text-neutral-800 transition hover:bg-blue-600 hover:text-white sm:h-9 sm:text-sm"
+                }
+              >
+                {letter}
+              </a>
+            );
+          })}
+        </div>
+      </nav>
 
       {featuredBrands.length > 0 && !query && (
         <section className="mt-10">
-          <h2 className="text-2xl font-bold">Marques populaires</h2>
+          <h2 className="text-2xl font-bold">
+            {content.popularTitle}
+          </h2>
+
           <p className="mt-2 text-neutral-600">
-            Les marques les plus recherchées par les skieurs.
+            {content.popularDescription}
           </p>
 
           <div className="mt-5 grid grid-cols-2 gap-4 md:grid-cols-3 lg:grid-cols-5">
             {featuredBrands.map((brand) => (
-              <BrandCard key={brand.id} brand={brand} featured />
+              <BrandCard
+                key={brand.id}
+                brand={brand}
+                cta={content.cardCta}
+                featured
+              />
             ))}
           </div>
         </section>
@@ -125,9 +167,12 @@ export default function BrandsDirectory({ brands }: { brands: Brand[] }) {
       <section className="mt-12">
         {availableLetters.length === 0 ? (
           <div className="rounded-3xl border border-ring bg-white p-10 text-center">
-            <p className="text-lg font-semibold">Aucune marque trouvée.</p>
+            <p className="text-lg font-semibold">
+              {content.emptyTitle}
+            </p>
+
             <p className="mt-2 text-neutral-600">
-              Essayez avec une autre recherche.
+              {content.emptyDescription}
             </p>
           </div>
         ) : (
@@ -142,12 +187,17 @@ export default function BrandsDirectory({ brands }: { brands: Brand[] }) {
                   <span className="flex h-12 w-12 items-center justify-center rounded-2xl bg-blue-600 text-xl font-bold text-white">
                     {letter}
                   </span>
+
                   <div className="h-px flex-1 bg-neutral-200" />
                 </div>
 
                 <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
                   {groupedBrands[letter].map((brand) => (
-                    <BrandCard key={brand.id} brand={brand} />
+                    <BrandCard
+                      key={brand.id}
+                      brand={brand}
+                      cta={content.cardCta}
+                    />
                   ))}
                 </div>
               </section>
@@ -158,22 +208,17 @@ export default function BrandsDirectory({ brands }: { brands: Brand[] }) {
 
       <section className="mt-16 rounded-3xl border border-ring bg-surface p-6 shadow-card md:p-8">
         <h2 className="text-2xl font-bold">
-          Les principales marques de ski et outdoor
+          {content.seoTitle}
         </h2>
 
         <div className="mt-5 space-y-4 text-neutral-700">
-          <p>
-            Cette page rassemble les marques de ski, de montagne et
-            d’équipement outdoor présentes sur Meilleur-Ski. Elle permet de
-            retrouver rapidement une marque de skis alpins, freeride, randonnée,
-            chaussures, fixations, textile technique ou sécurité avalanche.
-          </p>
-
-          <p>
-            Chaque fiche marque présente l’histoire de la marque, ses gammes,
-            ses technologies, ses produits phares et des conseils pour choisir
-            le matériel le plus adapté à votre pratique.
-          </p>
+          {content.seoParagraphs.map(
+            (paragraph, index) => (
+              <p key={`${index}-${paragraph}`}>
+                {paragraph}
+              </p>
+            ),
+          )}
         </div>
       </section>
     </>
@@ -182,16 +227,20 @@ export default function BrandsDirectory({ brands }: { brands: Brand[] }) {
 
 function BrandCard({
   brand,
+  cta,
   featured = false,
 }: {
   brand: Brand;
+  cta: string;
   featured?: boolean;
 }) {
   return (
     <Link
       href={`/marques/${brand.slug}`}
       className={`group rounded-3xl border bg-white p-5 shadow-sm transition hover:-translate-y-1 hover:shadow-lg ${
-        featured ? "border-blue-200" : "border-ring"
+        featured
+          ? "border-blue-200"
+          : "border-ring"
       }`}
     >
       <div>
@@ -206,7 +255,9 @@ function BrandCard({
         )}
 
         <div className="mt-4 flex items-center justify-between gap-3 text-sm">
-          <span className="font-medium text-blue-600">Voir la marque →</span>
+          <span className="font-medium text-blue-600">
+            {cta}
+          </span>
 
           {brand._count.products > 0 && (
             <span className="rounded-full bg-neutral-100 px-3 py-1 text-neutral-500">

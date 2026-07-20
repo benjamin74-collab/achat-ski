@@ -13,15 +13,14 @@ datasource db {
  * ------------------------------
  */
 model User {
-  id                      String                   @id @default(cuid())
-  name                    String?
-  email                   String?                  @unique
-  emailVerified           DateTime?
-  image                   String?
-  role                    Role                     @default(USER)
+  id            String    @id @default(cuid())
+  name          String?
+  email         String?   @unique
+  emailVerified DateTime?
+  image         String?
+  role          Role      @default(USER)
 
-  // Multi-site : null = super-admin (tous sites), sinon slug du site (ex: "meilleur-robot")
-  siteId                  String?
+  siteId String?
 
   avatarId                Int?
   avatar                  MediaAsset?              @relation("UserAvatar", fields: [avatarId], references: [id])
@@ -34,15 +33,12 @@ model User {
   marketingOptIn Boolean @default(false)
   passwordHash   String?
 
-  // Relations NextAuth
   accounts Account[]
   sessions Session[]
 
-  // Relations existantes
   reviews Review[]
   tests   EditorialTest[]
 
-  // Relations inverses ajoutées
   pages        Page[]
   pageComments PageComment[]
 
@@ -104,33 +100,33 @@ enum Role {
 }
 
 model Brand {
-  id          Int         @id @default(autoincrement())
-  name        String      @unique
-  slug        String      @unique
+  id          Int     @id @default(autoincrement())
+  name        String  @unique
+  slug        String  @unique
   description String?
-  websiteUrl  String?     @db.VarChar(512)
+  websiteUrl  String? @db.VarChar(512)
 
-  logoUrl     String?     @db.VarChar(512)
-  logoId      Int?
-  logo        MediaAsset? @relation("BrandLogo", fields: [logoId], references: [id])
+  logoUrl String?     @db.VarChar(512)
+  logoId  Int?
+  logo    MediaAsset? @relation("BrandLogo", fields: [logoId], references: [id])
 
-  bannerUrl   String?     @db.VarChar(512)
-  bannerId    Int?
-  banner      MediaAsset? @relation("BrandBanner", fields: [bannerId], references: [id])
+  bannerUrl String?     @db.VarChar(512)
+  bannerId  Int?
+  banner    MediaAsset? @relation("BrandBanner", fields: [bannerId], references: [id])
 
   metaTitle       String?
   metaDescription String?
-  
+
   showInFooter Boolean @default(false)
   footerOrder  Int     @default(0)
 
-  active      Boolean     @default(true)
-  createdAt   DateTime    @default(now())
-  updatedAt   DateTime    @updatedAt
+  active    Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
-  showOnHomepage Boolean @default(false)
+  showOnHomepage       Boolean                @default(false)
   featuredInCategories CategoryFeaturedLink[]
-  products Product[]
+  products             Product[]
 }
 
 model GuideCategory {
@@ -185,9 +181,9 @@ model Page {
   showInFooter Boolean @default(false)
   footerOrder  Int     @default(0)
 
-  tags String[]
+  tags                 String[]
   featuredInCategories CategoryFeaturedLink[]
-  comments PageComment[]
+  comments             PageComment[]
 
   @@index([kind, published])
   @@index([guideCategoryId])
@@ -219,66 +215,165 @@ model PageComment {
  * ------------------------------
  */
 model Product {
-  id      Int     @id @default(autoincrement())
-  brand   String?
+  id Int @id @default(autoincrement())
+
+  // Nouveau champ principal
+  name String?
+
+  // Champs historiques conservés temporairement pour éviter migration destructive
+  brand String?
+  model String
+  gtin  String? @unique
+
   brandId Int?
-  Brand   Brand?  @relation(fields: [brandId], references: [id])
-  model   String
-  season  String?
+  Brand   Brand? @relation(fields: [brandId], references: [id])
+
+  season String?
 
   categoryId Int?
   category   Category? @relation(fields: [categoryId], references: [id], onDelete: SetNull)
 
-  gtin        String?         @unique
-  slug        String          @unique
+  slug        String   @unique
   attributes  Json?
-  createdAt   DateTime        @default(now())
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @default(now()) @updatedAt
   description String?
-  skus        Sku[]
-  clicks      Click[]
-  reviews     Review[]
-  tests       EditorialTest[]
+
+  normalizedName        String?
+  manufacturerReference String?
+  imageUrl              String? @db.VarChar(1024)
+  published             Boolean @default(false)
+  active                Boolean @default(true)
+
+  skus    Sku[]
+  clicks  Click[]
+  reviews Review[]
+  tests   EditorialTest[]
 
   @@index([brandId])
   @@index([categoryId])
+  @@index([normalizedName])
+  @@index([manufacturerReference])
+  @@index([published])
+  @@index([active])
 }
 
 model Sku {
-  id         Int     @id @default(autoincrement())
-  product    Product @relation(fields: [productId], references: [id])
-  productId  Int
-  variant    String?
-  gtin       String? @unique
+  id        Int     @id @default(autoincrement())
+  product   Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+  productId Int
+
+  // Nouveau champ principal d'affichage variante
+  displayName String?
+
+  // Champs historiques conservés temporairement
+  variant String?
+  gtin    String? @unique
+
   attributes Json?
-  offers     Offer[]
+
+  merchantSku           String?
+  manufacturerReference String?
+  size                  String?
+  color                 String?
+  gender                String?
+  normalizedVariant     String?
+
+  offers Offer[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @default(now()) @updatedAt
+
+  @@index([productId])
+  @@index([merchantSku])
+  @@index([manufacturerReference])
+  @@index([size])
+  @@index([normalizedVariant])
+}
+
+enum MerchantNetwork {
+  KWANKO
+  AWIN
+  AFFILAE
+  DIRECT
+  OTHER
 }
 
 model Merchant {
-  id        Int     @id @default(autoincrement())
-  name      String  @unique
-  slug      String  @unique
-  network   String?
+  id   Int    @id @default(autoincrement())
+  name String @unique
+  slug String @unique
+
+  // Nouveau champ typé
+  platform MerchantNetwork @default(OTHER)
+
+  // Ancien champ conservé temporairement
+  network String?
+
   programId String?
   status    String?
-  offers    Offer[]
+
+  websiteUrl String? @db.VarChar(512)
+  active     Boolean @default(true)
+
+  offers      Offer[]
+  feedImports FeedImport[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @default(now()) @updatedAt
 }
 
 model Offer {
-  id            Int       @id @default(autoincrement())
-  sku           Sku       @relation(fields: [skuId], references: [id])
-  skuId         Int
-  merchant      Merchant  @relation(fields: [merchantId], references: [id])
-  merchantId    Int
-  affiliateUrl  String
-  priceCents    Int
-  currency      String
-  inStock       Boolean   @default(true)
+  id           Int      @id @default(autoincrement())
+  sku          Sku      @relation(fields: [skuId], references: [id], onDelete: Cascade)
+  skuId        Int
+  merchant     Merchant @relation(fields: [merchantId], references: [id])
+  merchantId   Int
+  affiliateUrl String   @db.VarChar(2048)
+  priceCents   Int
+  currency     String   @default("EUR")
+  inStock      Boolean  @default(true)
+
   shippingCents Int?
   lastSeen      DateTime? @default(now())
 
-  clicks Click[]
+  oldPriceCents      Int?
+  externalId         String?
+  parentExternalId   String?
+  merchantProductUrl String? @db.VarChar(2048)
+  imageUrl           String? @db.VarChar(1024)
+  availability       String?
+  active             Boolean @default(true)
+
+  clicks       Click[]
+  priceHistory PriceHistory[]
 
   @@unique([skuId, merchantId])
+  @@unique([merchantId, externalId])
+  @@index([merchantId])
+  @@index([skuId])
+  @@index([externalId])
+  @@index([parentExternalId])
+  @@index([inStock])
+  @@index([active])
+  @@index([lastSeen])
+}
+
+model PriceHistory {
+  id      Int   @id @default(autoincrement())
+  offer   Offer @relation(fields: [offerId], references: [id], onDelete: Cascade)
+  offerId Int
+
+  priceCents    Int
+  oldPriceCents Int?
+  shippingCents Int?
+  currency      String  @default("EUR")
+  inStock       Boolean @default(true)
+
+  recordedAt DateTime @default(now())
+
+  @@index([offerId])
+  @@index([recordedAt])
 }
 
 model Click {
@@ -386,14 +481,14 @@ model Category {
   content         String?
   metaTitle       String?
   metaDescription String?
-  thumbnailUrl String?
-  thumbnailId  Int?
-  thumbnail    MediaAsset? @relation("CategoryThumbnail", fields: [thumbnailId], references: [id])
+  thumbnailUrl    String?
+  thumbnailId     Int?
+  thumbnail       MediaAsset? @relation("CategoryThumbnail", fields: [thumbnailId], references: [id])
 
   isInMenu  Boolean @default(true)
   order     Int     @default(0)
   published Boolean @default(true)
-  
+
   showInFooter Boolean @default(false)
   footerOrder  Int     @default(0)
 
@@ -402,13 +497,13 @@ model Category {
   mapSnowleader String[]
   mapGlisshop   String[]
 
-  aliases String[]
-  showOnHomepage Boolean @default(false)
+  aliases        String[]
+  showOnHomepage Boolean  @default(false)
 
-  products Product[]
-  pages    Page[]
+  products      Product[]
+  pages         Page[]
   featuredLinks CategoryFeaturedLink[]
-  
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
@@ -417,6 +512,81 @@ model Category {
   @@index([published])
 }
 
+/**
+ * -----------------------------
+ * IMPORTS PRODUITS / FLUX AFFILIÉS
+ * ------------------------------
+ */
+model FeedImport {
+  id         Int      @id @default(autoincrement())
+  merchant   Merchant @relation(fields: [merchantId], references: [id])
+  merchantId Int
+
+  platform String?
+  filename String?
+  status   String  @default("pending")
+  notes    String?
+
+  totalRows       Int @default(0)
+  importedRows    Int @default(0)
+  createdProducts Int @default(0)
+  updatedProducts Int @default(0)
+  createdSkus     Int @default(0)
+  updatedSkus     Int @default(0)
+  createdOffers   Int @default(0)
+  updatedOffers   Int @default(0)
+  errorsCount     Int @default(0)
+
+  startedAt  DateTime  @default(now())
+  finishedAt DateTime?
+
+  rawProducts RawFeedProduct[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([merchantId])
+  @@index([status])
+  @@index([startedAt])
+}
+
+model RawFeedProduct {
+  id           Int        @id @default(autoincrement())
+  feedImport   FeedImport @relation(fields: [feedImportId], references: [id], onDelete: Cascade)
+  feedImportId Int
+
+  merchantId Int
+
+  externalId       String?
+  parentExternalId String?
+  ean              String?
+  manufacturerRef  String?
+  title            String?
+  brand            String?
+
+  rawData Json
+
+  processed Boolean @default(false)
+  error     String?
+
+  matchedProductId Int?
+  matchedSkuId     Int?
+  matchedOfferId   Int?
+
+  createdAt DateTime @default(now())
+
+  @@index([feedImportId])
+  @@index([merchantId])
+  @@index([ean])
+  @@index([manufacturerRef])
+  @@index([externalId])
+  @@index([processed])
+}
+
+/**
+ * Ancien journal conservé temporairement.
+ * Il pourra être supprimé quand le BO utilisera FeedImport.
+ */
 model ImportRun {
   id             Int       @id @default(autoincrement())
   source         String
@@ -437,14 +607,14 @@ model SiteSettings {
   logoAlt    String?
   faviconSrc String?
 
-  primary          String
-  secondary        String
-  accent           String
-  background       String
-  foreground       String
-  muted            String
-  mutedForeground  String
-  border           String
+  primary         String
+  secondary       String
+  accent          String
+  background      String
+  foreground      String
+  muted           String
+  mutedForeground String
+  border          String
 
   fontSans    String
   fontDisplay String
@@ -460,11 +630,14 @@ model SiteSettings {
 
   categoryTiles Json?
   topBrands     Json?
+  pagesContent Json?
+
+  footerTrustTitle String?
+  footerTrustItems Json?
+  footerCopyright  String?
   
-  footerTrustTitle     String?
-  footerTrustItems     Json?
-  footerCopyright      String?
-  
+  contentSettings Json?
+
   robotsIndex     Boolean @default(true)
   robotsFollow    Boolean @default(true)
   robotsNoarchive Boolean @default(false)
@@ -490,6 +663,7 @@ model MediaAsset {
   createdAt   DateTime  @default(now())
   createdById String?
   createdBy   User?     @relation(name: "MediaCreatedBy", fields: [createdById], references: [id])
+
   categoriesThumbnail Category[] @relation("CategoryThumbnail")
 
   brandsLogo     Brand[]         @relation("BrandLogo")
@@ -530,9 +704,9 @@ model CookieDefinition {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
+  @@unique([siteId, key])
   @@index([siteId])
   @@index([purpose])
-  @@unique([siteId, key])
 }
 
 model CookieConsentLog {
@@ -549,10 +723,10 @@ model CookieConsentLog {
 }
 
 model AdSettings {
-  id            Int      @id @default(autoincrement())
-  siteId        String   @unique
+  id     Int    @id @default(autoincrement())
+  siteId String @unique
 
-  enabled       Boolean  @default(false)
+  enabled       Boolean @default(false)
   adsenseClient String?
 
   slotPageTop     String?
@@ -573,7 +747,7 @@ enum AdPlacementType {
 }
 
 model AdPlacement {
-  id      Int    @id @default(autoincrement())
+  id      Int     @id @default(autoincrement())
   siteId  String
   key     String
   enabled Boolean @default(true)
@@ -581,7 +755,7 @@ model AdPlacement {
   type AdPlacementType @default(ADSENSE)
 
   adsenseSlot String?
-  customHtml String? @db.Text
+  customHtml  String? @db.Text
 
   bannerImageUrl String?
   bannerAlt      String?
@@ -601,20 +775,20 @@ model AdPlacement {
 }
 
 model TrackingSettings {
-  id                       Int      @id @default(autoincrement())
-  siteId                   String   @unique
+  id     Int    @id @default(autoincrement())
+  siteId String @unique
 
-  enabledAnalytics         Boolean  @default(false)
-  enabledAds               Boolean  @default(false)
-  enabledGtm               Boolean  @default(false)
+  enabledAnalytics Boolean @default(false)
+  enabledAds       Boolean @default(false)
+  enabledGtm       Boolean @default(false)
 
   ga4MeasurementId         String?
   googleAdsId              String?
   googleAdsConversionLabel String?
   gtmContainerId           String?
 
-  createdAt                DateTime @default(now())
-  updatedAt                DateTime @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   @@index([siteId])
 }
@@ -632,7 +806,7 @@ model CategoryFeaturedLink {
   brand   Brand? @relation(fields: [brandId], references: [id], onDelete: Cascade)
 
   type  FeaturedLinkType
-  order Int @default(0)
+  order Int              @default(0)
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt

@@ -18,7 +18,8 @@ const NAV: Item[] = [
   { href: "/admin/guide-categories", label: "Catégories de guides", desc: "Classer les guides et gérer le menu Guides" },
   { href: "/admin/media", label: "Médiathèque", desc: "Uploader & gérer les images" },
   { href: "/admin/cookies", label: "Cookies (RGPD)", desc: "Consentement & liste des cookies" },
-  { href: "/admin/design", label: "Design", desc: "Branding & homepage" },
+  { href: "/admin/design", label: "Design", desc: "Identité, couleurs et polices" },
+  { href: "/admin/content", label: "Contenus", desc: "Textes propres à chaque site" },
   { href: "/admin/monetization/adsense", label: "Adsense", desc: "Publicité de Google" },
   { href: "/admin/marketing/tracking", label: "Tracking", desc: "GA4, Ads, GTM" },
   // on ajoutera “Menu builder” une fois la hiérarchie de catégories en place

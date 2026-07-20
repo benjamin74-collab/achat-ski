@@ -1,4 +1,3 @@
-// @ts-nocheck
 import { PrismaClient } from "@prisma/client";
 import { parse } from "csv-parse/sync";
 import fs from "fs";
@@ -8,13 +7,13 @@ import { slugify } from "../src/lib/slug";
 const prisma = new PrismaClient();
 
 type RawRow = Record<string, string>;
+
 type NormRow = {
   merchant: string;
   productName: string;
   brand: string;
   model: string;
   season?: string | null;
-  category?: string | null;
   priceCents: number;
   shippingCents: number | null;
   currency: string;
@@ -25,49 +24,80 @@ type NormRow = {
 };
 
 function pick(obj: RawRow, keys: string[]): string | undefined {
-  for (const k of keys) {
-    const direct = obj[k];
-    if (direct != null && String(direct).trim() !== "") return String(direct).trim();
-    const lower = obj[k.toLowerCase()];
-    if (lower != null && String(lower).trim() !== "") return String(lower).trim();
+  for (const key of keys) {
+    const direct = obj[key];
+    if (direct != null && String(direct).trim() !== "") {
+      return String(direct).trim();
+    }
+
+    const lower = obj[key.toLowerCase()];
+    if (lower != null && String(lower).trim() !== "") {
+      return String(lower).trim();
+    }
   }
+
   return undefined;
 }
 
-function toCents(s?: string): number | null {
-  if (!s) return null;
-  const cleaned = String(s).replace(/\s/g, "").replace(",", ".").replace(/[^\d.]/g, "");
-  const n = Number(cleaned);
-  return Number.isFinite(n) ? Math.round(n * 100) : null;
+function toCents(value?: string): number | null {
+  if (!value) return null;
+
+  const cleaned = String(value)
+    .replace(/\s/g, "")
+    .replace(",", ".")
+    .replace(/[^\d.]/g, "");
+
+  const parsed = Number(cleaned);
+
+  return Number.isFinite(parsed) ? Math.round(parsed * 100) : null;
 }
 
-function titleCaseBrand(s: string) {
-  if (!s) return s;
-  const lower = s.toLowerCase();
-  if (lower.length <= 4) return s.toUpperCase();
+function titleCaseBrand(value: string): string {
+  if (!value) return value;
+
+  const lower = value.toLowerCase();
+
+  if (lower.length <= 4) return value.toUpperCase();
+
   return lower.charAt(0).toUpperCase() + lower.slice(1);
 }
 
-function normalizeRow(row: RawRow, defaultCategory: string): NormRow | null {
-  const merchant = pick(row, ["merchant", "merchant_name", "shop", "store", "retailer"]) ?? "marchand";
+function normalizeRow(row: RawRow): NormRow | null {
+  const merchant =
+    pick(row, ["merchant", "merchant_name", "shop", "store", "retailer"]) ??
+    "marchand";
+
   const productName = pick(row, ["product_name", "name", "title"]) ?? "";
   const brandRaw = pick(row, ["brand", "marque"]) ?? "";
   const brand = brandRaw ? titleCaseBrand(brandRaw) : brandRaw;
   const modelRaw = pick(row, ["model", "product", "title", "name"]) ?? productName;
   const season = pick(row, ["season", "saison"]) ?? null;
-  const category = pick(row, ["category", "category_name", "categorie"]) ?? defaultCategory;
 
-  const priceCents = toCents(pick(row, ["price", "price_eur", "price_euros", "sale_price"])) ?? 0;
-  const shippingCents = toCents(pick(row, ["shipping_cost", "shipping", "delivery_cost"])) ?? 0;
+  const priceCents =
+    toCents(pick(row, ["price", "price_eur", "price_euros", "sale_price"])) ?? 0;
+
+  const shippingCents =
+    toCents(pick(row, ["shipping_cost", "shipping", "delivery_cost"])) ?? 0;
+
   const currency = (pick(row, ["currency", "devise"]) ?? "EUR").toUpperCase();
-  const availability = (pick(row, ["availability", "in_stock", "instock", "stock"]) ?? "").toLowerCase();
-  const inStock = availability ? /(1|true|yes|enstock|instock|available|disponible|oui)/.test(availability) : true;
 
-  const affiliateUrl = pick(row, ["deeplink", "aw_deeplink", "product_url", "url", "link"]) ?? "";
+  const availability = (
+    pick(row, ["availability", "in_stock", "instock", "stock"]) ?? ""
+  ).toLowerCase();
+
+  const inStock = availability
+    ? /(1|true|yes|enstock|instock|available|disponible|oui)/.test(availability)
+    : true;
+
+  const affiliateUrl =
+    pick(row, ["deeplink", "aw_deeplink", "product_url", "url", "link"]) ?? "";
+
   if (!productName || !affiliateUrl || !priceCents) return null;
 
-  const inferredBrand = brand || (productName.split(" ")[0] || "Unknown");
-  const model = brand ? modelRaw : productName.replace(new RegExp("^" + inferredBrand + "\\s+", "i"), "");
+  const inferredBrand = brand || productName.split(" ")[0] || "Unknown";
+  const model = brand
+    ? modelRaw
+    : productName.replace(new RegExp(`^${inferredBrand}\\s+`, "i"), "");
 
   const gtin = pick(row, ["gtin", "ean", "barcode"]) ?? null;
   const externalId = pick(row, ["id", "product_id", "offer_id", "sku"]) ?? null;
@@ -78,7 +108,6 @@ function normalizeRow(row: RawRow, defaultCategory: string): NormRow | null {
     brand: inferredBrand,
     model,
     season,
-    category,
     priceCents,
     shippingCents,
     currency,
@@ -89,41 +118,70 @@ function normalizeRow(row: RawRow, defaultCategory: string): NormRow | null {
   };
 }
 
-async function upsertOne(n: NormRow) {
-  // 1) Marchand
-  const merchantSlug = slugify(n.merchant);
+async function upsertOne(row: NormRow) {
+  const merchantSlug = slugify(row.merchant);
+
   const merchant = await prisma.merchant.upsert({
     where: { slug: merchantSlug },
-    update: { name: n.merchant },
-    create: { slug: merchantSlug, name: n.merchant },
+    update: {
+      name: row.merchant,
+      platform: "KWANKO",
+      network: "kwanko",
+      active: true,
+    },
+    create: {
+      slug: merchantSlug,
+      name: row.merchant,
+      platform: "KWANKO",
+      network: "kwanko",
+      active: true,
+    },
   });
 
-  // 2) Produit
-  const productSlug = slugify([n.brand, n.model, n.season ?? ""].filter(Boolean).join(" "));
+  const brandSlug = slugify(row.brand);
+
+  const brand = await prisma.brand.upsert({
+    where: { slug: brandSlug },
+    update: {
+      name: row.brand,
+      active: true,
+    },
+    create: {
+      slug: brandSlug,
+      name: row.brand,
+      active: true,
+    },
+  });
+
+  const productSlug = slugify(
+    [row.brand, row.model, row.season ?? ""].filter(Boolean).join(" ")
+  );
+
   const product = await prisma.product.upsert({
     where: { slug: productSlug },
     update: {
-      brand: n.brand,
-      model: n.model,
-      season: n.season,
-      category: n.category ?? null,
+      name: row.model,
+      model: row.model,
+      brand: row.brand,
+      brandId: brand.id,
+      season: row.season,
+      active: true,
     },
     create: {
       slug: productSlug,
-      brand: n.brand,
-      model: n.model,
-      season: n.season,
-      category: n.category ?? null,
+      name: row.model,
+      model: row.model,
+      brand: row.brand,
+      brandId: brand.id,
+      season: row.season,
+      active: true,
     },
   });
 
-  // 3) SKU
-  // Ton schéma a: id, variant?, gtin?, attributes?, productId...
-  // → on utilise gtin si dispo, sinon variant="default"
   let sku = await prisma.sku.findFirst({
     where: {
       productId: product.id,
-      ...(n.gtin ? { gtin: n.gtin } : { variant: "default" }),
+      ...(row.gtin ? { gtin: row.gtin } : { displayName: "default" }),
     },
   });
 
@@ -131,41 +189,50 @@ async function upsertOne(n: NormRow) {
     sku = await prisma.sku.create({
       data: {
         productId: product.id,
-        ...(n.gtin ? { gtin: n.gtin } : { variant: "default" }),
+        displayName: "default",
+        variant: "default",
+        gtin: row.gtin,
+        merchantSku: row.externalId,
       },
     });
   }
 
-  // 4) Offre (clé MVP: merchantId + skuId + affiliateUrl)
-  const existing = await prisma.offer.findFirst({
-    where: { merchantId: merchant.id, skuId: sku.id, affiliateUrl: n.affiliateUrl },
+  const existingOffer = await prisma.offer.findFirst({
+    where: {
+      merchantId: merchant.id,
+      skuId: sku.id,
+      affiliateUrl: row.affiliateUrl,
+    },
   });
 
-  if (existing) {
+  if (existingOffer) {
     await prisma.offer.update({
-      where: { id: existing.id },
+      where: { id: existingOffer.id },
       data: {
-        priceCents: n.priceCents,
-        shippingCents: n.shippingCents,
-        currency: n.currency,
-        inStock: n.inStock,
+        priceCents: row.priceCents,
+        shippingCents: row.shippingCents,
+        currency: row.currency,
+        inStock: row.inStock,
         lastSeen: new Date(),
       },
     });
-  } else {
-    await prisma.offer.create({
-      data: {
-        merchantId: merchant.id,
-        skuId: sku.id,
-        priceCents: n.priceCents,
-        shippingCents: n.shippingCents,
-        currency: n.currency,
-        inStock: n.inStock,
-        affiliateUrl: n.affiliateUrl,
-        lastSeen: new Date(),
-      },
-    });
+
+    return;
   }
+
+  await prisma.offer.create({
+    data: {
+      merchantId: merchant.id,
+      skuId: sku.id,
+      priceCents: row.priceCents,
+      shippingCents: row.shippingCents,
+      currency: row.currency,
+      inStock: row.inStock,
+      affiliateUrl: row.affiliateUrl,
+      externalId: row.externalId,
+      lastSeen: new Date(),
+    },
+  });
 }
 
 function detectDelimiter(sample: string): "," | ";" | "\t" {
@@ -174,30 +241,49 @@ function detectDelimiter(sample: string): "," | ";" | "\t" {
     semicolon: (sample.match(/;/g) || []).length,
     tab: (sample.match(/\t/g) || []).length,
   };
-  if (counts.semicolon >= counts.comma && counts.semicolon >= counts.tab) return ";";
-  if (counts.tab >= counts.comma && counts.tab >= counts.semicolon) return "\t";
+
+  if (counts.semicolon >= counts.comma && counts.semicolon >= counts.tab) {
+    return ";";
+  }
+
+  if (counts.tab >= counts.comma && counts.tab >= counts.semicolon) {
+    return "\t";
+  }
+
   return ",";
 }
 
-function readTextFromSource(src: string): Promise<string> {
-  if (/^https?:\/\//i.test(src)) {
-    return fetch(src).then(async (r) => {
-      if (!r.ok) throw new Error(`HTTP ${r.status} sur ${src}`);
-      return r.text();
-    });
+async function readTextFromSource(source: string): Promise<string> {
+  if (/^https?:\/\//i.test(source)) {
+    const response = await fetch(source);
+
+    if (!response.ok) {
+      throw new Error(`HTTP ${response.status} sur ${source}`);
+    }
+
+    return response.text();
   }
-  const p = path.isAbsolute(src) ? src : path.join(process.cwd(), src);
-  if (!fs.existsSync(p)) {
-    throw new Error(`Fichier introuvable: ${p}`);
+
+  const filePath = path.isAbsolute(source)
+    ? source
+    : path.join(process.cwd(), source);
+
+  if (!fs.existsSync(filePath)) {
+    throw new Error(`Fichier introuvable: ${filePath}`);
   }
-  return Promise.resolve(fs.readFileSync(p, "utf-8"));
+
+  return fs.readFileSync(filePath, "utf-8");
 }
 
-async function ingestSource(source: string, defaultCategory: string) {
+async function ingestSource(source: string) {
   console.log(`→ Lecture: ${source}`);
+
   let text = await readTextFromSource(source);
 
-  if (text.charCodeAt(0) === 0xFEFF) text = text.slice(1);
+  if (text.charCodeAt(0) === 0xfeff) {
+    text = text.slice(1);
+  }
+
   const sample = text.slice(0, 5000);
   const delimiter = detectDelimiter(sample);
 
@@ -214,41 +300,51 @@ async function ingestSource(source: string, defaultCategory: string) {
   let kept = 0;
 
   for (const row of records) {
-    parsed++;
-    const norm = normalizeRow(row, defaultCategory);
-    if (!norm) continue;
+    parsed += 1;
+
+    const normalized = normalizeRow(row);
+
+    if (!normalized) continue;
+
     try {
-      await upsertOne(norm);
-      kept++;
-    } catch (e) {
-      console.warn("  ⚠️  Ligne ignorée:", (e as Error).message);
+      await upsertOne(normalized);
+      kept += 1;
+    } catch (error) {
+      console.warn(
+        "  ⚠️ Ligne ignorée:",
+        error instanceof Error ? error.message : String(error)
+      );
     }
   }
+
   return { parsed, kept };
 }
 
 async function main() {
   const rawList = (process.env.KWANKO_FEED_URLS || "data/kwanko_sample.csv")
     .split(",")
-    .map((s) => s.trim())
+    .map((source) => source.trim())
     .filter(Boolean);
 
-  const defaultCategory = process.env.KWANKO_DEFAULT_CATEGORY || "skis-all-mountain";
-
   console.log("=== Ingestion Kwanko (CSV) ===");
+
   const startedAt = new Date();
 
   let totalParsed = 0;
   let totalKept = 0;
 
-  for (const src of rawList) {
+  for (const source of rawList) {
     try {
-      const { parsed, kept } = await ingestSource(src, defaultCategory);
-      console.log(`  ✓ ${src} — ${kept}/${parsed} lignes importées`);
+      const { parsed, kept } = await ingestSource(source);
+      console.log(`  ✓ ${source} — ${kept}/${parsed} lignes importées`);
+
       totalParsed += parsed;
       totalKept += kept;
-    } catch (e) {
-      console.error(`  ✗ ${src} — erreur:`, (e as Error).message);
+    } catch (error) {
+      console.error(
+        `  ✗ ${source} — erreur:`,
+        error instanceof Error ? error.message : String(error)
+      );
     }
   }
 
@@ -257,16 +353,21 @@ async function main() {
       where: { lastSeen: { lt: startedAt } },
       data: { inStock: false },
     });
-    console.log(`=== Terminé: ${totalKept}/${totalParsed} offres importées; ${grace.count} offres marquées hors stock ===`);
+
+    console.log(
+      `=== Terminé: ${totalKept}/${totalParsed} offres importées; ${grace.count} offres marquées hors stock ===`
+    );
   } else {
-    console.log(`=== Terminé: ${totalKept}/${totalParsed} offres importées; aucune grâce appliquée (aucune source valide) ===`);
+    console.log(
+      `=== Terminé: ${totalKept}/${totalParsed} offres importées; aucune grâce appliquée ===`
+    );
   }
 }
 
 main()
   .then(() => prisma.$disconnect())
-  .catch((e) => {
-    console.error(e);
+  .catch((error) => {
+    console.error(error);
     prisma.$disconnect();
     process.exit(1);
   });

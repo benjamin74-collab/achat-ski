@@ -65,12 +65,49 @@ export type HomeConfig = {
   topBrands?: HomeBrand[];
 };
 
+export type BrandsPageContent = {
+  eyebrow: string;
+  title: string;
+  description: string;
+
+  searchLabel: string;
+  searchPlaceholder: string;
+
+  resultSingular: string;
+  resultPlural: string;
+  displayedSingular: string;
+  displayedPlural: string;
+
+  popularTitle: string;
+  popularDescription: string;
+
+  emptyTitle: string;
+  emptyDescription: string;
+
+  seoTitle: string;
+  seoParagraphs: string[];
+
+  cardCta: string;
+  itemListName: string;
+
+  breadcrumbHomeLabel: string;
+  breadcrumbBrandsLabel: string;
+};
+
+export type SiteContentSettings = {
+  brands?: Partial<BrandsPageContent>;
+};
+
+export type SitePagesContent = {
+  brands?: BrandsPageContent;
+};
+
 export type SiteConfig = {
   id: string;
   name: string;
   domain: string;
   tagline?: string;
-
+  pagesContent?: SitePagesContent;
   /**
    * Fallback uniquement.
    * Les valeurs réelles proviennent de SiteSettings (backoffice).

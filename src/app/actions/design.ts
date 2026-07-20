@@ -104,6 +104,7 @@ export async function saveDesign(formData: FormData) {
   const robotsNoarchive = raw.robotsNoarchive === "on" || raw.robotsNoarchive === "true";
 
   const heroCtas = asJson(raw.heroCtas);
+  const pagesContent = asJson(raw.pagesContent);
   const footerTrustTitle = asString(raw.footerTrustTitle);
   const footerTrustItems = asJson(raw.footerTrustItems);
   const footerCopyright = asString(raw.footerCopyright);
@@ -177,7 +178,7 @@ export async function saveDesign(formData: FormData) {
       heroHighlight: heroHighlight || null,
       heroSubtitle: heroSubtitle || null,
       heroCtas: heroCtas ?? undefined,
-
+	  pagesContent: pagesContent ?? undefined,
       showCategories,
       showLatestGuides,
       showTopBrands,
@@ -218,7 +219,7 @@ export async function saveDesign(formData: FormData) {
       heroHighlight: heroHighlight || null,
       heroSubtitle: heroSubtitle || null,
       heroCtas: heroCtas ?? undefined,
-
+	  pagesContent: pagesContent ?? undefined,
       showCategories,
       showLatestGuides,
       showTopBrands,
@@ -236,4 +237,5 @@ export async function saveDesign(formData: FormData) {
 
   revalidatePath("/");
   revalidatePath("/admin/design");
+  revalidatePath("/marques");
 }
