@@ -92,15 +92,20 @@ export default async function BrandPage({ params }: { params: { slug: string } }
       OR: [{ brandId: brand.id }, { brand: brand.name }],
     },
     include: {
-      category: { select: { name: true, slug: true } },
-      skus: { include: { offers: true } },
-    },
+	  category: {
+		select: {
+		  name: true,
+		  slug: true,
+		},
+	  },
+	  offers: true,
+	},
     take: 60,
     orderBy: { id: "desc" },
   });
 
   const productsWithPrice = products.map((p) => {
-    const allOffers = p.skus.flatMap((s) => s.offers);
+    const allOffers = p.offers;
 
     const minTotal =
       allOffers.length > 0

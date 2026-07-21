@@ -1,155 +1,64 @@
 import { PrismaClient } from "@prisma/client";
 import { readFileSync } from "node:fs";
-import { resolve } from "node:path";
-import type { Prisma } from "@prisma/client";
-import { parseCsv } from "../src/lib/catalog/csv";
-import { normalizeEkosportFeed } from "../src/lib/catalog/import-ekosport";
-import { importNormalizedFeedItem } from "../src/lib/catalog/import-service";
-import { validateFeedItem } from "../src/lib/catalog/validate";
+import { basename, resolve } from "node:path";
+
+import { syncEkosportCsv } from "../src/lib/catalog/sync-ekosport";
 
 const prisma = new PrismaClient();
 
 async function main() {
-  const filePath = process.argv[2];
+  const source = process.argv[2];
+  const feedKey =
+    process.argv[3] ??
+    "ekosport-manual-import";
 
-  if (!filePath) {
+  if (!source) {
     throw new Error(
-      "Chemin du fichier manquant. Exemple : npm run feed:import:ekosport -- prisma/feed-data/ekosport.csv"
+      [
+        "Source manquante.",
+        "Fichier local : npm run feed:import:ekosport -- prisma/feed-data/ekosport.csv ekosport-test",
+        "URL : npm run feed:import:ekosport -- \"https://...\" ekosport-brands-salomon",
+      ].join("\n")
     );
   }
 
-  const absolutePath = resolve(process.cwd(), filePath);
-  const content = readFileSync(absolutePath, "utf-8");
+  const isRemote = /^https?:\/\//i.test(source);
 
-  const rows = parseCsv(content, {
-    delimiter: "|",
-  });
+  const content = isRemote
+    ? await downloadFeed(source)
+    : readFileSync(
+        resolve(process.cwd(), source),
+        "utf-8"
+      );
 
-  const items = normalizeEkosportFeed(rows);
-
-  const merchant = await prisma.merchant.upsert({
-    where: { slug: "ekosport" },
-    update: {
-      name: "Ekosport",
-      network: "kwanko",
-      platform: "KWANKO",
-      status: "active",
-      active: true,
-    },
-    create: {
-      name: "Ekosport",
-      slug: "ekosport",
-      network: "kwanko",
-      platform: "KWANKO",
-      status: "active",
-      active: true,
-    },
-  });
-
-  const feedImport = await prisma.feedImport.create({
-    data: {
-      merchantId: merchant.id,
-      platform: "kwanko",
-      filename: filePath,
-      status: "running",
-      totalRows: rows.length,
-    },
-  });
-
-  const stats = {
-    createdProducts: 0,
-    updatedProducts: 0,
-    createdSkus: 0,
-    updatedSkus: 0,
-    createdOffers: 0,
-    updatedOffers: 0,
-  };
-
-  let importedRows = 0;
-  let errorsCount = 0;
-
-  for (const item of items) {
-    const validation = validateFeedItem(item);
-
-    const rawFeedProduct = await prisma.rawFeedProduct.create({
-      data: {
-        feedImportId: feedImport.id,
-        merchantId: merchant.id,
-        externalId: item.externalId,
-        parentExternalId: item.parentExternalId,
-        ean: item.ean,
-        manufacturerRef: item.manufacturerReference,
-        title: item.title,
-        brand: item.brand,
-        rawData: item.rawData as Prisma.InputJsonValue,
-        processed: false,
-      },
-    });
-
-    if (!validation.valid) {
-      errorsCount += 1;
-
-      await prisma.rawFeedProduct.update({
-        where: { id: rawFeedProduct.id },
-        data: {
-          error: validation.errors.join(" | "),
-          processed: true,
-        },
-      });
-
-      continue;
-    }
-
-    try {
-      const result = await importNormalizedFeedItem(prisma, item, stats);
-
-      await prisma.rawFeedProduct.update({
-        where: { id: rawFeedProduct.id },
-        data: {
-          processed: true,
-          matchedProductId: result.product.id,
-          matchedSkuId: result.sku.id,
-          matchedOfferId: result.offer.id,
-        },
-      });
-
-      importedRows += 1;
-    } catch (error) {
-      errorsCount += 1;
-
-      await prisma.rawFeedProduct.update({
-        where: { id: rawFeedProduct.id },
-        data: {
-          processed: true,
-          error: error instanceof Error ? error.message : String(error),
-        },
-      });
-    }
-  }
-
-  await prisma.feedImport.update({
-    where: { id: feedImport.id },
-    data: {
-      status: errorsCount > 0 ? "success_with_errors" : "success",
-      importedRows,
-      errorsCount,
-      createdProducts: stats.createdProducts,
-      updatedProducts: stats.updatedProducts,
-      createdSkus: stats.createdSkus,
-      updatedSkus: stats.updatedSkus,
-      createdOffers: stats.createdOffers,
-      updatedOffers: stats.updatedOffers,
-      finishedAt: new Date(),
-    },
+  const result = await syncEkosportCsv({
+    prisma,
+    content,
+    feedKey,
+    sourceUrl: isRemote ? source : undefined,
+    filename: isRemote ? feedKey : basename(source),
   });
 
   console.log("Import Ekosport terminé");
-  console.log({
-    totalRows: rows.length,
-    importedRows,
-    errorsCount,
-    ...stats,
+  console.table(result);
+}
+
+async function downloadFeed(url: string): Promise<string> {
+  const response = await fetch(url, {
+    cache: "no-store",
+    headers: {
+      "user-agent":
+        "Meilleur-Ski Catalog Import/1.0",
+    },
   });
+
+  if (!response.ok) {
+    throw new Error(
+      `Téléchargement impossible : ${response.status} ${response.statusText}`
+    );
+  }
+
+  return response.text();
 }
 
 main()

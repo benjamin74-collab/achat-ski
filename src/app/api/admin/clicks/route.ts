@@ -6,49 +6,53 @@ import type { Prisma } from "@prisma/client";
 
 export const runtime = "nodejs";
 
-// Typage de la ligne avec les jointures utiles
+// Typage exact d'une ligne avec les jointures utiles
 type ClickRow = Prisma.ClickGetPayload<{
   include: {
     offer: {
       include: {
         merchant: true;
-        sku: { include: { product: true } };
+        product: true;
       };
     };
   };
 }>;
 
-function toCsvValue(v: unknown): string {
-  if (v == null) return "";
-  const s = String(v);
-  // échappe les guillemets, entoure si virgule/retour chariot
-  const needsQuotes = /[",\n\r]/.test(s);
-  const esc = s.replace(/"/g, '""');
-  return needsQuotes ? `"${esc}"` : esc;
+function toCsvValue(value: unknown): string {
+  if (value == null) return "";
+
+  const stringValue = String(value);
+  const needsQuotes = /[",\n\r]/.test(stringValue);
+  const escapedValue = stringValue.replace(/"/g, '""');
+
+  return needsQuotes ? `"${escapedValue}"` : escapedValue;
 }
 
 export async function GET(req: Request) {
   const url = new URL(req.url);
   const key = url.searchParams.get("key") ?? "";
-  if (!process.env.ADMIN_DASHBOARD_KEY || key !== process.env.ADMIN_DASHBOARD_KEY) {
-    // on garde la même sémantique que la page admin: 404 si clé invalide
+
+  if (
+    !process.env.ADMIN_DASHBOARD_KEY ||
+    key !== process.env.ADMIN_DASHBOARD_KEY
+  ) {
     return notFound();
   }
 
-  // Récup des clics (pas de pagination ici: export complet)
-  const rows = (await prisma.click.findMany({
-    orderBy: { id: "desc" },
+  const rows: ClickRow[] = await prisma.click.findMany({
+    orderBy: {
+      id: "desc",
+    },
     include: {
       offer: {
         include: {
           merchant: true,
-          sku: { include: { product: true } },
+          product: true,
         },
       },
     },
-  })) as ClickRow[];
+  });
 
-  // En-têtes CSV
   const header = [
     "id",
     "date",
@@ -63,44 +67,71 @@ export async function GET(req: Request) {
 
   const lines: string[] = [header];
 
-  for (const r of rows) {
-    const prod = r.offer.sku.product;
-    const march = r.offer.merchant;
+  for (const row of rows) {
+    const product = row.offer.product;
+    const merchant = row.offer.merchant;
 
-    // Accès défensif aux champs optionnels/non typés côté Prisma
-    const rec = r as unknown as Record<string, unknown>;
-    const createdAt = rec["createdAt"] instanceof Date ? (rec["createdAt"] as Date) : undefined;
+    const record = row as unknown as Record<string, unknown>;
+
+    const createdAt =
+      record.createdAt instanceof Date
+        ? record.createdAt
+        : undefined;
+
     const priceCentsAtClick =
-      typeof rec["priceCentsAtClick"] === "number" ? (rec["priceCentsAtClick"] as number) : "";
+      typeof record.priceCentsAtClick === "number"
+        ? record.priceCentsAtClick
+        : "";
+
     const currencyAtClick =
-      typeof rec["currencyAtClick"] === "string" ? (rec["currencyAtClick"] as string) : "EUR";
-    const ip = typeof rec["ip"] === "string" ? (rec["ip"] as string) : "";
-    const userAgent = typeof rec["userAgent"] === "string" ? (rec["userAgent"] as string) : "";
+      typeof record.currencyAtClick === "string"
+        ? record.currencyAtClick
+        : "EUR";
 
-    const dateStr = createdAt ? createdAt.toISOString() : "";
+    const ip =
+      typeof record.ip === "string"
+        ? record.ip
+        : "";
 
-    const row = [
-      toCsvValue(r.id),
-      toCsvValue(dateStr),
-      toCsvValue(march.name),
-      toCsvValue([prod.brand, prod.model, prod.season].filter(Boolean).join(" ")),
-      toCsvValue(prod.slug),
+    const userAgent =
+      typeof record.userAgent === "string"
+        ? record.userAgent
+        : "";
+
+    const dateString = createdAt
+      ? createdAt.toISOString()
+      : "";
+
+    const productName = [
+      product.brand,
+      product.model,
+      product.season,
+    ]
+      .filter(Boolean)
+      .join(" ");
+
+    const csvRow = [
+      toCsvValue(row.id),
+      toCsvValue(dateString),
+      toCsvValue(merchant.name),
+      toCsvValue(productName || product.name || product.slug),
+      toCsvValue(product.slug),
       toCsvValue(priceCentsAtClick),
       toCsvValue(currencyAtClick),
       toCsvValue(ip),
       toCsvValue(userAgent),
     ].join(",");
 
-    lines.push(row);
+    lines.push(csvRow);
   }
 
-  const csv = lines.join("\n");
+  const csv = `\uFEFF${lines.join("\r\n")}`;
 
   return new NextResponse(csv, {
     status: 200,
     headers: {
       "Content-Type": "text/csv; charset=utf-8",
-      "Content-Disposition": `attachment; filename="clicks_export.csv"`,
+      "Content-Disposition": 'attachment; filename="clicks_export.csv"',
       "Cache-Control": "no-store",
     },
   });

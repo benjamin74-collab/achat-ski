@@ -20,7 +20,13 @@ export function parseCsv(content: string, options: ParseCsvOptions): CsvRow[] {
     return [];
   }
 
-  const headers = rows[0].map((header) => header.trim());
+  const headers = rows[0].map((header, index) => {
+  const cleanHeader = header.trim();
+
+  return index === 0
+    ? cleanHeader.replace(/^\uFEFF/, "")
+    : cleanHeader;
+});
 
   return rows.slice(1).map((values) => {
     const row: CsvRow = {};

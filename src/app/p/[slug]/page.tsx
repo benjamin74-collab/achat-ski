@@ -81,27 +81,35 @@ export default async function ProductPage({ params }: PageProps) {
       category: { select: { name: true, slug: true } },
       Brand: { select: { id: true, name: true, slug: true, logo: { select: { publicUrl: true, alt: true } }, logoUrl: true } },
       skus: {
-        select: {
-          id: true,
-          variant: true,
-          gtin: true,
-          attributes: true,
-          offers: {
-            select: {
-              id: true,
-              skuId: true,
-              merchantId: true,
-              affiliateUrl: true,
-              priceCents: true,
-              currency: true,
-              inStock: true,
-              shippingCents: true,
-              lastSeen: true,
-              merchant: { select: { id: true, name: true, slug: true } },
-            },
-          },
-        },
-      },
+		select: {
+			id: true,
+			variant: true,
+			gtin: true,
+			attributes: true,
+		  },
+		},
+
+		offers: {
+		  select: {
+			id: true,
+			productId: true,
+			merchantId: true,
+			priceCents: true,
+			shippingCents: true,
+			currency: true,
+			affiliateUrl: true,
+			inStock: true,
+			availability: true,
+			active: true,
+			merchant: {
+			  select: {
+				id: true,
+				name: true,
+				slug: true,
+			  },
+			},
+		  },
+		},
       tests: {
         where: { status: "APPROVED" },
         select: {
@@ -134,20 +142,18 @@ export default async function ProductPage({ params }: PageProps) {
 
   if (!product) return notFound();
 
-  const offersFlat = product.skus.flatMap((s) =>
-    s.offers.map((o) => ({
-      id: o.id,
-      productId: product.id,
-      merchantName: o.merchant.name,
-      merchantSlug: o.merchant.slug,
-      priceCents: o.priceCents,
-      shippingCents: o.shippingCents,
-      currency: o.currency,
-      inStock: o.inStock,
-      lastSeen: o.lastSeen?.toISOString() ?? null,
-      affiliateUrl: o.affiliateUrl,
-    })),
-  );
+	const offersFlat = product.offers.map((o) => ({
+	  id: o.id,
+	  productId: product.id,
+	  merchantName: o.merchant.name,
+	  merchantSlug: o.merchant.slug,
+	  priceCents: o.priceCents,
+	  shippingCents: o.shippingCents,
+	  currency: o.currency,
+	  affiliateUrl: o.affiliateUrl,
+	  inStock: o.inStock,
+	  availability: o.availability,
+	}));
 
   const title = [product.Brand?.name ?? product.brand, product.model, product.season].filter(Boolean).join(" ");
 
@@ -206,7 +212,7 @@ export default async function ProductPage({ params }: PageProps) {
     orderBy: { createdAt: "desc" },
     include: {
       category: { select: { name: true, slug: true } },
-      skus: { include: { offers: true } },
+      offers: true,
     },
   });
 
@@ -627,7 +633,7 @@ export default async function ProductPage({ params }: PageProps) {
 
             <ul className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
               {related.map((r) => {
-                const allOffers = r.skus.flatMap((s) => s.offers);
+                const allOffers = r.offers;
                 const minTotal =
                   allOffers.length > 0
                     ? allOffers.reduce<number>((min, o) => Math.min(min, o.priceCents + (o.shippingCents ?? 0)), Number.POSITIVE_INFINITY)

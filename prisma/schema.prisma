@@ -246,6 +246,7 @@ model Product {
   active                Boolean @default(true)
 
   skus    Sku[]
+  offers  Offer[]
   clicks  Click[]
   reviews Review[]
   tests   EditorialTest[]
@@ -278,8 +279,6 @@ model Sku {
   color                 String?
   gender                String?
   normalizedVariant     String?
-
-  offers Offer[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @default(now()) @updatedAt
@@ -324,39 +323,53 @@ model Merchant {
 }
 
 model Offer {
-  id           Int      @id @default(autoincrement())
-  sku          Sku      @relation(fields: [skuId], references: [id], onDelete: Cascade)
-  skuId        Int
-  merchant     Merchant @relation(fields: [merchantId], references: [id])
-  merchantId   Int
-  affiliateUrl String   @db.VarChar(2048)
-  priceCents   Int
-  currency     String   @default("EUR")
-  inStock      Boolean  @default(true)
+  id Int @id @default(autoincrement())
+
+  productId Int
+  product   Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  merchantId Int
+  merchant   Merchant @relation(fields: [merchantId], references: [id])
+
+  affiliateUrl String @db.VarChar(2048)
+
+  merchantProductUrl String? @db.VarChar(2048)
+
+  externalId       String?
+  parentExternalId String?
+
+  priceCents    Int
+  oldPriceCents Int?
 
   shippingCents Int?
-  lastSeen      DateTime? @default(now())
 
-  oldPriceCents      Int?
-  externalId         String?
-  parentExternalId   String?
-  merchantProductUrl String? @db.VarChar(2048)
-  imageUrl           String? @db.VarChar(1024)
-  availability       String?
-  active             Boolean @default(true)
+  currency String @default("EUR")
+
+  inStock Boolean @default(true)
+
+  availability String?
+
+  imageUrl String? @db.VarChar(1024)
+
+  active Boolean @default(true)
+
+  lastSeen        DateTime? @default(now())
+  feedKey         String?
+  sourceItemCount Int       @default(1)
 
   clicks       Click[]
   priceHistory PriceHistory[]
 
-  @@unique([skuId, merchantId])
-  @@unique([merchantId, externalId])
+  @@unique([productId, merchantId])
+  @@index([productId])
   @@index([merchantId])
-  @@index([skuId])
   @@index([externalId])
   @@index([parentExternalId])
   @@index([inStock])
   @@index([active])
   @@index([lastSeen])
+  @@index([feedKey])
+  @@index([merchantId, feedKey, lastSeen])
 }
 
 model PriceHistory {
@@ -522,20 +535,26 @@ model FeedImport {
   merchant   Merchant @relation(fields: [merchantId], references: [id])
   merchantId Int
 
-  platform String?
-  filename String?
-  status   String  @default("pending")
-  notes    String?
+  platform  String?
+  filename  String?
+  feedKey   String?
+  sourceUrl String? @db.VarChar(2048)
+  status    String  @default("pending")
+  notes     String?
 
-  totalRows       Int @default(0)
-  importedRows    Int @default(0)
-  createdProducts Int @default(0)
-  updatedProducts Int @default(0)
-  createdSkus     Int @default(0)
-  updatedSkus     Int @default(0)
-  createdOffers   Int @default(0)
-  updatedOffers   Int @default(0)
-  errorsCount     Int @default(0)
+  totalRows           Int @default(0)
+  importedRows        Int @default(0)
+  createdProducts     Int @default(0)
+  updatedProducts     Int @default(0)
+  createdSkus         Int @default(0)
+  updatedSkus         Int @default(0)
+  createdOffers       Int @default(0)
+  updatedOffers       Int @default(0)
+  skippedRows         Int @default(0)
+  deactivatedOffers   Int @default(0)
+  deactivatedProducts Int @default(0)
+  deletedProducts     Int @default(0)
+  errorsCount         Int @default(0)
 
   startedAt  DateTime  @default(now())
   finishedAt DateTime?
@@ -548,6 +567,7 @@ model FeedImport {
   @@index([merchantId])
   @@index([status])
   @@index([startedAt])
+  @@index([feedKey])
 }
 
 model RawFeedProduct {
@@ -630,12 +650,12 @@ model SiteSettings {
 
   categoryTiles Json?
   topBrands     Json?
-  pagesContent Json?
+  pagesContent  Json?
 
   footerTrustTitle String?
   footerTrustItems Json?
   footerCopyright  String?
-  
+
   contentSettings Json?
 
   robotsIndex     Boolean @default(true)
@@ -822,7 +842,7 @@ enum FeaturedLinkType {
 }
 
 model LegalPage {
-  id     Int    @id @default(autoincrement())
+  id     Int           @id @default(autoincrement())
   siteId String
   type   LegalPageType
 

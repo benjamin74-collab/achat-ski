@@ -7,20 +7,17 @@ export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 export const maxDuration = 300;
 
-export async function POST(req: NextRequest) {
-  const keyFromHeader = req.headers.get("x-api-key");
-  const keyFromQuery =
-    new URL(req.url).searchParams.get("key");
-  const expected =
-    process.env.KWANKO_INGEST_SECRET;
+export async function GET(req: NextRequest) {
+  const expectedSecret = process.env.CRON_SECRET;
+  const authorization =
+    req.headers.get("authorization");
 
   if (
-    !expected ||
-    (keyFromHeader !== expected &&
-      keyFromQuery !== expected)
+    !expectedSecret ||
+    authorization !== `Bearer ${expectedSecret}`
   ) {
     return NextResponse.json(
-      { error: "unauthorized" },
+      { ok: false, error: "unauthorized" },
       { status: 401 }
     );
   }
@@ -42,6 +39,10 @@ export async function POST(req: NextRequest) {
   try {
     const response = await fetch(sourceUrl, {
       cache: "no-store",
+      headers: {
+        "user-agent":
+          "Meilleur-Ski Catalog Sync/1.0",
+      },
     });
 
     if (!response.ok) {
@@ -50,9 +51,11 @@ export async function POST(req: NextRequest) {
       );
     }
 
+    const content = await response.text();
+
     const result = await syncEkosportCsv({
       prisma,
-      content: await response.text(),
+      content,
       feedKey: "ekosport-brands-salomon",
       sourceUrl,
       filename: "ekosport-brands-salomon.csv",
@@ -63,6 +66,8 @@ export async function POST(req: NextRequest) {
       result,
     });
   } catch (error) {
+    console.error("[cron/catalog-sync]", error);
+
     return NextResponse.json(
       {
         ok: false,

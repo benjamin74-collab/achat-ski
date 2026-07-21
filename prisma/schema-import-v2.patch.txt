@@ -1,0 +1,28 @@
+Dans model Offer, ajoute ces champs après lastSeen :
+
+  feedKey         String?
+  sourceItemCount Int      @default(1)
+
+Ajoute aussi ces index dans model Offer :
+
+  @@index([feedKey])
+  @@index([merchantId, feedKey, lastSeen])
+
+Dans model FeedImport, ajoute après filename :
+
+  feedKey   String?
+  sourceUrl String? @db.VarChar(2048)
+
+Ajoute après updatedOffers :
+
+  skippedRows         Int @default(0)
+  deactivatedOffers   Int @default(0)
+  deactivatedProducts Int @default(0)
+  deletedProducts     Int @default(0)
+
+Ajoute aussi :
+
+  @@index([feedKey])
+
+Les champs createdSkus et updatedSkus peuvent rester temporairement.
+Ils seront toujours renseignés à 0 par le moteur V2.

@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
-import { prisma } from "@/lib/prisma"; // ton helper Prisma (singleton)
+import { prisma } from "@/lib/prisma";
+
 export const runtime = "nodejs";
 
 // Ajoute/écrase un paramètre de query proprement
@@ -9,7 +10,6 @@ function withQueryParam(rawUrl: string, key: string, value: string) {
     url.searchParams.set(key, value);
     return url.toString();
   } catch {
-    // Si l’URL est "exotique", on tente un fallback trivial
     const sep = rawUrl.includes("?") ? "&" : "?";
     return `${rawUrl}${sep}${encodeURIComponent(key)}=${encodeURIComponent(value)}`;
   }
@@ -17,58 +17,69 @@ function withQueryParam(rawUrl: string, key: string, value: string) {
 
 export async function GET(
   req: NextRequest,
-  { params }: { params: { merchant: string; offerId: string } }
+  { params }: { params: Promise<{ merchant: string; offerId: string }> }
 ) {
-  const offerIdNum = Number(params.offerId);
+  const { merchant, offerId } = await params;
+
+  const offerIdNum = Number(offerId);
+
   if (!Number.isFinite(offerIdNum)) {
     return NextResponse.json({ error: "Bad offerId" }, { status: 400 });
   }
 
-  // Récupère l’offre + le produit (pour le slug) + le marchand
   const offer = await prisma.offer.findUnique({
-    where: { id: offerIdNum },
+    where: {
+      id: offerIdNum,
+    },
     include: {
       merchant: true,
-      sku: { include: { product: true } },
+      product: true,
     },
   });
 
-  if (!offer || !offer.merchant || !offer.sku?.product) {
-    return NextResponse.json({ error: "Offer not found" }, { status: 404 });
+  if (!offer || !offer.merchant || !offer.product) {
+    return NextResponse.json(
+      { error: "Offer not found" },
+      { status: 404 }
+    );
   }
 
-  // Optionnel : vérifier que le slug marchand dans l’URL matche la DB
-  if (offer.merchant.slug !== params.merchant) {
-    // on ne bloque pas, on redirige quand même
-    // return NextResponse.json({ error: "Merchant mismatch" }, { status: 400 });
+  // Vérification optionnelle
+  if (offer.merchant.slug !== merchant) {
+    // volontairement ignoré
   }
 
   const subParam = process.env.AFF_SUBID_PARAM || "subid";
-  const prefix = process.env.AFF_SUBID_PREFIX || "achat-ski";
-  const productSlug = offer.sku.product.slug;
+  const prefix = process.env.AFF_SUBID_PREFIX || "meilleur-ski";
 
-  // Valeur subid : libre, courte et utile pour le reporting
+  const productSlug = offer.product.slug;
+
   const subValue = `${prefix}_${productSlug}_${offer.id}`;
 
-  const finalUrl = withQueryParam(offer.affiliateUrl, subParam, subValue);
+  const finalUrl = withQueryParam(
+    offer.affiliateUrl,
+    subParam,
+    subValue
+  );
 
-  // Log du clic (MVP)
-	try {
-		await prisma.click.create({
-		  data: {
-			offerId: offer.id,
-			productId: offer.sku.productId,
-			// 💡 enregistre le prix total au moment du clic (prix + port si dispo)
-			priceCentsAtClick: (offer.priceCents ?? 0) + (offer.shippingCents ?? 0),
-			// Si ton modèle possède ces colonnes, tu peux aussi ajouter :
-			// currencyAtClick: offer.currency,
-			// attributes: { ua: req.headers.get("user-agent") ?? null },
-		  },
-		});
-	  } catch {
-		// pas bloquant : on redirige même si le log plante
-	  }
+  try {
+    await prisma.click.create({
+      data: {
+        offerId: offer.id,
+        productId: offer.productId,
+        priceCentsAtClick:
+          (offer.priceCents ?? 0) +
+          (offer.shippingCents ?? 0),
 
-  // Redirection 302 vers l’affilié
-  return NextResponse.redirect(finalUrl, { status: 302 });
+        // Si ces champs existent dans ton modèle :
+        // currencyAtClick: offer.currency,
+        // ip: req.ip,
+        // userAgent: req.headers.get("user-agent"),
+      },
+    });
+  } catch {
+    // Le tracking ne doit jamais empêcher la redirection
+  }
+
+  return NextResponse.redirect(finalUrl, 302);
 }

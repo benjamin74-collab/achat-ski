@@ -1,207 +1,122 @@
-import type { PrismaClient } from "@prisma/client";
+import type { Prisma, PrismaClient } from "@prisma/client";
 import type {
   MatchingResult,
   NormalizedFeedItem,
 } from "./feed-types";
+import { normalizeProductName } from "./normalize";
 
-import {
-  normalizeProductName,
-  normalizeVariant,
-} from "./normalize";
-
-/**
- * Moteur de matching.
- *
- * Il détermine si une ligne du flux correspond
- * à un produit déjà existant.
- *
- * Il ne crée rien.
- * Il ne modifie rien.
- * Il ne fait que rechercher.
- */
 export async function matchFeedItem(
   prisma: PrismaClient,
-  item: NormalizedFeedItem
+  item: NormalizedFeedItem,
+  merchantId: number,
+  brandId?: number
 ): Promise<MatchingResult> {
-
-  //
-  // 1. Recherche par EAN
-  //
-  if (item.ean) {
-
-    const sku = await prisma.sku.findUnique({
+  if (item.parentExternalId) {
+    const offer = await prisma.offer.findFirst({
       where: {
-        gtin: item.ean,
+        merchantId,
+        parentExternalId: item.parentExternalId,
       },
-      include: {
-        product: true,
+      select: {
+        productId: true,
       },
     });
 
-    if (sku) {
+    if (offer) {
       return {
-        productId: sku.productId,
-        skuId: sku.id,
+        productId: offer.productId,
         confidence: 100,
-        reason: "EAN",
+        reason: "MERCHANT_PARENT_EXTERNAL_ID",
       };
     }
   }
 
-  //
-  // 2. Marque + référence fabricant + taille
-  //
-  if (item.brand && item.manufacturerReference) {
-
-    const sku = await prisma.sku.findFirst({
-
+  if (item.externalId) {
+    const offer = await prisma.offer.findFirst({
       where: {
-
-        manufacturerReference:
-          item.manufacturerReference,
-
-        size:
-          item.size,
-
-        product: {
-          Brand: {
-            name: item.brand,
-          },
-        },
+        merchantId,
+        externalId: item.externalId,
       },
-
-      include: {
-        product: true,
+      select: {
+        productId: true,
       },
     });
 
-    if (sku) {
-
+    if (offer) {
       return {
-
-        productId: sku.productId,
-
-        skuId: sku.id,
-
+        productId: offer.productId,
         confidence: 99,
-
-        reason:
-          "BRAND_MANUFACTURER_REFERENCE_SIZE",
+        reason: "MERCHANT_EXTERNAL_ID",
       };
     }
   }
 
-  //
-  // 3. Marque + référence fabricant
-  //
-  if (item.brand && item.manufacturerReference) {
+  const brandWhere = buildBrandWhere(item.brand, brandId);
 
-    const product =
-      await prisma.product.findFirst({
-
-        where: {
-
-          manufacturerReference:
-            item.manufacturerReference,
-
-          Brand: {
-
-            name: item.brand,
-          },
-        },
-      });
+  if (item.manufacturerReference) {
+    const product = await prisma.product.findFirst({
+      where: {
+        manufacturerReference: item.manufacturerReference,
+        ...brandWhere,
+      },
+      select: {
+        id: true,
+      },
+    });
 
     if (product) {
-
       return {
-
         productId: product.id,
-
         confidence: 97,
-
-        reason:
-          "BRAND_MANUFACTURER_REFERENCE",
+        reason: "BRAND_MANUFACTURER_REFERENCE",
       };
     }
   }
 
-  //
-  // 4. Marque + nom normalisé
-  //
-  if (item.brand) {
+  const normalizedName = normalizeProductName(
+    item.cleanName ?? item.title
+  );
 
-    const normalizedName =
-      normalizeProductName(
-        item.cleanName ?? item.title
-      );
-
-    const product =
-      await prisma.product.findFirst({
-
-        where: {
-
-          normalizedName,
-
-          Brand: {
-            name: item.brand,
-          },
-        },
-      });
+  if (normalizedName) {
+    const product = await prisma.product.findFirst({
+      where: {
+        normalizedName,
+        ...brandWhere,
+      },
+      select: {
+        id: true,
+      },
+    });
 
     if (product) {
-
-      const variant =
-        normalizeVariant(item);
-
-      if (variant) {
-
-        const sku =
-          await prisma.sku.findFirst({
-
-            where: {
-
-              productId: product.id,
-
-              normalizedVariant:
-                variant,
-            },
-          });
-
-        if (sku) {
-
-          return {
-
-            productId: product.id,
-
-            skuId: sku.id,
-
-            confidence: 92,
-
-            reason:
-              "BRAND_NORMALIZED_NAME_VARIANT",
-          };
-        }
-      }
-
       return {
-
         productId: product.id,
-
-        confidence: 85,
-
-        reason:
-          "BRAND_NORMALIZED_NAME",
+        confidence: 90,
+        reason: "BRAND_NORMALIZED_NAME",
       };
     }
   }
 
-  //
-  // Aucun match
-  //
   return {
-
     confidence: 0,
-
     reason: "NEW_PRODUCT",
   };
+}
+
+function buildBrandWhere(
+  brand: string | undefined,
+  brandId: number | undefined
+): Prisma.ProductWhereInput {
+  if (brandId) return { brandId };
+
+  if (brand) {
+    return {
+      brand: {
+        equals: brand,
+        mode: "insensitive",
+      },
+    };
+  }
+
+  return {};
 }

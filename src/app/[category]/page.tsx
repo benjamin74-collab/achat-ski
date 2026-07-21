@@ -136,14 +136,19 @@ export default async function CategoryPage({
       skip,
       take: pageSize,
       include: {
-        category: { select: { name: true, slug: true } },
-        skus: { include: { offers: true } },
-      },
+		  category: {
+			select: {
+			  name: true,
+			  slug: true,
+			},
+		  },
+		  offers: true,
+		},
     }),
   ]);
 
   const products = productsRaw.map((p) => {
-    const allOffers = p.skus.flatMap((s) => s.offers);
+    const allOffers = p.offers;
     const totals = allOffers.map((o) => totalCents(o.priceCents, o.shippingCents ?? 0));
     const minTotal = totals.length ? Math.min(...totals) : null;
     const maxTotal = totals.length ? Math.max(...totals) : null;

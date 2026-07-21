@@ -7,57 +7,20 @@ export type MerchantPlatform =
 
 /**
  * Représentation normalisée d'une ligne provenant d'un flux marchand.
- *
- * Tous les importeurs doivent retourner exactement cette structure,
- * quel que soit le marchand ou la plateforme d'affiliation.
  */
 export interface NormalizedFeedItem {
   merchantSlug: string;
-
-  /**
-   * Plateforme d'affiliation.
-   */
   merchantPlatform: MerchantPlatform;
 
-  /**
-   * Identifiant unique de la variante chez le marchand.
-   * Ex : 9-102838V0126
-   */
   externalId?: string;
-
-  /**
-   * Identifiant parent du produit chez le marchand.
-   * Ex : 9-102838 chez Ekosport.
-   */
   parentExternalId?: string;
-
-  /**
-   * EAN / GTIN de la variante.
-   */
   ean?: string;
-
-  /**
-   * Référence fabricant.
-   */
   manufacturerReference?: string;
 
-  /**
-   * Nom complet reçu dans le flux.
-   */
   title: string;
-
-  /**
-   * Nom nettoyé, si le marchand fournit déjà un nom produit propre.
-   */
   cleanName?: string;
-
   brand?: string;
-
   description?: string;
-
-  /**
-   * Catégorie complète du marchand.
-   */
   categoryPath?: string;
 
   size?: string;
@@ -67,7 +30,6 @@ export interface NormalizedFeedItem {
   price: number;
   oldPrice?: number;
   shippingCost?: number;
-
   currency: string;
 
   availability?: string;
@@ -77,35 +39,59 @@ export interface NormalizedFeedItem {
   merchantProductUrl?: string;
   imageUrl?: string;
 
-  /**
-   * Données brutes du flux.
-   */
   rawData: Record<string, unknown>;
 }
 
 export type MatchingReason =
-  | "EAN"
-  | "BRAND_MANUFACTURER_REFERENCE_SIZE"
+  | "MERCHANT_PARENT_EXTERNAL_ID"
+  | "MERCHANT_EXTERNAL_ID"
   | "BRAND_MANUFACTURER_REFERENCE"
-  | "BRAND_NORMALIZED_NAME_VARIANT"
   | "BRAND_NORMALIZED_NAME"
-  | "NEW_PRODUCT"
-  | "NEW_SKU";
+  | "NEW_PRODUCT";
 
 export interface MatchingResult {
   productId?: number;
-  skuId?: number;
   confidence: number;
   reason: MatchingReason;
 }
 
-export interface FeedImportResult {
+export type MappedCategory = {
+  id: number;
+  slug: string;
+  name: string;
+};
+
+export interface AggregatedFeedItem {
+  groupKey: string;
+  item: NormalizedFeedItem;
+  category: MappedCategory;
+
+  sourceItemCount: number;
+  availableSizes: string[];
+  availableColors: string[];
+  availableGenders: string[];
+}
+
+export type ImportStats = {
   totalRows: number;
+  normalizedRows: number;
+  acceptedRows: number;
+  skippedRows: number;
+  groupedProducts: number;
+
   createdProducts: number;
   updatedProducts: number;
-  createdSkus: number;
-  updatedSkus: number;
   createdOffers: number;
   updatedOffers: number;
+
+  deactivatedOffers: number;
+  deactivatedProducts: number;
+  deletedProducts: number;
   errors: number;
+};
+
+export interface FeedImportResult extends ImportStats {
+  feedImportId: number;
+  feedKey: string;
+  status: string;
 }
