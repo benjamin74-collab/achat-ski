@@ -1,21 +1,33 @@
-import { Prisma, PrismaClient } from "@prisma/client";
+import {
+  Prisma,
+  PrismaClient,
+} from "@prisma/client";
 
-import { aggregateFeedItems } from "./aggregate";
+import {
+  aggregateFeedItems,
+  type CategorizedFeedItem,
+} from "./aggregate";
+
 import {
   loadEkosportCategoryMappings,
-  resolveEkosportCategory,
+  resolveEkosportCategories,
 } from "./category-mapping";
+
 import { parseCsv } from "./csv";
+
 import type {
   FeedImportResult,
   ImportStats,
   NormalizedFeedItem,
 } from "./feed-types";
+
 import { normalizeEkosportFeed } from "./import-ekosport";
+
 import {
   importAggregatedFeedItem,
   upsertFeedMerchant,
 } from "./import-service";
+
 import { validateFeedItem } from "./validate";
 
 type SyncEkosportOptions = {
@@ -39,7 +51,9 @@ export async function syncEkosportCsv({
     delimiter: ";",
   });
 
-  const normalizedItems = normalizeEkosportFeed(rows);
+  const normalizedItems =
+    normalizeEkosportFeed(rows);
+
   const merchantSeed =
     normalizedItems[0] ??
     fallbackEkosportItem();
@@ -49,17 +63,18 @@ export async function syncEkosportCsv({
     merchantSeed
   );
 
-  const feedImport = await prisma.feedImport.create({
-    data: {
-      merchantId: merchant.id,
-      platform: "kwanko",
-      filename: filename ?? feedKey,
-      feedKey,
-      sourceUrl,
-      status: "running",
-      totalRows: rows.length,
-    },
-  });
+  const feedImport =
+    await prisma.feedImport.create({
+      data: {
+        merchantId: merchant.id,
+        platform: "kwanko",
+        filename: filename ?? feedKey,
+        feedKey,
+        sourceUrl,
+        status: "running",
+        totalRows: rows.length,
+      },
+    });
 
   const stats: ImportStats = {
     totalRows: rows.length,
@@ -80,43 +95,58 @@ export async function syncEkosportCsv({
   };
 
   try {
-    const mappings =
-      await loadEkosportCategoryMappings(prisma);
+    const categorySource =
+      await loadEkosportCategoryMappings(
+        prisma
+      );
 
-    if (mappings.length === 0) {
+    if (
+      categorySource.mappings.length === 0
+    ) {
       throw new Error(
         "Aucun mapping Category.mapEkosport n'est configuré."
       );
     }
 
-    const accepted = [];
+    const accepted: CategorizedFeedItem[] =
+      [];
 
     for (const item of normalizedItems) {
-      const validation = validateFeedItem(item);
+      const validation =
+        validateFeedItem(item);
 
       if (!validation.valid) {
         stats.skippedRows += 1;
         stats.errors += 1;
+
         continue;
       }
 
-      const category = resolveEkosportCategory(
-        item.categoryPath,
-        mappings
-      );
+      const categoryResolution =
+        resolveEkosportCategories(
+          item.categoryPath,
+          categorySource
+        );
 
-      if (!category) {
+      if (!categoryResolution) {
         stats.skippedRows += 1;
+
         continue;
       }
 
-      accepted.push({ item, category });
+      accepted.push({
+        item,
+        categoryResolution,
+      });
     }
 
     stats.acceptedRows = accepted.length;
 
-    const grouped = aggregateFeedItems(accepted);
-    stats.groupedProducts = grouped.length;
+    const grouped =
+      aggregateFeedItems(accepted);
+
+    stats.groupedProducts =
+      grouped.length;
 
     if (grouped.length === 0) {
       throw new Error(
@@ -124,7 +154,10 @@ export async function syncEkosportCsv({
       );
     }
 
-    const brandCache = new Map<string, number>();
+    const brandCache = new Map<
+      string,
+      number
+    >();
 
     for (const aggregated of grouped) {
       try {
@@ -139,6 +172,7 @@ export async function syncEkosportCsv({
         );
       } catch (error) {
         stats.errors += 1;
+
         console.error(
           `[catalog-sync] ${aggregated.groupKey}`,
           error
@@ -160,44 +194,74 @@ export async function syncEkosportCsv({
         : "success";
 
     await prisma.feedImport.update({
-      where: { id: feedImport.id },
+      where: {
+        id: feedImport.id,
+      },
       data: {
         status,
-        importedRows: stats.acceptedRows,
-        skippedRows: stats.skippedRows,
-        createdProducts: stats.createdProducts,
-        updatedProducts: stats.updatedProducts,
+        importedRows:
+          stats.acceptedRows,
+        skippedRows:
+          stats.skippedRows,
+
+        createdProducts:
+          stats.createdProducts,
+        updatedProducts:
+          stats.updatedProducts,
+
         createdSkus: 0,
         updatedSkus: 0,
-        createdOffers: stats.createdOffers,
-        updatedOffers: stats.updatedOffers,
-        deactivatedOffers: stats.deactivatedOffers,
+
+        createdOffers:
+          stats.createdOffers,
+        updatedOffers:
+          stats.updatedOffers,
+
+        deactivatedOffers:
+          stats.deactivatedOffers,
+
         deactivatedProducts:
           stats.deactivatedProducts,
-        deletedProducts: stats.deletedProducts,
-        errorsCount: stats.errors,
+
+        deletedProducts:
+          stats.deletedProducts,
+
+        errorsCount:
+          stats.errors,
+
         finishedAt: new Date(),
       },
     });
 
     return {
-      feedImportId: feedImport.id,
+      feedImportId:
+        feedImport.id,
       feedKey,
       status,
       ...stats,
     };
   } catch (error) {
     await prisma.feedImport.update({
-      where: { id: feedImport.id },
+      where: {
+        id: feedImport.id,
+      },
       data: {
         status: "failed",
+
         notes:
           error instanceof Error
             ? error.message
             : String(error),
-        importedRows: stats.acceptedRows,
-        skippedRows: stats.skippedRows,
-        errorsCount: stats.errors + 1,
+
+        importedRows:
+          stats.acceptedRows,
+
+        skippedRows:
+          stats.skippedRows,
+
+        errorsCount:
+          stats.errors + 1,
+
         finishedAt: new Date(),
       },
     });
@@ -220,29 +284,40 @@ async function reconcileMissingOffers({
   feedKey,
   startedAt,
   stats,
-}: ReconcileOptions) {
-  const missingOffers = await prisma.offer.findMany({
-    where: {
-      merchantId,
-      feedKey,
-      active: true,
-      OR: [
-        { lastSeen: null },
-        { lastSeen: { lt: startedAt } },
-      ],
-    },
-    select: {
-      id: true,
-      productId: true,
-    },
-  });
+}: ReconcileOptions): Promise<void> {
+  const missingOffers =
+    await prisma.offer.findMany({
+      where: {
+        merchantId,
+        feedKey,
+        active: true,
+        OR: [
+          {
+            lastSeen: null,
+          },
+          {
+            lastSeen: {
+              lt: startedAt,
+            },
+          },
+        ],
+      },
+      select: {
+        id: true,
+        productId: true,
+      },
+    });
 
-  if (missingOffers.length === 0) return;
+  if (missingOffers.length === 0) {
+    return;
+  }
 
   await prisma.offer.updateMany({
     where: {
       id: {
-        in: missingOffers.map((offer) => offer.id),
+        in: missingOffers.map(
+          (offer) => offer.id
+        ),
       },
     },
     data: {
@@ -251,47 +326,74 @@ async function reconcileMissingOffers({
     },
   });
 
-  stats.deactivatedOffers += missingOffers.length;
+  stats.deactivatedOffers +=
+    missingOffers.length;
 
   const productIds = Array.from(
     new Set(
-      missingOffers.map((offer) => offer.productId)
+      missingOffers.map(
+        (offer) => offer.productId
+      )
     )
   );
 
   for (const productId of productIds) {
-    const activeOffers = await prisma.offer.count({
-      where: {
-        productId,
-        active: true,
-      },
-    });
+    const activeOffers =
+      await prisma.offer.count({
+        where: {
+          productId,
+          active: true,
+        },
+      });
 
-    if (activeOffers > 0) continue;
+    if (activeOffers > 0) {
+      continue;
+    }
 
-    const [tests, reviews, clicks] = await Promise.all([
+    const [
+      tests,
+      reviews,
+      clicks,
+    ] = await Promise.all([
       prisma.editorialTest.count({
-        where: { productId },
+        where: {
+          productId,
+        },
       }),
+
       prisma.review.count({
-        where: { productId },
+        where: {
+          productId,
+        },
       }),
+
       prisma.click.count({
-        where: { productId },
+        where: {
+          productId,
+        },
       }),
     ]);
 
-    if (tests === 0 && reviews === 0 && clicks === 0) {
+    if (
+      tests === 0 &&
+      reviews === 0 &&
+      clicks === 0
+    ) {
       await prisma.product.delete({
-        where: { id: productId },
+        where: {
+          id: productId,
+        },
       });
 
       stats.deletedProducts += 1;
+
       continue;
     }
 
     await prisma.product.update({
-      where: { id: productId },
+      where: {
+        id: productId,
+      },
       data: {
         active: false,
         published: false,
@@ -310,7 +412,8 @@ function fallbackEkosportItem(): NormalizedFeedItem {
     price: 0,
     currency: "EUR",
     inStock: false,
-    affiliateUrl: "https://www.ekosport.fr",
+    affiliateUrl:
+      "https://www.ekosport.fr",
     rawData: {},
   };
 }

@@ -3,6 +3,7 @@ import type {
   Prisma,
   PrismaClient,
 } from "@prisma/client";
+
 import type {
   AggregatedFeedItem,
   ImportStats,
@@ -10,6 +11,7 @@ import type {
 } from "./feed-types";
 
 import { matchFeedItem } from "./matching";
+
 import {
   buildProductSlug,
   normalizeProductName,
@@ -24,17 +26,23 @@ export async function upsertFeedMerchant(
   item: NormalizedFeedItem
 ): Promise<Merchant> {
   return prisma.merchant.upsert({
-    where: { slug: item.merchantSlug },
+    where: {
+      slug: item.merchantSlug,
+    },
     update: {
       active: true,
       status: "active",
-      network: item.merchantPlatform.toLowerCase(),
+      network:
+        item.merchantPlatform.toLowerCase(),
       platform: item.merchantPlatform,
     },
     create: {
-      name: merchantNameFromSlug(item.merchantSlug),
+      name: merchantNameFromSlug(
+        item.merchantSlug
+      ),
       slug: item.merchantSlug,
-      network: item.merchantPlatform.toLowerCase(),
+      network:
+        item.merchantPlatform.toLowerCase(),
       platform: item.merchantPlatform,
       status: "active",
       active: true,
@@ -51,7 +59,11 @@ export async function importAggregatedFeedItem(
   stats: ImportStats,
   brandCache: BrandCache
 ) {
-  const { item, category } = aggregated;
+  const {
+    item,
+    primaryCategory,
+    categories,
+  } = aggregated;
 
   const brandId = await upsertBrand(
     prisma,
@@ -81,6 +93,13 @@ export async function importAggregatedFeedItem(
         stats
       );
 
+  await syncProductCategories(
+    prisma,
+    product.id,
+    primaryCategory.id,
+    categories.map((category) => category.id)
+  );
+
   const offer = await upsertOffer(
     prisma,
     aggregated,
@@ -95,7 +114,8 @@ export async function importAggregatedFeedItem(
     product,
     offer,
     match,
-    category,
+    primaryCategory,
+    categories,
   };
 }
 
@@ -108,10 +128,13 @@ async function upsertBrand(
 
   const brandSlug = slugify(item.brand);
   const cached = cache.get(brandSlug);
+
   if (cached) return cached;
 
   const brand = await prisma.brand.upsert({
-    where: { slug: brandSlug },
+    where: {
+      slug: brandSlug,
+    },
     update: {
       name: item.brand,
       active: true,
@@ -124,6 +147,7 @@ async function upsertBrand(
   });
 
   cache.set(brandSlug, brand.id);
+
   return brand.id;
 }
 
@@ -134,29 +158,57 @@ async function updateMatchedProduct(
   brandId: number | undefined,
   stats: ImportStats
 ) {
-  const { item, category } = aggregated;
-  const name = item.cleanName || item.title;
-  const normalizedName = normalizeProductName(name);
+  const {
+    item,
+    primaryCategory,
+  } = aggregated;
+
+  const name =
+    item.cleanName || item.title;
+
+  const normalizedName =
+    normalizeProductName(name);
 
   const product = await prisma.product.update({
-    where: { id: productId },
+    where: {
+      id: productId,
+    },
     data: {
       name,
       model: name,
       brand: item.brand,
       brandId,
-      categoryId: category.id,
-      description: item.description,
+
+      categoryId: primaryCategory.id,
+
+      description:
+        item.description || undefined,
+
       normalizedName,
-      manufacturerReference: item.manufacturerReference,
-      imageUrl: item.imageUrl,
+
+      manufacturerReference:
+        item.manufacturerReference ||
+        undefined,
+
+      /*
+       * Une URL vide ou absente ne doit pas effacer
+       * une image déjà enregistrée.
+       */
+      imageUrl:
+        item.imageUrl || undefined,
+
       active: true,
       published: true,
-      attributes: buildProductAttributes(aggregated),
+
+      attributes:
+        buildProductAttributes(
+          aggregated
+        ),
     },
   });
 
   stats.updatedProducts += 1;
+
   return product;
 }
 
@@ -166,31 +218,113 @@ async function createProduct(
   brandId: number | undefined,
   stats: ImportStats
 ) {
-  const { item, category } = aggregated;
-  const name = item.cleanName || item.title;
-  const normalizedName = normalizeProductName(name);
-  const baseSlug = buildProductSlug(item);
+  const {
+    item,
+    primaryCategory,
+  } = aggregated;
 
-  const product = await prisma.product.create({
+  const name =
+    item.cleanName || item.title;
+
+  const normalizedName =
+    normalizeProductName(name);
+
+  const baseSlug =
+    buildProductSlug(item);
+
+  const product =
+    await prisma.product.create({
+      data: {
+        name,
+        model: name,
+        brand: item.brand,
+        brandId,
+
+        categoryId: primaryCategory.id,
+
+        slug: await uniqueProductSlug(
+          prisma,
+          baseSlug
+        ),
+
+        description: item.description,
+        normalizedName,
+
+        manufacturerReference:
+          item.manufacturerReference,
+
+        imageUrl: item.imageUrl,
+
+        published: true,
+        active: true,
+
+        attributes:
+          buildProductAttributes(
+            aggregated
+          ),
+      },
+    });
+
+  stats.createdProducts += 1;
+
+  return product;
+}
+
+/**
+ * Enregistre la catégorie principale ainsi que toutes
+ * les catégories secondaires du produit.
+ *
+ * Les anciennes relations ne sont pas supprimées brutalement :
+ * un même produit peut être enrichi par plusieurs marchands.
+ */
+async function syncProductCategories(
+  prisma: PrismaClient,
+  productId: number,
+  primaryCategoryId: number,
+  categoryIds: number[]
+) {
+  const uniqueCategoryIds = Array.from(
+    new Set([
+      primaryCategoryId,
+      ...categoryIds,
+    ])
+  );
+
+  /*
+   * Une seule relation doit porter isPrimary=true.
+   */
+  await prisma.productCategory.updateMany({
+    where: {
+      productId,
+      isPrimary: true,
+    },
     data: {
-      name,
-      model: name,
-      brand: item.brand,
-      brandId,
-      categoryId: category.id,
-      slug: await uniqueProductSlug(prisma, baseSlug),
-      description: item.description,
-      normalizedName,
-      manufacturerReference: item.manufacturerReference,
-      imageUrl: item.imageUrl,
-      published: true,
-      active: true,
-      attributes: buildProductAttributes(aggregated),
+      isPrimary: false,
     },
   });
 
-  stats.createdProducts += 1;
-  return product;
+  for (const categoryId of uniqueCategoryIds) {
+    await prisma.productCategory.upsert({
+      where: {
+        productId_categoryId: {
+          productId,
+          categoryId,
+        },
+      },
+      update: {
+        isPrimary:
+          categoryId ===
+          primaryCategoryId,
+      },
+      create: {
+        productId,
+        categoryId,
+        isPrimary:
+          categoryId ===
+          primaryCategoryId,
+      },
+    });
+  }
 }
 
 async function upsertOffer(
@@ -202,55 +336,86 @@ async function upsertOffer(
   seenAt: Date,
   stats: ImportStats
 ) {
-  const { item, sourceItemCount } = aggregated;
+  const {
+    item,
+    sourceItemCount,
+  } = aggregated;
 
-  const priceCents = toPriceCents(item.price);
+  const priceCents =
+    toPriceCents(item.price);
+
   const oldPriceCents =
     item.oldPrice !== undefined
       ? toPriceCents(item.oldPrice)
       : null;
+
   const shippingCents =
     item.shippingCost !== undefined
-      ? toPriceCents(item.shippingCost)
+      ? toPriceCents(
+          item.shippingCost
+        )
       : null;
 
-  const existingOffer = await prisma.offer.findUnique({
-    where: {
-      productId_merchantId: {
-        productId,
-        merchantId,
+  const existingOffer =
+    await prisma.offer.findUnique({
+      where: {
+        productId_merchantId: {
+          productId,
+          merchantId,
+        },
       },
-    },
-  });
+    });
 
   if (existingOffer) {
     const priceChanged =
-      existingOffer.priceCents !== priceCents ||
-      existingOffer.oldPriceCents !== oldPriceCents ||
-      existingOffer.shippingCents !== shippingCents ||
-      existingOffer.inStock !== item.inStock;
+      existingOffer.priceCents !==
+        priceCents ||
+      existingOffer.oldPriceCents !==
+        oldPriceCents ||
+      existingOffer.shippingCents !==
+        shippingCents ||
+      existingOffer.inStock !==
+        item.inStock;
 
-    const offer = await prisma.offer.update({
-      where: { id: existingOffer.id },
-      data: {
-        affiliateUrl: item.affiliateUrl,
-        priceCents,
-        oldPriceCents,
-        shippingCents,
-        currency: item.currency,
-        inStock: item.inStock,
-        availability: item.availability,
-        externalId: item.externalId ?? null,
-        parentExternalId: item.parentExternalId ?? null,
-        merchantProductUrl:
-          item.merchantProductUrl ?? null,
-        imageUrl: item.imageUrl ?? null,
-        active: true,
-        feedKey,
-        sourceItemCount,
-        lastSeen: seenAt,
-      },
-    });
+    const offer =
+      await prisma.offer.update({
+        where: {
+          id: existingOffer.id,
+        },
+        data: {
+          affiliateUrl:
+            item.affiliateUrl,
+
+          priceCents,
+          oldPriceCents,
+          shippingCents,
+
+          currency: item.currency,
+          inStock: item.inStock,
+          availability:
+            item.availability,
+
+          externalId:
+            item.externalId ?? null,
+
+          parentExternalId:
+            item.parentExternalId ??
+            null,
+
+          merchantProductUrl:
+            item.merchantProductUrl ??
+            null,
+
+          imageUrl:
+            item.imageUrl ||
+            existingOffer.imageUrl,
+
+          active: true,
+          feedKey,
+          sourceItemCount,
+          lastSeen: seenAt,
+        },
+      });
 
     stats.updatedOffers += 1;
 
@@ -272,17 +437,31 @@ async function upsertOffer(
     data: {
       productId,
       merchantId,
-      affiliateUrl: item.affiliateUrl,
+
+      affiliateUrl:
+        item.affiliateUrl,
+
       priceCents,
       oldPriceCents,
       shippingCents,
+
       currency: item.currency,
       inStock: item.inStock,
-      availability: item.availability,
-      externalId: item.externalId,
-      parentExternalId: item.parentExternalId,
-      merchantProductUrl: item.merchantProductUrl,
-      imageUrl: item.imageUrl,
+      availability:
+        item.availability,
+
+      externalId:
+        item.externalId,
+
+      parentExternalId:
+        item.parentExternalId,
+
+      merchantProductUrl:
+        item.merchantProductUrl,
+
+      imageUrl:
+        item.imageUrl,
+
       active: true,
       feedKey,
       sourceItemCount,
@@ -300,6 +479,7 @@ async function upsertOffer(
   );
 
   stats.createdOffers += 1;
+
   return offer;
 }
 
@@ -328,12 +508,31 @@ function buildProductAttributes(
 ): Prisma.InputJsonValue {
   return {
     sourceCategoryPath:
-      aggregated.item.categoryPath ?? null,
-    availableSizes: aggregated.availableSizes,
-    availableColors: aggregated.availableColors,
-    availableGenders: aggregated.availableGenders,
-    sourceItemCount: aggregated.sourceItemCount,
-    sourceGroupKey: aggregated.groupKey,
+      aggregated.item.categoryPath ??
+      null,
+
+    primaryCategorySlug:
+      aggregated.primaryCategory.slug,
+
+    categorySlugs:
+      aggregated.categories.map(
+        (category) => category.slug
+      ),
+
+    availableSizes:
+      aggregated.availableSizes,
+
+    availableColors:
+      aggregated.availableColors,
+
+    availableGenders:
+      aggregated.availableGenders,
+
+    sourceItemCount:
+      aggregated.sourceItemCount,
+
+    sourceGroupKey:
+      aggregated.groupKey,
   };
 }
 
@@ -341,14 +540,20 @@ async function uniqueProductSlug(
   prisma: PrismaClient,
   baseSlug: string
 ): Promise<string> {
-  const safeBaseSlug = baseSlug || "produit";
+  const safeBaseSlug =
+    baseSlug || "produit";
+
   let slug = safeBaseSlug;
   let counter = 2;
 
   while (
     await prisma.product.findUnique({
-      where: { slug },
-      select: { id: true },
+      where: {
+        slug,
+      },
+      select: {
+        id: true,
+      },
     })
   ) {
     slug = `${safeBaseSlug}-${counter}`;
@@ -358,8 +563,13 @@ async function uniqueProductSlug(
   return slug;
 }
 
-function merchantNameFromSlug(slug: string): string {
-  if (slug === "ekosport") return "Ekosport";
+function merchantNameFromSlug(
+  slug: string
+): string {
+  if (slug === "ekosport") {
+    return "Ekosport";
+  }
+
   if (slug === "tonton-outdoor") {
     return "Tonton Outdoor";
   }
@@ -368,7 +578,8 @@ function merchantNameFromSlug(slug: string): string {
     .split("-")
     .map(
       (part) =>
-        part.charAt(0).toUpperCase() + part.slice(1)
+        part.charAt(0).toUpperCase() +
+        part.slice(1)
     )
     .join(" ");
 }
