@@ -7,6 +7,7 @@ import {
   loadEkosportCategoryMappings,
   resolveEkosportCategories,
 } from "../src/lib/catalog/category-mapping";
+import type { MappedCategory } from "../src/lib/catalog/feed-types";
 
 const prisma = new PrismaClient();
 
@@ -22,15 +23,9 @@ async function main() {
     process.argv[2] ??
     "prisma/feed-data/liste-categorie.csv";
 
-  const absolutePath = resolve(
-    process.cwd(),
-    filePath
-  );
+  const absolutePath = resolve(process.cwd(), filePath);
 
-  const content = readFileSync(
-    absolutePath,
-    "latin1"
-  );
+  const content = readFileSync(absolutePath, "latin1");
 
   const rows = parseCsv(content, {
     delimiter: ";",
@@ -61,23 +56,22 @@ async function main() {
   const categorySource =
     await loadEkosportCategoryMappings(prisma);
 
-  const categories =
-    await prisma.category.findMany({
-      where: {
-        published: true,
-      },
-      select: {
-        id: true,
-        slug: true,
-        name: true,
-        mapEkosport: true,
-      },
-      orderBy: [
-        { parentId: "asc" },
-        { order: "asc" },
-        { name: "asc" },
-      ],
-    });
+  const categories = await prisma.category.findMany({
+    where: {
+      published: true,
+    },
+    select: {
+      id: true,
+      slug: true,
+      name: true,
+      mapEkosport: true,
+    },
+    orderBy: [
+      { parentId: "asc" },
+      { order: "asc" },
+      { name: "asc" },
+    ],
+  });
 
   const allowedCategories = Array.from(
     counts.entries()
@@ -87,9 +81,7 @@ async function main() {
         category.startsWith(prefix)
       )
     )
-    .sort(([a], [b]) =>
-      a.localeCompare(b, "fr")
-    );
+    .sort(([a], [b]) => a.localeCompare(b, "fr"));
 
   const ignoredCategories = Array.from(
     counts.entries()
@@ -100,9 +92,7 @@ async function main() {
           category.startsWith(prefix)
         )
     )
-    .sort(([a], [b]) =>
-      a.localeCompare(b, "fr")
-    );
+    .sort(([a], [b]) => a.localeCompare(b, "fr"));
 
   let mappedRows = 0;
   let unmappedRows = 0;
@@ -111,9 +101,7 @@ async function main() {
   console.log(
     "========================================"
   );
-  console.log(
-    "CATÉGORIES SKI / SNOWBOARD"
-  );
+  console.log("CATÉGORIES SKI / SNOWBOARD");
   console.log(
     "========================================"
   );
@@ -123,11 +111,10 @@ async function main() {
     sourceCategory,
     rowCount,
   ] of allowedCategories) {
-    const result =
-      resolveEkosportCategories(
-        sourceCategory,
-        categorySource
-      );
+    const result = resolveEkosportCategories(
+      sourceCategory,
+      categorySource
+    );
 
     if (result) {
       mappedRows += rowCount;
@@ -146,7 +133,7 @@ async function main() {
       console.log(
         `    Catégories : ${result.categories
           .map(
-            (category) =>
+            (category: MappedCategory) =>
               `${category.name} (${category.slug})`
           )
           .join(" > ")}`
@@ -162,12 +149,8 @@ async function main() {
       console.log(
         `    Source     : ${sourceCategory}`
       );
-      console.log(
-        "    Principale : aucune"
-      );
-      console.log(
-        "    Catégories : aucune"
-      );
+      console.log("    Principale : aucune");
+      console.log("    Catégories : aucune");
     }
 
     console.log("");
@@ -187,18 +170,14 @@ async function main() {
       allowedCategories.length,
     ignoredUniqueCategories:
       ignoredCategories.length,
-    allowedRows:
-      allowedCategories.reduce(
-        (sum, [, count]) =>
-          sum + count,
-        0
-      ),
-    ignoredRows:
-      ignoredCategories.reduce(
-        (sum, [, count]) =>
-          sum + count,
-        0
-      ),
+    allowedRows: allowedCategories.reduce(
+      (sum, [, count]) => sum + count,
+      0
+    ),
+    ignoredRows: ignoredCategories.reduce(
+      (sum, [, count]) => sum + count,
+      0
+    ),
     mappedRows,
     unmappedRows,
   });
@@ -207,9 +186,7 @@ async function main() {
   console.log(
     "========================================"
   );
-  console.log(
-    "CATÉGORIES LOCALES DISPONIBLES"
-  );
+  console.log("CATÉGORIES LOCALES DISPONIBLES");
   console.log(
     "========================================"
   );
