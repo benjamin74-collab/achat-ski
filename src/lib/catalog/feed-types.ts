@@ -61,10 +61,27 @@ export type MappedCategory = {
   name: string;
 };
 
+/**
+ * Résultat du mapping d'une catégorie marchande.
+ *
+ * primaryCategory :
+ * catégorie la plus précise utilisée par Product.categoryId.
+ *
+ * categories :
+ * toutes les catégories pertinentes, y compris la catégorie principale
+ * et les catégories parentes ou transversales.
+ */
+export type CategoryResolution = {
+  primaryCategory: MappedCategory;
+  categories: MappedCategory[];
+};
+
 export interface AggregatedFeedItem {
   groupKey: string;
   item: NormalizedFeedItem;
-  category: MappedCategory;
+
+  primaryCategory: MappedCategory;
+  categories: MappedCategory[];
 
   sourceItemCount: number;
   availableSizes: string[];
