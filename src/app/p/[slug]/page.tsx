@@ -1158,11 +1158,21 @@ export default async function ProductPage({
                         href={`/p/${relatedProduct.slug}`}
                         className="block"
                       >
-                        <div className="flex aspect-[4/3] items-center justify-center bg-slate-100">
-                          <span className="text-xs font-semibold uppercase tracking-[0.14em] text-slate-400">
-                            Photo à venir
-                          </span>
-                        </div>
+                        <div className="flex aspect-[4/3] items-center justify-center overflow-hidden bg-slate-100">
+						  {relatedProduct.imageUrl ? (
+							<img
+							  src={relatedProduct.imageUrl}
+							  alt={relatedTitle}
+							  className="h-full w-full object-contain"
+							  loading="lazy"
+							  referrerPolicy="no-referrer"
+							/>
+						  ) : (
+							<span className="text-xs font-semibold uppercase tracking-[0.14em] text-slate-400">
+							  Photo à venir
+							</span>
+						  )}
+						</div>
 
                         <div className="p-4">
                           <h3 className="text-sm font-black leading-snug text-slate-950 group-hover:text-brand-700">
