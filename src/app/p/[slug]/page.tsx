@@ -317,11 +317,23 @@ export default async function ProductPage({
       )
     : [];
 
+  const hiddenSpecLabels = new Set([
+    "source group key",
+    "source item count",
+    "source category path",
+    "primary category slug",
+  ]);
+
   const specs = [
     ...baseSpecs,
     ...attributeSpecs,
     ...skuSpecs,
-  ];
+  ].filter(
+    ([label]) =>
+      !hiddenSpecLabels.has(
+        label.trim().toLowerCase()
+      )
+  );
 
   const brandWhere: Prisma.ProductWhereInput =
     typeof product.Brand?.id ===
@@ -1086,7 +1098,7 @@ export default async function ProductPage({
                 Conseil
               </p>
 
-              <h2 className="mt-1 text-lg font-black">
+              <h2 className="mt-1 text-lg font-black !text-white">
                 Comparer avant
                 d’acheter
               </h2>
@@ -1224,10 +1236,7 @@ export default async function ProductPage({
         <p className="mt-8 text-xs text-slate-500">
           Les prix sont susceptibles
           d’évoluer. Certains liens sont
-          affiliés. Meilleur-Ski peut
-          percevoir une commission si
-          vous achetez via un lien
-          partenaire.
+          affiliés.
         </p>
       </div>
     </main>
