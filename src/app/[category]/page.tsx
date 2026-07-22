@@ -440,12 +440,14 @@ export default async function CategoryPage({
                   const cardTitle = [p.brand, p.model, p.season].filter(Boolean).join(" ");
                   return (
                     <ProductCard
-                      key={p.id}
-                      href={`/p/${p.slug}`}
-                      title={cardTitle}
-                      subtitle={p.category?.name ?? undefined}
-                      minPriceCents={p.minTotal ?? null}
-                    />
+					  key={p.id}
+					  href={`/p/${p.slug}`}
+					  title={cardTitle}
+					  subtitle={p.category?.name ?? undefined}
+					  imageUrl={p.imageUrl?.trim() || undefined}
+					  offerCount={p.offerCount}
+					  minPriceCents={p.minTotal ?? null}
+					/>
                   );
                 })}
               </div>
