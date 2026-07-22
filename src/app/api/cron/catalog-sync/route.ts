@@ -1,82 +1,279 @@
-import { NextRequest, NextResponse } from "next/server";
+import {
+  NextRequest,
+  NextResponse,
+} from "next/server";
 
-import { prisma } from "@/lib/prisma";
-import { syncEkosportCsv } from "@/lib/catalog/sync-ekosport";
+import {
+  prisma,
+} from "@/lib/prisma";
+
+import {
+  syncFeedSourceById,
+} from "@/lib/catalog/sync-feed";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 export const maxDuration = 300;
 
-export async function GET(req: NextRequest) {
-  const expectedSecret = process.env.CRON_SECRET;
+const MAX_FEEDS_PER_RUN = 3;
+
+export async function GET(
+  req: NextRequest
+) {
+  const expectedSecret =
+    process.env.CRON_SECRET;
+
   const authorization =
     req.headers.get("authorization");
 
   if (
     !expectedSecret ||
-    authorization !== `Bearer ${expectedSecret}`
+    authorization !==
+      `Bearer ${expectedSecret}`
   ) {
-    return NextResponse.json(
-      { ok: false, error: "unauthorized" },
-      { status: 401 }
-    );
-  }
-
-  const sourceUrl =
-    process.env.EKOSPORT_SALOMON_FEED_URL;
-
-  if (!sourceUrl) {
     return NextResponse.json(
       {
         ok: false,
-        error:
-          "EKOSPORT_SALOMON_FEED_URL manquante",
+        error: "unauthorized",
       },
-      { status: 500 }
+      {
+        status: 401,
+      }
     );
   }
 
   try {
-    const response = await fetch(sourceUrl, {
-      cache: "no-store",
-      headers: {
-        "user-agent":
-          "Meilleur-Ski Catalog Sync/1.0",
-      },
-    });
-
-    if (!response.ok) {
-      throw new Error(
-        `Téléchargement du flux impossible : ${response.status} ${response.statusText}`
+    const requestedFeedSourceId =
+      parsePositiveInteger(
+        req.nextUrl.searchParams.get(
+          "feedSourceId"
+        )
       );
+
+    const requestedSlug =
+      req.nextUrl.searchParams
+        .get("slug")
+        ?.trim();
+
+    const requestedSiteId =
+      req.nextUrl.searchParams
+        .get("siteId")
+        ?.trim();
+
+    const feedSources =
+      requestedFeedSourceId
+        ? await prisma.feedSource.findMany({
+            where: {
+              id: requestedFeedSourceId,
+              active: true,
+            },
+
+            select: {
+              id: true,
+              siteId: true,
+              slug: true,
+              name: true,
+            },
+
+            take: 1,
+          })
+        : requestedSlug
+          ? await prisma.feedSource.findMany({
+              where: {
+                slug: requestedSlug,
+                active: true,
+
+                ...(requestedSiteId
+                  ? {
+                      siteId:
+                        requestedSiteId,
+                    }
+                  : {}),
+              },
+
+              select: {
+                id: true,
+                siteId: true,
+                slug: true,
+                name: true,
+              },
+
+              take:
+                MAX_FEEDS_PER_RUN,
+            })
+          : await prisma.feedSource.findMany({
+              where: {
+                active: true,
+                autoImport: true,
+
+                OR: [
+                  {
+                    nextRunAt: null,
+                  },
+                  {
+                    nextRunAt: {
+                      lte: new Date(),
+                    },
+                  },
+                ],
+              },
+
+              select: {
+                id: true,
+                siteId: true,
+                slug: true,
+                name: true,
+              },
+
+              orderBy: [
+                {
+                  nextRunAt: "asc",
+                },
+                {
+                  id: "asc",
+                },
+              ],
+
+              take:
+                MAX_FEEDS_PER_RUN,
+            });
+
+    if (feedSources.length === 0) {
+      return NextResponse.json({
+        ok: true,
+
+        message:
+          "Aucun flux à importer.",
+
+        processed: 0,
+        results: [],
+      });
     }
 
-    const content = await response.text();
+    const results: Array<{
+      feedSourceId: number;
+      siteId: string;
+      slug: string;
+      name: string;
+      ok: boolean;
+      result?: unknown;
+      error?: string;
+    }> = [];
 
-    const result = await syncEkosportCsv({
-      prisma,
-      content,
-      feedKey: "ekosport-brands-salomon",
-      sourceUrl,
-      filename: "ekosport-brands-salomon.csv",
-    });
+    for (const feedSource of feedSources) {
+      try {
+        const result =
+          await syncFeedSourceById({
+            prisma,
+
+            feedSourceId:
+              feedSource.id,
+
+            trigger: "CRON",
+          });
+
+        results.push({
+          feedSourceId:
+            feedSource.id,
+
+          siteId:
+            feedSource.siteId,
+
+          slug:
+            feedSource.slug,
+
+          name:
+            feedSource.name,
+
+          ok: true,
+          result,
+        });
+      } catch (error) {
+        const errorMessage =
+          error instanceof Error
+            ? error.message
+            : String(error);
+
+        console.error(
+          `[cron/catalog-sync] ${feedSource.siteId}/${feedSource.slug}`,
+          error
+        );
+
+        results.push({
+          feedSourceId:
+            feedSource.id,
+
+          siteId:
+            feedSource.siteId,
+
+          slug:
+            feedSource.slug,
+
+          name:
+            feedSource.name,
+
+          ok: false,
+          error: errorMessage,
+        });
+      }
+    }
+
+    const failed =
+      results.filter(
+        (result) => !result.ok
+      ).length;
 
     return NextResponse.json({
-      ok: true,
-      result,
+      ok: failed === 0,
+
+      processed:
+        results.length,
+
+      succeeded:
+        results.length - failed,
+
+      failed,
+
+      results,
     });
   } catch (error) {
-    console.error("[cron/catalog-sync]", error);
+    console.error(
+      "[cron/catalog-sync]",
+      error
+    );
 
     return NextResponse.json(
       {
         ok: false,
+
         error:
           error instanceof Error
             ? error.message
             : String(error),
       },
-      { status: 500 }
+      {
+        status: 500,
+      }
     );
   }
+}
+
+function parsePositiveInteger(
+  value: string | null
+): number | undefined {
+  if (!value) {
+    return undefined;
+  }
+
+  const parsed =
+    Number.parseInt(value, 10);
+
+  if (
+    !Number.isInteger(parsed) ||
+    parsed <= 0
+  ) {
+    return undefined;
+  }
+
+  return parsed;
 }

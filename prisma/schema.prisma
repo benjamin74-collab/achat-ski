@@ -231,7 +231,7 @@ model Product {
   season String?
 
   categoryId Int?
-  category   Category? @relation("ProductPrimaryCategory", fields: [categoryId], references: [id], onDelete: SetNull)
+  category   Category?         @relation("ProductPrimaryCategory", fields: [categoryId], references: [id], onDelete: SetNull)
   categories ProductCategory[]
 
   slug        String   @unique
@@ -251,6 +251,7 @@ model Product {
   clicks  Click[]
   reviews Review[]
   tests   EditorialTest[]
+  sites   SiteProduct[]
 
   @@index([brandId])
   @@index([categoryId])
@@ -316,8 +317,9 @@ model Merchant {
   websiteUrl String? @db.VarChar(512)
   active     Boolean @default(true)
 
-  offers      Offer[]
-  feedImports FeedImport[]
+  offers            Offer[]
+  feedImports       FeedImport[]
+  affiliatePrograms AffiliateProgram[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @default(now()) @updatedAt
@@ -327,19 +329,25 @@ model Offer {
   id Int @id @default(autoincrement())
 
   productId Int
-  product Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+  product   Product @relation(fields: [productId], references: [id], onDelete: Cascade)
 
   merchantId Int
-  merchant Merchant @relation(fields: [merchantId], references: [id])
+  merchant   Merchant @relation(fields: [merchantId], references: [id])
+
+  affiliateProgramId Int?
+  affiliateProgram   AffiliateProgram? @relation(fields: [affiliateProgramId], references: [id], onDelete: SetNull)
+
+  feedSourceId Int?
+  feedSource   FeedSource? @relation(fields: [feedSourceId], references: [id], onDelete: SetNull)
 
   affiliateUrl String @db.VarChar(2048)
 
   merchantProductUrl String? @db.VarChar(2048)
 
-  externalId String?
+  externalId       String?
   parentExternalId String?
 
-  priceCents Int
+  priceCents    Int
   oldPriceCents Int?
 
   shippingCents Int?
@@ -352,19 +360,21 @@ model Offer {
 
   imageUrl String? @db.VarChar(1024)
 
-  active Boolean @default(true)
+  active     Boolean   @default(true)
+  archivedAt DateTime?
 
-  lastSeen DateTime? @default(now())
+  lastSeen        DateTime? @default(now())
   feedKey         String?
-  sourceItemCount Int      @default(1)
+  sourceItemCount Int       @default(1)
 
-  clicks Click[]
+  clicks       Click[]
   priceHistory PriceHistory[]
 
   @@unique([productId, merchantId])
-
   @@index([productId])
   @@index([merchantId])
+  @@index([affiliateProgramId])
+  @@index([feedSourceId])
   @@index([externalId])
   @@index([parentExternalId])
   @@index([inStock])
@@ -515,10 +525,11 @@ model Category {
   aliases        String[]
   showOnHomepage Boolean  @default(false)
 
-  primaryProducts Product[]          @relation("ProductPrimaryCategory")
-  products        ProductCategory[]
-  pages         Page[]
-  featuredLinks CategoryFeaturedLink[]
+  primaryProducts  Product[]                 @relation("ProductPrimaryCategory")
+  products         ProductCategory[]
+  pages            Page[]
+  featuredLinks    CategoryFeaturedLink[]
+  externalMappings CategoryExternalMapping[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -549,34 +560,239 @@ model ProductCategory {
  * IMPORTS PRODUITS / FLUX AFFILIÉS
  * ------------------------------
  */
+
+model AffiliateNetwork {
+  id Int @id @default(autoincrement())
+
+  name String
+  slug String @unique
+
+  websiteUrl String? @db.VarChar(512)
+  active     Boolean @default(true)
+
+  programs AffiliateProgram[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([active])
+}
+
+model AffiliateProgram {
+  id Int @id @default(autoincrement())
+
+  siteId String
+
+  merchantId Int
+  merchant   Merchant @relation(fields: [merchantId], references: [id], onDelete: Cascade)
+
+  networkId Int
+  network   AffiliateNetwork @relation(fields: [networkId], references: [id], onDelete: Cascade)
+
+  name              String?
+  externalProgramId String?
+  trackingId        String?
+  active            Boolean @default(true)
+
+  feeds  FeedSource[]
+  offers Offer[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([siteId, merchantId, networkId])
+  @@index([siteId])
+  @@index([merchantId])
+  @@index([networkId])
+  @@index([active])
+}
+
+model FeedSource {
+  id Int @id @default(autoincrement())
+
+  siteId String
+
+  affiliateProgramId Int
+  affiliateProgram   AffiliateProgram @relation(fields: [affiliateProgramId], references: [id], onDelete: Cascade)
+
+  name String
+  slug String
+
+  sourceUrl String @db.VarChar(2048)
+
+  format    FeedFormat @default(CSV)
+  delimiter String     @default(";")
+  encoding  String     @default("utf-8")
+
+  active     Boolean @default(true)
+  autoImport Boolean @default(false)
+
+  frequency FeedFrequency @default(MANUAL_ONLY)
+  timezone  String        @default("Europe/Paris")
+
+  lastRunAt        DateTime?
+  nextRunAt        DateTime?
+  lastSuccessAt    DateTime?
+  lastFailureAt    DateTime?
+  lastStatus       FeedImportStatus?
+  lastErrorMessage String?           @db.Text
+
+  columnMappings   FeedColumnMapping[]
+  categoryMappings CategoryExternalMapping[]
+  imports          FeedImport[]
+  offers           Offer[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([siteId, slug])
+  @@index([siteId])
+  @@index([affiliateProgramId])
+  @@index([active, autoImport])
+  @@index([nextRunAt])
+}
+
+model FeedColumnMapping {
+  id Int @id @default(autoincrement())
+
+  feedSourceId Int
+  feedSource   FeedSource @relation(fields: [feedSourceId], references: [id], onDelete: Cascade)
+
+  targetField     String
+  sourceColumn    String
+  fallbackColumns String[]
+  required        Boolean  @default(false)
+  defaultValue    String?
+  transform       String?
+  order           Int      @default(0)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([feedSourceId, targetField])
+  @@index([feedSourceId])
+  @@index([targetField])
+}
+
+model CategoryExternalMapping {
+  id Int @id @default(autoincrement())
+
+  feedSourceId Int
+  feedSource   FeedSource @relation(fields: [feedSourceId], references: [id], onDelete: Cascade)
+
+  categoryId Int
+  category   Category @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+
+  externalPath           String
+  normalizedExternalPath String
+  priority               Int     @default(0)
+  active                 Boolean @default(true)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([feedSourceId, normalizedExternalPath, categoryId])
+  @@index([feedSourceId])
+  @@index([categoryId])
+  @@index([active])
+}
+
+model SiteProduct {
+  id Int @id @default(autoincrement())
+
+  siteId    String
+  productId Int
+  product   Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  published Boolean @default(false)
+  active    Boolean @default(true)
+
+  firstSeenAt DateTime  @default(now())
+  lastSeenAt  DateTime?
+  archivedAt  DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([siteId, productId])
+  @@index([siteId, published])
+  @@index([siteId, active])
+  @@index([productId])
+}
+
+enum FeedFormat {
+  CSV
+  TSV
+  XML
+  JSON
+}
+
+enum FeedFrequency {
+  MANUAL_ONLY
+  EVERY_6_HOURS
+  EVERY_12_HOURS
+  DAILY
+  WEEKLY
+}
+
+enum FeedImportStatus {
+  PENDING
+  RUNNING
+  SUCCESS
+  PARTIAL
+  FAILED
+  CANCELLED
+}
+
+enum FeedImportTrigger {
+  MANUAL
+  CRON
+  API
+  RETRY
+}
+
 model FeedImport {
   id         Int      @id @default(autoincrement())
   merchant   Merchant @relation(fields: [merchantId], references: [id])
   merchantId Int
 
-  platform String?
-  filename String?
-  feedKey   String?
-  sourceUrl String? @db.VarChar(2048)
-  status   String  @default("pending")
-  notes    String?
+  feedSourceId Int?
+  feedSource   FeedSource? @relation(fields: [feedSourceId], references: [id], onDelete: SetNull)
 
-  totalRows       Int @default(0)
-  importedRows    Int @default(0)
-  createdProducts Int @default(0)
-  updatedProducts Int @default(0)
-  createdSkus     Int @default(0)
-  updatedSkus     Int @default(0)
-  createdOffers   Int @default(0)
-  updatedOffers   Int @default(0)
+  siteId  String?
+  trigger FeedImportTrigger @default(MANUAL)
+
+  platform     String?
+  filename     String?
+  feedKey      String?
+  sourceUrl    String?           @db.VarChar(2048)
+  status       String            @default("pending")
+  statusV2     FeedImportStatus?
+  notes        String?
+  errorMessage String?           @db.Text
+
+  totalRows           Int @default(0)
+  importedRows        Int @default(0)
+  createdProducts     Int @default(0)
+  updatedProducts     Int @default(0)
+  createdSkus         Int @default(0)
+  updatedSkus         Int @default(0)
+  createdOffers       Int @default(0)
+  updatedOffers       Int @default(0)
+  unchangedProducts   Int @default(0)
+  restoredProducts    Int @default(0)
+  unchangedOffers     Int @default(0)
+  restoredOffers      Int @default(0)
   skippedRows         Int @default(0)
   deactivatedOffers   Int @default(0)
   deactivatedProducts Int @default(0)
   deletedProducts     Int @default(0)
-  errorsCount     Int @default(0)
+  errorsCount         Int @default(0)
+  warningsCount       Int @default(0)
 
   startedAt  DateTime  @default(now())
   finishedAt DateTime?
+  durationMs Int?
 
   rawProducts RawFeedProduct[]
 
@@ -584,7 +800,10 @@ model FeedImport {
   updatedAt DateTime @updatedAt
 
   @@index([merchantId])
+  @@index([feedSourceId])
+  @@index([siteId])
   @@index([status])
+  @@index([statusV2])
   @@index([startedAt])
   @@index([feedKey])
 }
@@ -669,12 +888,12 @@ model SiteSettings {
 
   categoryTiles Json?
   topBrands     Json?
-  pagesContent Json?
+  pagesContent  Json?
 
   footerTrustTitle String?
   footerTrustItems Json?
   footerCopyright  String?
-  
+
   contentSettings Json?
 
   robotsIndex     Boolean @default(true)
@@ -861,7 +1080,7 @@ enum FeaturedLinkType {
 }
 
 model LegalPage {
-  id     Int    @id @default(autoincrement())
+  id     Int           @id @default(autoincrement())
   siteId String
   type   LegalPageType
 

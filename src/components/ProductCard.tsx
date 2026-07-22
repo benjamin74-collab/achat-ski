@@ -28,7 +28,7 @@ type CommonProps = {
   /** Prix total (centimes) à afficher “à partir de …” */
   minPriceCents?: number | null;
   currency?: Currency;
-  /** Badge optionnel (ex: "Nouveau") */
+  /** Badge optionnel */
   badge?: string;
 };
 
@@ -37,10 +37,20 @@ type Props = CommonProps & (PropsByHref | PropsByProduct);
 
 function getLinkAndTitle(props: Props): { href: string; title: string } {
   if ("href" in props) {
-    return { href: props.href, title: props.title };
+    return {
+      href: props.href,
+      title: props.title,
+    };
   }
-  const title = [props.brand, props.model, props.season ?? ""].filter(Boolean).join(" ");
-  return { href: `/p/${props.slug}`, title };
+
+  const title = [props.brand, props.model, props.season ?? ""]
+    .filter(Boolean)
+    .join(" ");
+
+  return {
+    href: `/p/${props.slug}`,
+    title,
+  };
 }
 
 export default function ProductCard(props: Props) {
@@ -50,7 +60,7 @@ export default function ProductCard(props: Props) {
     minPriceCents,
     currency = "EUR",
     subtitle,
-    badge = "Nouveau",
+    badge,
   } = props;
 
   const { href, title } = getLinkAndTitle(props);
@@ -69,7 +79,7 @@ export default function ProductCard(props: Props) {
               priority={false}
             />
           ) : (
-            <div className="absolute inset-0 grid place-items-center text-slate-400 text-xs">
+            <div className="absolute inset-0 grid place-items-center text-xs text-slate-400">
               Photo à venir
             </div>
           )}
@@ -82,29 +92,42 @@ export default function ProductCard(props: Props) {
         </div>
 
         <div className="p-4">
-          <h3 className="text-base font-semibold text-ink line-clamp-2">{title}</h3>
+          <h3 className="line-clamp-2 text-base font-semibold text-ink">
+            {title}
+          </h3>
 
           {subtitle ? (
-            <div className="mt-0.5 text-xs text-slate-500 line-clamp-1">{subtitle}</div>
+            <div className="mt-0.5 line-clamp-1 text-xs text-slate-500">
+              {subtitle}
+            </div>
           ) : null}
 
           <div className="mt-2 text-xs text-slate-500">
-            {offerCount != null ? `${offerCount} offre${offerCount > 1 ? "s" : ""}` : "—"}
+            {offerCount != null
+              ? `${offerCount} offre${offerCount > 1 ? "s" : ""}`
+              : "—"}
           </div>
 
           <div className="mt-3 flex items-center justify-between">
             <div className="text-xs text-slate-500">à partir de</div>
+
             <div className="text-lg font-extrabold text-sec-600">
-              {minPriceCents != null ? money(minPriceCents, currency) : "—"}
+              {minPriceCents != null
+                ? money(minPriceCents, currency)
+                : "—"}
             </div>
           </div>
 
           <div className="mt-3 flex items-center gap-2">
-            <span className="chip">Livraison & retours selon marchand</span>
+            <span className="chip">
+              Livraison & retours selon marchand
+            </span>
           </div>
 
           <div className="mt-4">
-            <span className="btn w-full group-hover:shadow-brand">Voir le produit</span>
+            <span className="btn w-full group-hover:shadow-brand">
+              Voir le produit
+            </span>
           </div>
         </div>
       </Link>

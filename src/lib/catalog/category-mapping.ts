@@ -12,36 +12,81 @@ type CategoryTreeEntry = MappedCategory & {
 };
 
 type CategoryMappingEntry = CategoryTreeEntry & {
+  externalPath: string;
   normalizedMapping: string;
+  priority: number;
 };
 
-export type EkosportCategoryMappings = {
+export type FeedCategoryMappings = {
+  feedSourceId?: number;
   mappings: CategoryMappingEntry[];
   categoriesById: Map<number, CategoryTreeEntry>;
 };
 
-export async function loadEkosportCategoryMappings(
-  prisma: PrismaClient
-): Promise<EkosportCategoryMappings> {
-  /*
-   * On charge toutes les catégories publiées, y compris celles
-   * qui n'ont aucun mapEkosport.
-   *
-   * Elles sont nécessaires pour pouvoir remonter automatiquement
-   * toute la hiérarchie des catégories parentes.
-   */
-  const categories = await prisma.category.findMany({
-    where: {
-      published: true,
-    },
-    select: {
-      id: true,
-      slug: true,
-      name: true,
-      parentId: true,
-      mapEkosport: true,
-    },
-  });
+/**
+ * Alias conservé pour ne pas casser l’import Ekosport existant.
+ */
+export type EkosportCategoryMappings =
+  FeedCategoryMappings;
+
+/**
+ * Charge les correspondances universelles d’un flux depuis :
+ *
+ * CategoryExternalMapping
+ *
+ * Les catégories parentes sont également chargées afin de pouvoir
+ * associer automatiquement un produit à toute sa hiérarchie.
+ */
+export async function loadFeedCategoryMappings(
+  prisma: PrismaClient,
+  feedSourceId: number
+): Promise<FeedCategoryMappings> {
+  const [categories, externalMappings] =
+    await Promise.all([
+      prisma.category.findMany({
+        where: {
+          published: true,
+        },
+        select: {
+          id: true,
+          slug: true,
+          name: true,
+          parentId: true,
+        },
+      }),
+
+      prisma.categoryExternalMapping.findMany({
+        where: {
+          feedSourceId,
+          active: true,
+          category: {
+            published: true,
+          },
+        },
+        select: {
+          externalPath: true,
+          normalizedExternalPath: true,
+          priority: true,
+
+          category: {
+            select: {
+              id: true,
+              slug: true,
+              name: true,
+              parentId: true,
+            },
+          },
+        },
+        orderBy: [
+          {
+            priority: "desc",
+          },
+          {
+            normalizedExternalPath: "desc",
+          },
+        ],
+      }),
+    ]);
 
   const categoriesById = new Map<
     number,
@@ -57,48 +102,56 @@ export async function loadEkosportCategoryMappings(
     });
   }
 
-  /*
-   * Seules les catégories possédant au moins une valeur
-   * mapEkosport participent à la correspondance directe
-   * avec les chemins du flux.
-   */
-  const mappings = categories
-    .flatMap((category) =>
-      category.mapEkosport
-        .map(normalizeCategoryPath)
-        .filter(Boolean)
-        .map((normalizedMapping) => ({
-          id: category.id,
-          slug: category.slug,
-          name: category.name,
-          parentId: category.parentId,
+  const mappings: CategoryMappingEntry[] =
+    externalMappings
+      .map((mapping) => {
+        const normalizedMapping =
+          normalizeCategoryPath(
+            mapping.normalizedExternalPath ||
+              mapping.externalPath
+          );
+
+        return {
+          id: mapping.category.id,
+          slug: mapping.category.slug,
+          name: mapping.category.name,
+          parentId:
+            mapping.category.parentId,
+
+          externalPath:
+            mapping.externalPath,
+
           normalizedMapping,
-        }))
-    )
-    .sort(
-      (a, b) =>
-        b.normalizedMapping.length -
-        a.normalizedMapping.length
-    );
+          priority: mapping.priority,
+        };
+      })
+      .filter(
+        (
+          mapping
+        ): mapping is CategoryMappingEntry =>
+          Boolean(mapping.normalizedMapping)
+      )
+      .sort(compareMappings);
 
   return {
+    feedSourceId,
     mappings,
     categoriesById,
   };
 }
 
 /**
- * Résout un chemin de catégorie Ekosport.
+ * Résout un chemin de catégorie provenant de n’importe quel flux.
  *
- * La catégorie explicitement mappée la plus précise devient
+ * La correspondance la plus prioritaire et la plus précise devient
  * la catégorie principale.
  *
- * Toutes ses catégories parentes sont ensuite automatiquement
- * ajoutées dans la liste des catégories associées au produit.
+ * Toutes les autres correspondances compatibles ainsi que leurs
+ * catégories parentes sont conservées comme catégories secondaires.
  */
-export function resolveEkosportCategories(
+export function resolveFeedCategories(
   categoryPath: string | null | undefined,
-  source: EkosportCategoryMappings
+  source: FeedCategoryMappings
 ): CategoryResolution | null {
   const normalizedPath =
     normalizeCategoryPath(categoryPath);
@@ -107,24 +160,21 @@ export function resolveEkosportCategories(
     return null;
   }
 
-  const matchingEntries = source.mappings.filter(
-    ({ normalizedMapping }) =>
+  const matchingEntries = source.mappings
+    .filter(({ normalizedMapping }) =>
       categoryMatches(
         normalizedPath,
         normalizedMapping
       )
-  );
+    )
+    .sort(compareMappings);
 
   if (matchingEntries.length === 0) {
     return null;
   }
 
-  /*
-   * Les mappings sont triés par longueur décroissante.
-   * La première correspondance est donc normalement
-   * la catégorie la plus précise.
-   */
-  const mostPreciseMatch = matchingEntries[0];
+  const mostPreciseMatch =
+    matchingEntries[0];
 
   if (!mostPreciseMatch) {
     return null;
@@ -141,23 +191,13 @@ export function resolveEkosportCategories(
     MappedCategory
   >();
 
-  /*
-   * On ajoute toutes les catégories correspondant explicitement
-   * au chemin Ekosport.
-   */
   for (const match of matchingEntries) {
     resolvedCategories.set(match.id, {
       id: match.id,
       slug: match.slug,
       name: match.name,
     });
-  }
 
-  /*
-   * Pour chaque catégorie explicitement trouvée, on remonte
-   * automatiquement tous ses parents.
-   */
-  for (const match of matchingEntries) {
     addCategoryAndAncestors(
       match.id,
       source.categoriesById,
@@ -165,11 +205,9 @@ export function resolveEkosportCategories(
     );
   }
 
-  /*
-   * On force la catégorie principale en première position.
-   */
   const categories = [
     primaryCategory,
+
     ...Array.from(
       resolvedCategories.values()
     ).filter(
@@ -185,32 +223,147 @@ export function resolveEkosportCategories(
 }
 
 /**
- * Alias temporaire permettant de conserver la compatibilité
- * avec un éventuel ancien import utilisant encore une seule
- * catégorie.
+ * Retourne uniquement la catégorie principale.
  */
-export function resolveEkosportCategory(
+export function resolveFeedCategory(
   categoryPath: string | null | undefined,
-  source: EkosportCategoryMappings
+  source: FeedCategoryMappings
 ): MappedCategory | null {
   return (
-    resolveEkosportCategories(
+    resolveFeedCategories(
       categoryPath,
       source
     )?.primaryCategory ?? null
   );
 }
 
+/**
+ * Compatibilité temporaire avec l’ancien système Ekosport basé
+ * sur Category.mapEkosport.
+ *
+ * Cette fonction pourra être supprimée lorsque tous les mappings
+ * Ekosport auront été transférés dans CategoryExternalMapping.
+ */
+export async function loadEkosportCategoryMappings(
+  prisma: PrismaClient
+): Promise<EkosportCategoryMappings> {
+  const categories =
+    await prisma.category.findMany({
+      where: {
+        published: true,
+      },
+      select: {
+        id: true,
+        slug: true,
+        name: true,
+        parentId: true,
+        mapEkosport: true,
+      },
+    });
+
+  const categoriesById = new Map<
+    number,
+    CategoryTreeEntry
+  >();
+
+  for (const category of categories) {
+    categoriesById.set(category.id, {
+      id: category.id,
+      slug: category.slug,
+      name: category.name,
+      parentId: category.parentId,
+    });
+  }
+
+  const mappings: CategoryMappingEntry[] =
+    categories
+      .flatMap((category) =>
+        category.mapEkosport
+          .map((externalPath) => ({
+            id: category.id,
+            slug: category.slug,
+            name: category.name,
+            parentId: category.parentId,
+
+            externalPath,
+
+            normalizedMapping:
+              normalizeCategoryPath(
+                externalPath
+              ),
+
+            priority: 0,
+          }))
+      )
+      .filter(
+        (
+          mapping
+        ): mapping is CategoryMappingEntry =>
+          Boolean(mapping.normalizedMapping)
+      )
+      .sort(compareMappings);
+
+  return {
+    mappings,
+    categoriesById,
+  };
+}
+
+/**
+ * Alias Ekosport conservé pendant la transition.
+ */
+export function resolveEkosportCategories(
+  categoryPath: string | null | undefined,
+  source: EkosportCategoryMappings
+): CategoryResolution | null {
+  return resolveFeedCategories(
+    categoryPath,
+    source
+  );
+}
+
+/**
+ * Alias Ekosport conservé pendant la transition.
+ */
+export function resolveEkosportCategory(
+  categoryPath: string | null | undefined,
+  source: EkosportCategoryMappings
+): MappedCategory | null {
+  return resolveFeedCategory(
+    categoryPath,
+    source
+  );
+}
+
+/**
+ * Normalise les séparateurs et le texte des chemins marchands.
+ *
+ * Exemples convertis vers le même format :
+ *
+ * Ski / Skis piste
+ * Ski > Skis piste
+ * Ski | Skis piste
+ * Ski » Skis piste
+ */
 export function normalizeCategoryPath(
   value: string | null | undefined
 ): string {
   return normalizeText(value)
     .toLowerCase()
-    .replace(/\s*(>|\/|\||»|→)\s*/g, " > ")
+    .replace(
+      /\s*(>|\/|\||»|→)\s*/g,
+      " > "
+    )
     .replace(/\s+/g, " ")
     .trim();
 }
 
+/**
+ * Une catégorie correspond lorsque :
+ *
+ * - le chemin est strictement identique ;
+ * - le mapping représente un parent du chemin marchand.
+ */
 function categoryMatches(
   normalizedPath: string,
   normalizedMapping: string
@@ -224,10 +377,30 @@ function categoryMatches(
 }
 
 /**
- * Ajoute une catégorie ainsi que tous ses parents.
+ * Trie les mappings selon :
  *
- * Une protection empêche une éventuelle boucle dans la hiérarchie
- * si des parentId incorrects sont enregistrés en base.
+ * 1. la priorité définie dans le back-office ;
+ * 2. la précision du chemin.
+ */
+function compareMappings(
+  a: CategoryMappingEntry,
+  b: CategoryMappingEntry
+): number {
+  if (a.priority !== b.priority) {
+    return b.priority - a.priority;
+  }
+
+  return (
+    b.normalizedMapping.length -
+    a.normalizedMapping.length
+  );
+}
+
+/**
+ * Ajoute une catégorie et remonte toute sa hiérarchie.
+ *
+ * Le Set visited protège le moteur contre une éventuelle boucle
+ * dans les relations parent/enfant.
  */
 function addCategoryAndAncestors(
   categoryId: number,
@@ -242,7 +415,8 @@ function addCategoryAndAncestors(
 ): void {
   const visited = new Set<number>();
 
-  let currentId: number | null = categoryId;
+  let currentId: number | null =
+    categoryId;
 
   while (currentId !== null) {
     if (visited.has(currentId)) {

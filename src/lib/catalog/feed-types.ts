@@ -5,8 +5,18 @@ export type MerchantPlatform =
   | "DIRECT"
   | "OTHER";
 
+export type FeedNormalizerConfig = {
+  merchantSlug: string;
+  merchantPlatform: MerchantPlatform;
+};
+
+export type FeedNormalizerContext = {
+  config: FeedNormalizerConfig;
+};
+
 /**
- * Représentation normalisée d'une ligne provenant d'un flux marchand.
+ * Représentation normalisée d'une ligne provenant
+ * d'un flux marchand.
  */
 export interface NormalizedFeedItem {
   merchantSlug: string;
@@ -61,16 +71,6 @@ export type MappedCategory = {
   name: string;
 };
 
-/**
- * Résultat du mapping d'une catégorie marchande.
- *
- * primaryCategory :
- * catégorie la plus précise utilisée par Product.categoryId.
- *
- * categories :
- * toutes les catégories pertinentes, y compris la catégorie principale
- * et les catégories parentes ou transversales.
- */
 export type CategoryResolution = {
   primaryCategory: MappedCategory;
   categories: MappedCategory[];
@@ -104,11 +104,36 @@ export type ImportStats = {
   deactivatedOffers: number;
   deactivatedProducts: number;
   deletedProducts: number;
+
   errors: number;
 };
 
-export interface FeedImportResult extends ImportStats {
+export interface FeedImportResult
+  extends ImportStats {
   feedImportId: number;
   feedKey: string;
   status: string;
+}
+
+export function createEmptyImportStats(
+  totalRows = 0
+): ImportStats {
+  return {
+    totalRows,
+    normalizedRows: 0,
+    acceptedRows: 0,
+    skippedRows: 0,
+    groupedProducts: 0,
+
+    createdProducts: 0,
+    updatedProducts: 0,
+    createdOffers: 0,
+    updatedOffers: 0,
+
+    deactivatedOffers: 0,
+    deactivatedProducts: 0,
+    deletedProducts: 0,
+
+    errors: 0,
+  };
 }
