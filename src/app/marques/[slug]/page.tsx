@@ -322,12 +322,14 @@ export default async function BrandPage({ params }: { params: { slug: string } }
 
               return (
                 <ProductCard
-                  key={p.id}
-                  href={`/p/${p.slug}`}
-                  title={title}
-                  subtitle={p.category?.name}
-                  minPriceCents={p.minTotal ?? null}
-                />
+				  key={p.id}
+				  href={`/p/${p.slug}`}
+				  title={title}
+				  subtitle={p.category?.name}
+				  imageUrl={p.imageUrl?.trim() || undefined}
+				  offerCount={p.offerCount}
+				  minPriceCents={p.minTotal ?? null}
+				/>
               );
             })}
           </div>
