@@ -24,7 +24,8 @@
     "feed:import:ekosport": "tsx prisma/import-ekosport-feed.ts",
     "feed:import:tonton": "tsx prisma/import-tonton-feed.ts",
 	"feed:audit:ekosport-categories": "tsx prisma/audit-ekosport-categories.ts",
-	"feed:map:ekosport-categories": "tsx prisma/seed-ekosport-category-mappings.ts"
+	"feed:map:ekosport-categories": "tsx prisma/seed-ekosport-category-mappings.ts",
+	"feed:seed:ekosport": "tsx prisma/seed-universal-ekosport.ts"
   },
   "dependencies": {
     "@next-auth/prisma-adapter": "^1.0.7",
