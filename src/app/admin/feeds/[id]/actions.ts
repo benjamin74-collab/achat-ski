@@ -202,6 +202,8 @@ function extractErrorMessage(
     return fallback;
   }
 
+  const record = value as Record<string, unknown>;
+
   const candidateKeys = [
     "message",
     "error",
@@ -209,16 +211,11 @@ function extractErrorMessage(
   ];
 
   for (const key of candidateKeys) {
-    if (!(key in value)) {
-      continue;
-    }
-
-    const candidate =
-      value[key as keyof typeof value];
+    const candidate = record[key];
 
     if (
       typeof candidate === "string" &&
-      candidate.trim()
+      candidate.trim().length > 0
     ) {
       return candidate;
     }
