@@ -899,9 +899,12 @@ export default async function AdminFeedPage({
               />
 
               <DefinitionRow
-                label="Programme"
-                value={feed.affiliateProgram.name}
-              />
+				label="Programme"
+				value={
+				feed.affiliateProgram.name ||
+				"Programme sans nom"
+				 }
+			  />
 
               <DefinitionRow
                 label="Programme actif"
