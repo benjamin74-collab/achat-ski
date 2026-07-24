@@ -3,20 +3,9 @@
 import { MerchantNetwork } from "@prisma/client";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
+import type { AffiliationFormState } from "./types";
 
 import { prisma } from "@/lib/prisma";
-
-export type AffiliationFormState = {
-  success: boolean;
-  message: string;
-  errors?: Record<string, string>;
-};
-
-export const INITIAL_AFFILIATION_FORM_STATE: AffiliationFormState = {
-  success: false,
-  message: "",
-  errors: {},
-};
 
 /* -------------------------------------------------------------------------- */
 /*                                  RÉSEAUX                                   */

@@ -8,18 +8,7 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 
 import { prisma } from "@/lib/prisma";
-
-export type FeedSourceFormState = {
-  success: boolean;
-  message: string;
-  errors?: Record<string, string>;
-};
-
-export const INITIAL_FEED_SOURCE_FORM_STATE: FeedSourceFormState = {
-  success: false,
-  message: "",
-  errors: {},
-};
+import type { FeedSourceFormState } from "./types";
 
 type ParsedFeedSourceForm = {
   affiliateProgramId: number;

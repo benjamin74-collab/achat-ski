@@ -9,9 +9,12 @@ import Link from "next/link";
 
 import {
   createFeedSourceAction,
-  INITIAL_FEED_SOURCE_FORM_STATE,
   updateFeedSourceAction,
 } from "@/app/admin/feeds/actions";
+
+import {
+  INITIAL_FEED_SOURCE_FORM_STATE,
+} from "@/app/admin/feeds/types";
 
 type AffiliateProgramOption = {
   id: number;

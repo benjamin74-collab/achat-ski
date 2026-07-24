@@ -9,9 +9,12 @@ import Link from "next/link";
 
 import {
   createMerchantAction,
-  INITIAL_AFFILIATION_FORM_STATE,
   updateMerchantAction,
 } from "@/app/admin/affiliation/actions";
+
+import {
+  INITIAL_AFFILIATION_FORM_STATE,
+} from "@/app/admin/affiliation/types";
 
 type Props = {
   mode: "create" | "edit";
