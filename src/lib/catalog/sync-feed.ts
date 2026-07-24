@@ -13,6 +13,10 @@ import {
 } from "./category-mapping";
 
 import {
+  enrichFeedCategories,
+} from "./category-enrichment";
+
+import {
   parseCsv,
 } from "./csv";
 
@@ -273,22 +277,29 @@ export async function syncFeedContent({
         continue;
       }
 
-      const categoryResolution =
-        resolveFeedCategories(
-          item.categoryPath,
-          categorySource
-        );
+		const mappedCategoryResolution =
+		  resolveFeedCategories(
+			item.categoryPath,
+			categorySource
+		  );
 
-      if (!categoryResolution) {
-        stats.skippedRows += 1;
+		if (!mappedCategoryResolution) {
+		  stats.skippedRows += 1;
 
-        continue;
-      }
+		  continue;
+		}
 
-      accepted.push({
-        item,
-        categoryResolution,
-      });
+		const categoryResolution =
+		  enrichFeedCategories(
+			item,
+			mappedCategoryResolution,
+			categorySource
+		  );
+
+		accepted.push({
+		  item,
+		  categoryResolution,
+		});
     }
 
     stats.acceptedRows =

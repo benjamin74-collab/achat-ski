@@ -13,6 +13,7 @@ import {
   normalizeEan,
   normalizeProductName,
   normalizeText,
+  removeLeadingBrandFromProductName,
   safeNumber,
   safeString,
 } from "./normalize";
@@ -156,11 +157,19 @@ export function normalizeGenericFeedRow(
     return null;
   }
 
-  const cleanName =
-    toOptionalString(
-      mappedValues.cleanName
-    ) ??
-    normalizeProductName(title);
+	const brand = normalizeBrandName(
+	  toOptionalString(mappedValues.brand)
+	);
+
+	const rawCleanName =
+	  toOptionalString(mappedValues.cleanName) ??
+	  normalizeProductName(title);
+
+	const cleanName =
+	  removeLeadingBrandFromProductName(
+		rawCleanName,
+		brand
+  );
 
   const availability =
     toOptionalString(
@@ -222,11 +231,7 @@ export function normalizeGenericFeedRow(
 
     title,
     cleanName,
-
-    brand: normalizeBrandName(
-      toOptionalString(
-        mappedValues.brand
-      )
+	brand,
     ),
 
     description: decodeHtml(

@@ -96,6 +96,32 @@ export function normalizeProductName(
   return normalized;
 }
 
+export function removeLeadingBrandFromProductName(
+  name: string | null | undefined,
+  brand: string | null | undefined
+): string {
+  const cleanName = normalizeText(name);
+  const cleanBrand = normalizeText(brand);
+
+  if (!cleanName || !cleanBrand) {
+    return cleanName;
+  }
+
+  const escapedBrand = escapeRegExp(cleanBrand);
+
+  const withoutBrand = cleanName
+    .replace(
+      new RegExp(
+        `^(?:${escapedBrand})(?:\\s+|\\s*[-–—:|/]\\s*)`,
+        "i"
+      ),
+      ""
+    )
+    .trim();
+
+  return withoutBrand || cleanName;
+}
+
 /**
  * Conservé pour compatibilité avec d'autres importeurs,
  * mais le moteur V2 ne crée plus de SKU.
