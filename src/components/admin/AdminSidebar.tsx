@@ -39,6 +39,11 @@ const NAV_SECTIONS: NavSection[] = [
         label: "Marques",
         desc: "Ajouter, modifier, supprimer",
       },
+	  {
+		href: "/admin/affiliation",
+		label: "Marchands & affiliation",
+		desc: "Réseaux, marchands et programmes",
+	  },
       {
         href: "/admin/feeds",
         label: "Flux d’affiliation",

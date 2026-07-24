@@ -269,6 +269,21 @@ export default function FeedSourceForm({
             message={state.errors?.sourceUrl}
           />
         </div>
+		<div className="mt-3 flex flex-wrap gap-3 text-xs font-medium">
+		  <Link
+			href="/admin/affiliation/programs/new?returnTo=/admin/feeds/new"
+			className="text-brand-700 hover:text-brand-800"
+		  >
+			+ Créer un programme
+		  </Link>
+
+		  <Link
+			href="/admin/affiliation"
+			className="text-slate-600 hover:text-slate-800"
+		  >
+			Gérer les marchands et réseaux
+		  </Link>
+		</div>
       </section>
 
       <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6">
