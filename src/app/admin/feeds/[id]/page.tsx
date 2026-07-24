@@ -2,6 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import FeedImportButton from "@/components/admin/FeedImportButton";
+import DeleteFeedSourceButton from "@/components/admin/DeleteFeedSourceButton";
 
 export const dynamic = "force-dynamic";
 
@@ -426,6 +427,19 @@ export default async function AdminFeedPage({
 			  feedId={feed.id}
 			  disabled={!feed.active}
 			/>
+			
+			<Link
+			  href={`/admin/feeds/${feed.id}/edit`}
+			  className="inline-flex min-h-10 items-center justify-center rounded-lg bg-brand-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-brand-700"
+			>
+			  Modifier le flux
+		  </Link>
+
+			<DeleteFeedSourceButton
+			  feedId={feed.id}
+			  feedName={feed.name}
+			/>
+			
             <Link
               href={`/admin/feeds/${feed.id}/mapping`}
               className="inline-flex min-h-10 items-center justify-center rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-700 shadow-sm transition hover:bg-slate-50"

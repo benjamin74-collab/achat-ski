@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { prisma } from "@/lib/prisma";
+import FeedImportButton from "@/components/admin/FeedImportButton";
 
 export const dynamic = "force-dynamic";
 
@@ -125,6 +126,7 @@ export default async function AdminFeedsPage() {
       timezone: true,
 
       lastRunAt: true,
+	  nextRunAt: true,
       lastSuccessAt: true,
       lastFailureAt: true,
       lastStatus: true,
@@ -237,13 +239,20 @@ export default async function AdminFeedsPage() {
         </div>
 
         <div className="flex flex-wrap gap-2">
-          <Link
-            href="/admin"
-            className="inline-flex min-h-10 items-center justify-center rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-700 shadow-sm transition hover:bg-slate-50"
-          >
-            Retour à l’administration
-          </Link>
-        </div>
+		  <Link
+			href="/admin/feeds/new"
+			className="inline-flex min-h-10 items-center justify-center rounded-lg bg-brand-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-brand-700"
+		  >
+			+ Nouveau flux
+		  </Link>
+
+		  <Link
+			href="/admin"
+			className="inline-flex min-h-10 items-center justify-center rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-700 shadow-sm transition hover:bg-slate-50"
+		  >
+			Retour à l’administration
+		  </Link>
+		</div>
       </div>
 
       <section className="mb-8 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
@@ -375,12 +384,24 @@ export default async function AdminFeedsPage() {
                       )}
                     </span>
 
-                    <Link
-                      href={`/admin/feeds/${feed.id}`}
-                      className="inline-flex min-h-10 items-center justify-center rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-700 shadow-sm transition hover:bg-slate-50"
-                    >
-                      Voir le flux
-                    </Link>
+                    <FeedImportButton
+					  feedId={feed.id}
+					  disabled={!feed.active}
+					/>
+
+					<Link
+					  href={`/admin/feeds/${feed.id}`}
+					  className="inline-flex min-h-10 items-center justify-center rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-700 shadow-sm transition hover:bg-slate-50"
+					>
+					  Voir
+					</Link>
+
+					<Link
+					  href={`/admin/feeds/${feed.id}/edit`}
+					  className="inline-flex min-h-10 items-center justify-center rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-700 shadow-sm transition hover:bg-slate-50"
+					>
+					  Modifier
+					</Link>
                   </div>
                 </div>
 
@@ -468,6 +489,15 @@ export default async function AdminFeedsPage() {
                             : feed.delimiter || "Automatique"
                         }
                       />
+					  
+					  <DefinitionRow
+						  label="Prochaine exécution"
+						  value={
+							feed.active && feed.autoImport
+							  ? formatDate(feed.nextRunAt)
+							  : "Non planifiée"
+						  }
+					  />
 
                       <DefinitionRow
                         label="Encodage"
