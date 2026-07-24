@@ -232,7 +232,6 @@ export function normalizeGenericFeedRow(
     title,
     cleanName,
 	brand,
-    ),
 
     description: decodeHtml(
       toOptionalString(
