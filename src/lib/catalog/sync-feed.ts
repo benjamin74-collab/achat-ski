@@ -14,6 +14,7 @@ import {
 
 import {
   enrichFeedCategories,
+  loadCategoryEnrichmentRules,
 } from "./category-enrichment";
 
 import {
@@ -249,11 +250,21 @@ export async function syncFeedContent({
     });
 
   try {
-    const categorySource =
-      await loadFeedCategoryMappings(
-        prisma,
-        runtime.feedSourceId
-      );
+    const [
+	  categorySource,
+	  categoryEnrichmentRules,
+	] = await Promise.all([
+	  loadFeedCategoryMappings(
+		prisma,
+		runtime.feedSourceId
+	  ),
+
+	  loadCategoryEnrichmentRules(
+		prisma,
+		runtime.siteId,
+		runtime.feedSourceId
+	  ),
+	]);
 
     if (
       categorySource.mappings.length === 0
@@ -293,7 +304,8 @@ export async function syncFeedContent({
 		  enrichFeedCategories(
 			item,
 			mappedCategoryResolution,
-			categorySource
+			categorySource,
+			categoryEnrichmentRules
 		  );
 
 		accepted.push({

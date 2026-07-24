@@ -533,6 +533,9 @@ model Category {
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+  
+  enrichmentRulesAsSource CategoryEnrichmentRule[] @relation("CategoryEnrichmentSource")
+  enrichmentRulesAsTarget CategoryEnrichmentRule[] @relation("CategoryEnrichmentTarget")
 
   @@index([parentId, order])
   @@index([slug])
@@ -639,6 +642,7 @@ model FeedSource {
 
   columnMappings   FeedColumnMapping[]
   categoryMappings CategoryExternalMapping[]
+  enrichmentRules CategoryEnrichmentRule[]
   imports          FeedImport[]
   offers           Offer[]
 
@@ -751,6 +755,11 @@ enum FeedImportTrigger {
   RETRY
 }
 
+enum CategoryEnrichmentMatchMode {
+  ANY
+  ALL
+}
+
 model FeedImport {
   id         Int      @id @default(autoincrement())
   merchant   Merchant @relation(fields: [merchantId], references: [id])
@@ -839,6 +848,84 @@ model RawFeedProduct {
   @@index([manufacturerRef])
   @@index([externalId])
   @@index([processed])
+}
+
+model CategoryEnrichmentRule {
+  id Int @id @default(autoincrement())
+
+  name String
+
+  /**
+   * Permet de limiter la règle à un site.
+   * Exemple : meilleur-ski.
+   */
+  siteId String
+
+  /**
+   * Si feedSourceId est renseigné, la règle ne s'applique
+   * qu'à ce flux.
+   *
+   * Si feedSourceId est null, elle s'applique à tous les flux
+   * du site.
+   */
+  feedSourceId Int?
+  feedSource   FeedSource? @relation(fields: [feedSourceId], references: [id], onDelete: Cascade)
+
+  /**
+   * Catégorie dans laquelle le produit doit déjà se trouver
+   * pour que la règle puisse s'appliquer.
+   *
+   * Facultatif : une règle sans catégorie source peut
+   * s'appliquer à tous les produits du site.
+   */
+  sourceCategoryId Int?
+  sourceCategory Category? @relation("CategoryEnrichmentSource", fields: [sourceCategoryId], references: [id], onDelete: Cascade)
+
+  /**
+   * Catégorie précise à ajouter au produit.
+   */
+  targetCategoryId Int
+  targetCategory Category @relation("CategoryEnrichmentTarget", fields: [targetCategoryId], references: [id], onDelete: Cascade)
+
+  /**
+   * Termes recherchés dans les données du produit.
+   *
+   * Les recherches sont insensibles à la casse et aux accents.
+   */
+  includeTerms String[]
+  excludeTerms String[]
+
+  /**
+   * ANY :
+   * au moins un terme doit être présent.
+   *
+   * ALL :
+   * tous les termes doivent être présents.
+   */
+  matchMode CategoryEnrichmentMatchMode @default(ANY)
+
+  searchTitle        Boolean @default(true)
+  searchDescription  Boolean @default(true)
+  searchCategoryPath Boolean @default(true)
+  searchBrand        Boolean @default(false)
+
+  /**
+   * Si true, la catégorie cible devient la catégorie principale.
+   * Sinon, elle est simplement ajoutée comme catégorie secondaire.
+   */
+  makePrimary Boolean @default(true)
+
+  priority Int     @default(0)
+  active   Boolean @default(true)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([siteId])
+  @@index([feedSourceId])
+  @@index([sourceCategoryId])
+  @@index([targetCategoryId])
+  @@index([active, priority])
 }
 
 /**
