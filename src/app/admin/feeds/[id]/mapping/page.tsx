@@ -269,7 +269,7 @@ export default async function FeedMappingPage({
         ))}
 		{feed.columnMappings.length === 0 && (
 		  <div className="rounded-2xl border border-dashed border-slate-300 bg-white px-6 py-12 text-center text-sm text-slate-500">
-			Aucun mapping de colonne n'est encore configuré.
+			Aucun mapping de colonne n&apos;est encore configuré.
 		  </div>
 		)}
       </section>
