@@ -20,11 +20,11 @@ const MAX_FEEDS_PER_RUN = 3;
 export async function GET(
   req: NextRequest
 ) {
-  const expectedSecret =
-    process.env.CRON_SECRET;
+	const expectedSecret =
+	  process.env.CRON_SECRET?.trim();
 
-  const authorization =
-    req.headers.get("authorization");
+	const authorization =
+	  req.headers.get("authorization")?.trim();
 
   if (
     !expectedSecret ||
