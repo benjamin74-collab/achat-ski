@@ -207,3 +207,28 @@ export function decodeHtml(
 function escapeRegExp(value: string): string {
   return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }
+
+export function normalizeGtin(
+  value: string | null | undefined
+): string | undefined {
+  if (!value) {
+    return undefined;
+  }
+
+  /*
+   * On conserve uniquement les chiffres.
+   * Il ne faut surtout pas convertir en Number :
+   * certains codes peuvent commencer par zéro.
+   */
+  const normalized = value.replace(/\D/g, "");
+
+  if (
+    ![8, 12, 13, 14].includes(
+      normalized.length
+    )
+  ) {
+    return undefined;
+  }
+
+  return normalized;
+}

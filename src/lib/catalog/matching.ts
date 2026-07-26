@@ -3,7 +3,10 @@ import type {
   MatchingResult,
   NormalizedFeedItem,
 } from "./feed-types";
-import { normalizeProductName } from "./normalize";
+import {
+  normalizeGtin,
+  normalizeProductName,
+} from "./normalize";
 
 export async function matchFeedItem(
   prisma: PrismaClient,
@@ -11,6 +14,29 @@ export async function matchFeedItem(
   merchantId: number,
   brandId?: number
 ): Promise<MatchingResult> {
+  const gtin = normalizeGtin(
+    item.gtin
+  );	
+  if (gtin) {
+    const product =
+      await prisma.product.findUnique({
+        where: {
+          gtin,
+        },
+        select: {
+          id: true,
+        },
+      });
+
+    if (product) {
+      return {
+        productId: product.id,
+        confidence: 100,
+        reason: "GTIN",
+      };
+    }
+  }
+	
   if (item.parentExternalId) {
     const offer = await prisma.offer.findFirst({
       where: {

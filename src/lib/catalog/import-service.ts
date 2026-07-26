@@ -14,6 +14,7 @@ import { matchFeedItem } from "./matching";
 
 import {
   buildProductSlug,
+  normalizeGtin,
   normalizeProductName,
   slugify,
   toPriceCents,
@@ -168,6 +169,10 @@ async function updateMatchedProduct(
 
   const normalizedName =
     normalizeProductName(name);
+	
+  const gtin = normalizeGtin(
+    item.gtin
+  );
 
   const product = await prisma.product.update({
     where: {
@@ -178,6 +183,7 @@ async function updateMatchedProduct(
       model: name,
       brand: item.brand,
       brandId,
+	  gtin: gtin || undefined,
 
       categoryId: primaryCategory.id,
 
@@ -231,6 +237,10 @@ async function createProduct(
 
   const baseSlug =
     buildProductSlug(item);
+	
+  const gtin = normalizeGtin(
+    item.gtin
+  );
 
   const product =
     await prisma.product.create({
@@ -239,6 +249,8 @@ async function createProduct(
         model: name,
         brand: item.brand,
         brandId,
+		
+		gtin,
 
         categoryId: primaryCategory.id,
 

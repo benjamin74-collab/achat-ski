@@ -32,6 +32,7 @@ export interface NormalizedFeedItem {
   brand?: string;
   description?: string;
   categoryPath?: string;
+  gtin?: string;
 
   size?: string;
   color?: string;
@@ -53,6 +54,7 @@ export interface NormalizedFeedItem {
 }
 
 export type MatchingReason =
+  | "GTIN"
   | "MERCHANT_PARENT_EXTERNAL_ID"
   | "MERCHANT_EXTERNAL_ID"
   | "BRAND_MANUFACTURER_REFERENCE"
