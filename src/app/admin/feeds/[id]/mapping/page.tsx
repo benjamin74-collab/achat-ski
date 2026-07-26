@@ -1,7 +1,10 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { prisma } from "@/lib/prisma";
-import { updateColumnMappingAction } from "./actions";
+import {
+  createDefaultColumnMappingsAction,
+  updateColumnMappingAction,
+} from "./actions";
 
 export const dynamic = "force-dynamic";
 
@@ -117,6 +120,42 @@ export default async function FeedMappingPage({
           fichier source, les valeurs de secours et les
           transformations.
         </div>
+		
+		{feed.columnMappings.length === 0 && (
+		  <form
+			action={
+			  createDefaultColumnMappingsAction
+			}
+			className="mt-5 rounded-2xl border border-dashed border-slate-300 bg-white p-6"
+		  >
+			<input
+			  type="hidden"
+			  name="feedId"
+			  value={feed.id}
+			/>
+
+			<h2 className="text-lg font-semibold text-slate-950">
+			  Initialiser les mappings
+			</h2>
+
+			<p className="mt-2 text-sm text-slate-600">
+			  Aucun mapping de colonne n’est
+			  actuellement configuré pour ce flux.
+			  Crée les champs standards utilisés par
+			  le moteur d’import, puis adapte les noms
+			  des colonnes à ceux du fichier Tonton
+			  Outdoor.
+			</p>
+
+			<button
+			  type="submit"
+			  className="mt-5 inline-flex min-h-10 items-center justify-center rounded-lg bg-slate-950 px-4 py-2 text-sm font-semibold text-white transition hover:bg-slate-800"
+			>
+			  Créer les mappings par défaut
+			</button>
+		  </form>
+		)}
+
       </header>
 
       <section className="space-y-5">
@@ -228,6 +267,11 @@ export default async function FeedMappingPage({
             </div>
           </form>
         ))}
+		{feed.columnMappings.length === 0 && (
+		  <div className="rounded-2xl border border-dashed border-slate-300 bg-white px-6 py-12 text-center text-sm text-slate-500">
+			Aucun mapping de colonne n'est encore configuré.
+		  </div>
+		)}
       </section>
     </main>
   );
