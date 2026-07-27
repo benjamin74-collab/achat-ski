@@ -214,7 +214,7 @@ export async function loadFeedRuntime(
   targetFields: mappings.map(
     (mapping) => mapping.targetField
   ),
-	  
+});	  
 
   const normalizerConfig:
     GenericFeedNormalizerConfig = {
