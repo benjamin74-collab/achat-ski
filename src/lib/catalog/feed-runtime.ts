@@ -202,6 +202,17 @@ export async function loadFeedRuntime(
           active: true,
         };
       }
+	  
+	  console.log("[feed-runtime]", {
+  feedSourceId,
+  feedName: feedSource.name,
+  databaseMappingsCount:
+    feedSource.columnMappings.length,
+  runtimeMappingsCount: mappings.length,
+  targetFields: mappings.map(
+    (mapping) => mapping.targetField
+  ),
+	  
     );
 
   const normalizerConfig:
