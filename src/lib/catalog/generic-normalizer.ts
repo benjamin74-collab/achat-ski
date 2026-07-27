@@ -27,7 +27,7 @@ import {
 export type FeedTargetField =
   | "externalId"
   | "parentExternalId"
-  | "ean"
+  | "gtin"
   | "manufacturerReference"
   | "title"
   | "cleanName"
@@ -217,9 +217,9 @@ export function normalizeGenericFeedRow(
         mappedValues.parentExternalId
       ),
 
-    ean: normalizeEan(
+    gtin: normalizeEan(
       toOptionalString(
-        mappedValues.ean
+        mappedValues.gtin
       )
     ),
 
@@ -416,7 +416,7 @@ function defaultTransformForField(
     case "shippingCost":
       return "NUMBER";
 
-    case "ean":
+    case "gtin":
       return "EAN";
 
     case "brand":
