@@ -281,19 +281,71 @@ export async function loadFeedRuntime(
 function normalizeTargetField(
   value: string
 ): FeedTargetField {
-  const normalized = value.trim();
+  const cleaned = value
+    .replace(/^\uFEFF/, "")
+    .replace(/[\u200B-\u200D\u2060]/g, "")
+    .replace(/\u00A0/g, " ")
+    .trim()
+    .replace(/^["']|["']$/g, "");
+
+  const aliases: Record<
+    string,
+    FeedTargetField
+  > = {
+    externalid: "externalId",
+    parentexternalid: "parentExternalId",
+    gtin: "gtin",
+    ean: "gtin",
+    manufacturerreference:
+      "manufacturerReference",
+    title: "title",
+    cleanname: "cleanName",
+    brand: "brand",
+    description: "description",
+    categorypath: "categoryPath",
+    size: "size",
+    color: "color",
+    gender: "gender",
+    price: "price",
+    oldprice: "oldPrice",
+    shippingcost: "shippingCost",
+    currency: "currency",
+    availability: "availability",
+    instock: "inStock",
+    affiliateurl: "affiliateUrl",
+    merchantproducturl:
+      "merchantProductUrl",
+    imageurl: "imageUrl",
+  };
+
+  const lookupKey = cleaned
+    .toLowerCase()
+    .replace(/[\s_-]+/g, "");
+
+  const normalized =
+    aliases[lookupKey];
 
   if (
-    !SUPPORTED_TARGET_FIELDS.has(
-      normalized as FeedTargetField
-    )
+    !normalized ||
+    !SUPPORTED_TARGET_FIELDS.has(normalized)
   ) {
+    const characterCodes = Array.from(
+      cleaned
+    ).map((character) =>
+      `${character}:${character.codePointAt(0)}`
+    );
+
     throw new Error(
-      `Champ cible non pris en charge : "${value}".`
+      [
+        `Champ cible non pris en charge : ${JSON.stringify(value)}.`,
+        `Valeur nettoyée : ${JSON.stringify(cleaned)}.`,
+        `Clé normalisée : ${JSON.stringify(lookupKey)}.`,
+        `Caractères : ${characterCodes.join(", ")}.`,
+      ].join(" ")
     );
   }
 
-  return normalized as FeedTargetField;
+  return normalized;
 }
 
 function normalizeTransform(
