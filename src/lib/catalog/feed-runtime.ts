@@ -202,7 +202,9 @@ export async function loadFeedRuntime(
           active: true,
         };
       }
-	  
+    );
+
+	
 	  console.log("[feed-runtime]", {
   feedSourceId,
   feedName: feedSource.name,
@@ -213,7 +215,6 @@ export async function loadFeedRuntime(
     (mapping) => mapping.targetField
   ),
 	  
-    );
 
   const normalizerConfig:
     GenericFeedNormalizerConfig = {
