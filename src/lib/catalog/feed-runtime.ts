@@ -173,6 +173,23 @@ export async function loadFeedRuntime(
         .platform
     );
 
+
+console.log(
+  "[feed-runtime:v3]",
+  {
+    feedSourceId,
+    mappings:
+      feedSource.columnMappings.map(
+        (mapping) => ({
+          id: mapping.id,
+          targetField:
+            mapping.targetField,
+        })
+      ),
+  }
+);
+
+
   const mappings: RuntimeColumnMapping[] =
     feedSource.columnMappings.map(
       (mapping) => {
