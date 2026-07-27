@@ -17,7 +17,7 @@ const SUPPORTED_TARGET_FIELDS =
   new Set<FeedTargetField>([
     "externalId",
     "parentExternalId",
-    "ean",
+    "gtin",
     "manufacturerReference",
     "title",
     "cleanName",
