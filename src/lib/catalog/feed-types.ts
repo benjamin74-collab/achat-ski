@@ -24,7 +24,6 @@ export interface NormalizedFeedItem {
 
   externalId?: string;
   parentExternalId?: string;
-  ean?: string;
   manufacturerReference?: string;
 
   title: string;

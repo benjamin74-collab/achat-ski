@@ -11,7 +11,9 @@ export type FeedValidationResult =
       errors: string[];
     };
 
-export function validateFeedItem(item: NormalizedFeedItem): FeedValidationResult {
+export function validateFeedItem(
+  item: NormalizedFeedItem
+): FeedValidationResult {
   const errors: string[] = [];
 
   if (!item.merchantSlug) {
@@ -30,12 +32,18 @@ export function validateFeedItem(item: NormalizedFeedItem): FeedValidationResult
     errors.push("Prix invalide ou manquant.");
   }
 
-  if (item.ean && !isValidEan(item.ean)) {
-    errors.push(`EAN invalide : ${item.ean}`);
+  if (item.gtin && !isValidGtin(item.gtin)) {
+    errors.push(`GTIN invalide : ${item.gtin}`);
   }
 
-  if (!item.externalId && !item.ean && !item.manufacturerReference) {
-    errors.push("Aucun identifiant exploitable : externalId, EAN ou référence fabricant manquant.");
+  if (
+    !item.externalId &&
+    !item.gtin &&
+    !item.manufacturerReference
+  ) {
+    errors.push(
+      "Aucun identifiant exploitable : externalId, GTIN ou référence fabricant manquant."
+    );
   }
 
   if (errors.length > 0) {
@@ -52,12 +60,19 @@ export function validateFeedItem(item: NormalizedFeedItem): FeedValidationResult
   };
 }
 
-export function validateFeedItems(items: NormalizedFeedItem[]): FeedValidationResult[] {
+export function validateFeedItems(
+  items: NormalizedFeedItem[]
+): FeedValidationResult[] {
   return items.map(validateFeedItem);
 }
 
-function isValidEan(value: string): boolean {
+function isValidGtin(value: string): boolean {
   const digits = value.replace(/\D/g, "");
 
-  return digits.length === 8 || digits.length === 12 || digits.length === 13 || digits.length === 14;
+  return (
+    digits.length === 8 ||
+    digits.length === 12 ||
+    digits.length === 13 ||
+    digits.length === 14
+  );
 }

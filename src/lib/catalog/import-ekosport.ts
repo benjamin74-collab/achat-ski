@@ -104,7 +104,7 @@ export function normalizeEkosportRow(row: CsvRow): NormalizedFeedItem {
       )
     ),
 
-    ean: normalizeEan(
+    gtin: normalizeEan(
       getColumn(
         row,
         "EAN or ISBN",

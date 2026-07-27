@@ -27,7 +27,7 @@ export function normalizeTontonRow(row: CsvRow): NormalizedFeedItem {
     externalId: safeString(row["id"]),
     parentExternalId: undefined,
 
-    ean: normalizeEan(row["universal reference"]),
+    gtin: normalizeEan(row["universal reference"]),
     manufacturerReference: safeString(row["manufacturer reference"]),
 
     title,
