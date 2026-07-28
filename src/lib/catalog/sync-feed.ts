@@ -304,81 +304,69 @@ console.log(
     const accepted:
       CategorizedFeedItem[] = [];
 
-    for (const item of normalizedItems) {
-const validation =
-  validateFeedItem(item);
+for (const item of normalizedItems) {
+  const validation =
+    validateFeedItem(item);
 
-
-
-
-
-if (!validation.valid) {
-  console.error(
-    "[feed-debug] validation failed:",
-    {
-      title: item.title,
-      gtin: item.gtin,
-      externalId: item.externalId,
-      manufacturerReference:
-        item.manufacturerReference,
-      price: item.price,
-      affiliateUrl:
-        item.affiliateUrl,
-      categoryPath:
-        item.categoryPath,
-      errors:
-        validation.errors,
-    }
-  );
-
-  stats.skippedRows += 1;
-  stats.errors += 1;
-
-  continue;
-}
-
-
-
-        stats.skippedRows += 1;
-        stats.errors += 1;
-
-        continue;
+  if (!validation.valid) {
+    console.error(
+      "[feed-debug] validation failed:",
+      {
+        title: item.title,
+        gtin: item.gtin,
+        externalId: item.externalId,
+        manufacturerReference:
+          item.manufacturerReference,
+        price: item.price,
+        affiliateUrl:
+          item.affiliateUrl,
+        categoryPath:
+          item.categoryPath,
+        errors:
+          validation.errors,
       }
+    );
 
-		const mappedCategoryResolution =
-		  resolveFeedCategories(
-			item.categoryPath,
-			categorySource
-		  );
+    stats.skippedRows += 1;
+    stats.errors += 1;
 
-		if (!mappedCategoryResolution) {
-		  console.error(
-			"[feed-debug] category not mapped:",
-			{
-			  title: item.title,
-			  categoryPath:
-				item.categoryPath,
-			}
-		  );
+    continue;
+  }
 
-		  stats.skippedRows += 1;
+  const mappedCategoryResolution =
+    resolveFeedCategories(
+      item.categoryPath,
+      categorySource
+    );
 
-		  continue;
-		}
+  if (!mappedCategoryResolution) {
+    console.error(
+      "[feed-debug] category not mapped:",
+      {
+        title: item.title,
+        categoryPath:
+          item.categoryPath,
+      }
+    );
 
-		const categoryResolution =
-		  enrichFeedCategories(
-			item,
-			mappedCategoryResolution,
-			categorySource,
-			categoryEnrichmentRules
-		  );
+    stats.skippedRows += 1;
 
-		accepted.push({
-		  item,
-		  categoryResolution,
-		});
-    }
+    continue;
+  }
+
+  const categoryResolution =
+    enrichFeedCategories(
+      item,
+      mappedCategoryResolution,
+      categorySource,
+      categoryEnrichmentRules
+    );
+
+  accepted.push({
+    item,
+    categoryResolution,
+  });
+}
 
     stats.acceptedRows =
       accepted.length;
