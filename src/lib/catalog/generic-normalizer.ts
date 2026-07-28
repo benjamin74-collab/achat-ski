@@ -92,7 +92,6 @@ export type RuntimeColumnMapping = {
   transform?: FeedColumnTransform | null;
 
   required?: boolean;
-  active?: boolean;
 };
 
 /**
@@ -312,38 +311,33 @@ function extractMappedValues(
     Record<FeedTargetField, unknown>
   > = {};
 
-  for (const mapping of mappings) {
-    if (mapping.active === false) {
-      continue;
-    }
+for (const mapping of mappings) {
+  const rawValue =
+    getFirstAvailableColumn(
+      row,
+      mapping.sourceColumns
+    ) ??
+    mapping.fallbackValue ??
+    undefined;
 
-    const rawValue =
-      getFirstAvailableColumn(
-        row,
-        mapping.sourceColumns
-      ) ??
-      mapping.fallbackValue ??
-      undefined;
+  const transformedValue =
+    applyColumnTransform(
+      rawValue,
+      mapping.transform ??
+        defaultTransformForField(
+          mapping.targetField
+        )
+    );
 
-    const transformedValue =
-      applyColumnTransform(
-        rawValue,
-        mapping.transform ??
-          defaultTransformForField(
-            mapping.targetField
-          )
-      );
-
-    if (
-      transformedValue !== undefined &&
-      transformedValue !== null &&
-      transformedValue !== ""
-    ) {
-      result[mapping.targetField] =
-        transformedValue;
-    }
+  if (
+    transformedValue !== undefined &&
+    transformedValue !== null &&
+    transformedValue !== ""
+  ) {
+    result[mapping.targetField] =
+      transformedValue;
   }
-
+}
   return result;
 }
 
@@ -606,40 +600,27 @@ export function validateRuntimeColumnMappings(
 ): string[] {
   const errors: string[] = [];
 
-  const activeTargets = new Set(
-    mappings
-      .filter(
-        (mapping) =>
-          mapping.active !== false
-      )
-      .map(
-        (mapping) =>
-          mapping.targetField
-      )
+  const configuredTargets = new Set(
+    mappings.map(
+      (mapping) => mapping.targetField
+    )
   );
 
-  const requiredTargets: FeedTargetField[] =
-    [
-      "title",
-      "price",
-      "affiliateUrl",
-    ];
+  const requiredTargets: FeedTargetField[] = [
+    "title",
+    "price",
+    "affiliateUrl",
+  ];
 
   for (const targetField of requiredTargets) {
-    if (
-      !activeTargets.has(targetField)
-    ) {
+    if (!configuredTargets.has(targetField)) {
       errors.push(
-        `Aucun mapping actif n’est configuré pour le champ obligatoire "${targetField}".`
+        `Aucun mapping n’est configuré pour le champ obligatoire "${targetField}".`
       );
     }
   }
 
   for (const mapping of mappings) {
-    if (mapping.active === false) {
-      continue;
-    }
-
     const hasSourceColumn =
       mapping.sourceColumns.some(
         (column) =>

@@ -199,7 +199,6 @@ export async function loadFeedRuntime(
 
           transform,
           required: mapping.required,
-          active: true,
         };
       }
     ); 

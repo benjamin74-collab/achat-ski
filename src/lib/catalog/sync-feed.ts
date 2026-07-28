@@ -173,6 +173,11 @@ export async function syncFeedContent({
   sourceUrl,
   filename,
 }: SyncFeedContentOptions): Promise<FeedImportResult> {
+  runtime = await loadFeedRuntime(
+    prisma,
+    runtime.feedSourceId
+  );
+  
   if (
     runtime.format !== "CSV" &&
     runtime.format !== "TSV"
