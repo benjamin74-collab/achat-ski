@@ -220,6 +220,28 @@ export async function syncFeedContent({
       rows,
       runtime.normalizerConfig
     );
+	
+	
+	
+	console.log(
+  "[feed-debug] rows:",
+  rows.length
+);
+
+console.log(
+  "[feed-debug] normalizedItems:",
+  normalizedItems.length
+);
+
+console.log(
+  "[feed-debug] first normalized item:",
+  normalizedItems[0]
+);
+	
+	
+	
+	
+	
 
   stats.normalizedRows =
     normalizedItems.length;
@@ -283,10 +305,40 @@ export async function syncFeedContent({
       CategorizedFeedItem[] = [];
 
     for (const item of normalizedItems) {
-      const validation =
-        validateFeedItem(item);
+const validation =
+  validateFeedItem(item);
 
-      if (!validation.valid) {
+
+
+
+
+if (!validation.valid) {
+  console.error(
+    "[feed-debug] validation failed:",
+    {
+      title: item.title,
+      gtin: item.gtin,
+      externalId: item.externalId,
+      manufacturerReference:
+        item.manufacturerReference,
+      price: item.price,
+      affiliateUrl:
+        item.affiliateUrl,
+      categoryPath:
+        item.categoryPath,
+      errors:
+        validation.errors,
+    }
+  );
+
+  stats.skippedRows += 1;
+  stats.errors += 1;
+
+  continue;
+}
+
+
+
         stats.skippedRows += 1;
         stats.errors += 1;
 
@@ -300,6 +352,15 @@ export async function syncFeedContent({
 		  );
 
 		if (!mappedCategoryResolution) {
+		  console.error(
+			"[feed-debug] category not mapped:",
+			{
+			  title: item.title,
+			  categoryPath:
+				item.categoryPath,
+			}
+		  );
+
 		  stats.skippedRows += 1;
 
 		  continue;
