@@ -115,10 +115,11 @@ export async function syncFeedSourceById({
     const buffer =
       await response.arrayBuffer();
 
-    const content = decodeFeedContent(
-      buffer,
-      runtime.encoding
-    );
+    const content =
+      decodeFeedContent(
+        buffer,
+        runtime.encoding
+      );
 
     const filename =
       extractFilename(
@@ -135,7 +136,8 @@ export async function syncFeedSourceById({
       runtime,
       content,
       trigger,
-      sourceUrl: runtime.sourceUrl,
+      sourceUrl:
+        runtime.sourceUrl,
       filename,
     });
   } catch (error) {
@@ -144,9 +146,11 @@ export async function syncFeedSourceById({
         id: feedSourceId,
       },
       data: {
-        lastStatus: "FAILED",
+        lastStatus:
+          "FAILED",
 
-        lastFailureAt: new Date(),
+        lastFailureAt:
+          new Date(),
 
         lastErrorMessage:
           error instanceof Error
@@ -173,11 +177,16 @@ export async function syncFeedContent({
   sourceUrl,
   filename,
 }: SyncFeedContentOptions): Promise<FeedImportResult> {
-  runtime = await loadFeedRuntime(
-    prisma,
-    runtime.feedSourceId
-  );
-  
+  /*
+   * Recharge toujours le runtime depuis la base
+   * afin d'utiliser la configuration la plus récente.
+   */
+  runtime =
+    await loadFeedRuntime(
+      prisma,
+      runtime.feedSourceId
+    );
+
   if (
     runtime.format !== "CSV" &&
     runtime.format !== "TSV"
@@ -189,10 +198,13 @@ export async function syncFeedContent({
 
   const mappingErrors =
     validateRuntimeColumnMappings(
-      runtime.normalizerConfig.mappings
+      runtime.normalizerConfig
+        .mappings
     );
 
-  if (mappingErrors.length > 0) {
+  if (
+    mappingErrors.length > 0
+  ) {
     throw new Error(
       [
         "Configuration de colonnes invalide :",
@@ -201,25 +213,33 @@ export async function syncFeedContent({
     );
   }
 
-  const startedAt = new Date();
+  const startedAt =
+    new Date();
 
   const feedKey = [
     runtime.siteId,
     runtime.slug,
   ].join(":");
 
-  const rows = parseCsv(content, {
-    delimiter: runtime.delimiter,
-  });
+  const rows =
+    parseCsv(
+      content,
+      {
+        delimiter:
+          runtime.delimiter,
+      }
+    );
 
   const stats =
-    createEmptyImportStats(rows.length);
+    createEmptyImportStats(
+      rows.length
+    );
 
   const normalizedItems =
     normalizeGenericFeed(
       rows,
       runtime.normalizerConfig
-    );	
+    );
 
   stats.normalizedRows =
     normalizedItems.length;
@@ -227,14 +247,18 @@ export async function syncFeedContent({
   const feedImport =
     await prisma.feedImport.create({
       data: {
-        merchantId: runtime.merchant.id,
+        merchantId:
+          runtime.merchant.id,
+
         feedSourceId:
           runtime.feedSourceId,
 
         trigger,
 
         platform:
-          runtime.affiliateNetwork.slug,
+          runtime
+            .affiliateNetwork
+            .slug,
 
         filename:
           filename ??
@@ -248,31 +272,36 @@ export async function syncFeedContent({
           sourceUrl ??
           runtime.sourceUrl,
 
-        status: "RUNNING",
+        status:
+          "RUNNING",
 
-        totalRows: rows.length,
+        totalRows:
+          rows.length,
       },
     });
 
   try {
     const [
-	  categorySource,
-	  categoryEnrichmentRules,
-	] = await Promise.all([
-	  loadFeedCategoryMappings(
-		prisma,
-		runtime.feedSourceId
-	  ),
+      categorySource,
+      categoryEnrichmentRules,
+    ] =
+      await Promise.all([
+        loadFeedCategoryMappings(
+          prisma,
+          runtime.feedSourceId
+        ),
 
-	  loadCategoryEnrichmentRules(
-		prisma,
-		runtime.siteId,
-		runtime.feedSourceId
-	  ),
-	]);
+        loadCategoryEnrichmentRules(
+          prisma,
+          runtime.siteId,
+          runtime.feedSourceId
+        ),
+      ]);
 
     if (
-      categorySource.mappings.length === 0
+      categorySource
+        .mappings
+        .length === 0
     ) {
       throw new Error(
         `Aucun CategoryExternalMapping actif n'est configuré pour le flux "${runtime.name}".`
@@ -280,88 +309,149 @@ export async function syncFeedContent({
     }
 
     const accepted:
-      CategorizedFeedItem[] = [];
+      CategorizedFeedItem[] =
+      [];
 
-for (const item of normalizedItems) {
-  const validation =
-    validateFeedItem(item);
+    /*
+     * Validation et résolution des catégories.
+     *
+     * Les lignes invalides ou non mappées sont
+     * simplement ignorées sans générer un log
+     * individuel pour chaque produit.
+     */
+    for (
+      const item of
+      normalizedItems
+    ) {
+      const validation =
+        validateFeedItem(
+          item
+        );
 
-  if (!validation.valid) {
+      if (
+        !validation.valid
+      ) {
+        stats.skippedRows += 1;
+        stats.errors += 1;
 
-    stats.skippedRows += 1;
-    stats.errors += 1;
+        continue;
+      }
 
-    continue;
-  }
+      const mappedCategoryResolution =
+        resolveFeedCategories(
+          item.categoryPath,
+          categorySource
+        );
 
-  const mappedCategoryResolution =
-    resolveFeedCategories(
-      item.categoryPath,
-      categorySource
-    );
-	
-  if (!mappedCategoryResolution) {
-    stats.skippedRows += 1;
-    continue;
-  }
+      if (
+        !mappedCategoryResolution
+      ) {
+        stats.skippedRows += 1;
 
-  const categoryResolution =
-    enrichFeedCategories(
-      item,
-      mappedCategoryResolution,
-      categorySource,
-      categoryEnrichmentRules
-    );
+        continue;
+      }
 
-  accepted.push({
-    item,
-    categoryResolution,
-  });
-}
+      const categoryResolution =
+        enrichFeedCategories(
+          item,
+          mappedCategoryResolution,
+          categorySource,
+          categoryEnrichmentRules
+        );
+
+      accepted.push({
+        item,
+        categoryResolution,
+      });
+    }
 
     stats.acceptedRows =
       accepted.length;
 
     const grouped =
-      aggregateFeedItems(accepted);
+      aggregateFeedItems(
+        accepted
+      );
 
     stats.groupedProducts =
       grouped.length;
 
-    if (grouped.length === 0) {
+    if (
+      grouped.length === 0
+    ) {
       throw new Error(
         "Aucun produit n'a été retenu. La réconciliation est annulée afin d'éviter une désactivation massive."
       );
     }
 
-const brandCache = new Map<
-  string,
-  {
-    id: number;
-    name: string;
-  }
->();
+    /*
+     * Cache des marques résolues pendant cet import.
+     *
+     * Il évite de refaire inutilement les mêmes
+     * résolutions de marque pour chaque produit.
+     */
+    const brandCache =
+      new Map<
+        string,
+        {
+          id: number;
+          name: string;
+        }
+      >();
 
-    for (const aggregated of grouped) {
+    for (
+      const aggregated of
+      grouped
+    ) {
       try {
         const imported =
           await importAggregatedFeedItem(
             prisma,
             aggregated,
             {
-              id: runtime.merchant.id,
-              name: runtime.merchant.name,
-              slug: runtime.merchant.slug,
+              id:
+                runtime
+                  .merchant
+                  .id,
+
+              name:
+                runtime
+                  .merchant
+                  .name,
+
+              slug:
+                runtime
+                  .merchant
+                  .slug,
+
               platform:
-                runtime.merchant.platform,
+                runtime
+                  .merchant
+                  .platform,
+
               network:
-                runtime.merchant.platform.toLowerCase(),
-              programId: null,
-              status: "active",
-              websiteUrl: null,
-              active: true,
-              createdAt: startedAt,
-              updatedAt: startedAt,
+                runtime
+                  .merchant
+                  .platform
+                  .toLowerCase(),
+
+              programId:
+                null,
+
+              status:
+                "active",
+
+              websiteUrl:
+                null,
+
+              active:
+                true,
+
+              createdAt:
+                startedAt,
+
+              updatedAt:
+                startedAt,
             },
             feedKey,
             startedAt,
@@ -372,33 +462,58 @@ const brandCache = new Map<
         await prisma.siteProduct.upsert({
           where: {
             siteId_productId: {
-              siteId: runtime.siteId,
+              siteId:
+                runtime.siteId,
+
               productId:
-                imported.product.id,
+                imported
+                  .product
+                  .id,
             },
           },
 
           update: {
-            active: true,
-            lastSeenAt: startedAt,
-            archivedAt: null,
+            active:
+              true,
+
+            lastSeenAt:
+              startedAt,
+
+            archivedAt:
+              null,
           },
 
           create: {
-            siteId: runtime.siteId,
+            siteId:
+              runtime.siteId,
+
             productId:
-              imported.product.id,
+              imported
+                .product
+                .id,
 
-            published: false,
-            active: true,
+            published:
+              false,
 
-            firstSeenAt: startedAt,
-            lastSeenAt: startedAt,
+            active:
+              true,
+
+            firstSeenAt:
+              startedAt,
+
+            lastSeenAt:
+              startedAt,
           },
         });
       } catch (error) {
         stats.errors += 1;
 
+        /*
+         * On conserve ce log :
+         * contrairement aux anciens logs de debug,
+         * celui-ci correspond à une vraie erreur
+         * d'import d'un produit retenu.
+         */
         console.error(
           `[universal-feed] ${runtime.slug} / ${aggregated.groupKey}`,
           error
@@ -419,12 +534,14 @@ const brandCache = new Map<
         ? "PARTIAL"
         : "SUCCESS";
 
-    const finishedAt = new Date();
+    const finishedAt =
+      new Date();
 
     await Promise.all([
       prisma.feedImport.update({
         where: {
-          id: feedImport.id,
+          id:
+            feedImport.id,
         },
 
         data: {
@@ -442,8 +559,11 @@ const brandCache = new Map<
           updatedProducts:
             stats.updatedProducts,
 
-          createdSkus: 0,
-          updatedSkus: 0,
+          createdSkus:
+            0,
+
+          updatedSkus:
+            0,
 
           createdOffers:
             stats.createdOffers,
@@ -469,15 +589,22 @@ const brandCache = new Map<
 
       prisma.feedSource.update({
         where: {
-          id: runtime.feedSourceId,
+          id:
+            runtime.feedSourceId,
         },
 
         data: {
-          lastRunAt: startedAt,
-          lastSuccessAt: finishedAt,
-          lastStatus: status,
+          lastRunAt:
+            startedAt,
 
-          lastErrorMessage: null,
+          lastSuccessAt:
+            finishedAt,
+
+          lastStatus:
+            status,
+
+          lastErrorMessage:
+            null,
 
           nextRunAt:
             calculateNextRunAt(
@@ -493,12 +620,14 @@ const brandCache = new Map<
         feedImport.id,
 
       feedKey,
+
       status,
 
       ...stats,
     };
   } catch (error) {
-    const finishedAt = new Date();
+    const finishedAt =
+      new Date();
 
     const errorMessage =
       error instanceof Error
@@ -508,12 +637,16 @@ const brandCache = new Map<
     await Promise.all([
       prisma.feedImport.update({
         where: {
-          id: feedImport.id,
+          id:
+            feedImport.id,
         },
 
         data: {
-          status: "FAILED",
-          notes: errorMessage,
+          status:
+            "FAILED",
+
+          notes:
+            errorMessage,
 
           importedRows:
             stats.acceptedRows,
@@ -530,13 +663,19 @@ const brandCache = new Map<
 
       prisma.feedSource.update({
         where: {
-          id: runtime.feedSourceId,
+          id:
+            runtime.feedSourceId,
         },
 
         data: {
-          lastRunAt: startedAt,
-          lastFailureAt: finishedAt,
-          lastStatus: "FAILED",
+          lastRunAt:
+            startedAt,
+
+          lastFailureAt:
+            finishedAt,
+
+          lastStatus:
+            "FAILED",
 
           lastErrorMessage:
             errorMessage,
@@ -576,80 +715,112 @@ async function reconcileMissingOffers({
           runtime.merchant.id,
 
         feedKey,
-        active: true,
+
+        active:
+          true,
 
         OR: [
           {
-            lastSeen: null,
+            lastSeen:
+              null,
           },
           {
             lastSeen: {
-              lt: startedAt,
+              lt:
+                startedAt,
             },
           },
         ],
       },
 
       select: {
-        id: true,
-        productId: true,
+        id:
+          true,
+
+        productId:
+          true,
       },
     });
 
-  if (missingOffers.length === 0) {
+  if (
+    missingOffers.length === 0
+  ) {
     return;
   }
 
   await prisma.offer.updateMany({
     where: {
       id: {
-        in: missingOffers.map(
-          (offer) => offer.id
-        ),
+        in:
+          missingOffers.map(
+            (offer) =>
+              offer.id
+          ),
       },
     },
 
     data: {
-      active: false,
-      inStock: false,
+      active:
+        false,
+
+      inStock:
+        false,
     },
   });
 
   stats.deactivatedOffers +=
     missingOffers.length;
 
-  const productIds = Array.from(
-    new Set(
-      missingOffers.map(
-        (offer) => offer.productId
+  const productIds =
+    Array.from(
+      new Set(
+        missingOffers.map(
+          (offer) =>
+            offer.productId
+        )
       )
-    )
-  );
+    );
 
-  for (const productId of productIds) {
+  for (
+    const productId of
+    productIds
+  ) {
     const activeOffers =
       await prisma.offer.count({
         where: {
           productId,
-          active: true,
+
+          active:
+            true,
         },
       });
 
-    if (activeOffers > 0) {
+    if (
+      activeOffers > 0
+    ) {
       continue;
     }
 
     await prisma.siteProduct.updateMany({
       where: {
-        siteId: runtime.siteId,
+        siteId:
+          runtime.siteId,
+
         productId,
-        active: true,
+
+        active:
+          true,
       },
 
       data: {
-        active: false,
-        published: false,
-        archivedAt: new Date(),
+        active:
+          false,
+
+        published:
+          false,
+
+        archivedAt:
+          new Date(),
       },
     });
 
@@ -658,32 +829,35 @@ async function reconcileMissingOffers({
       reviews,
       clicks,
       activeSiteProducts,
-    ] = await Promise.all([
-      prisma.editorialTest.count({
-        where: {
-          productId,
-        },
-      }),
+    ] =
+      await Promise.all([
+        prisma.editorialTest.count({
+          where: {
+            productId,
+          },
+        }),
 
-      prisma.review.count({
-        where: {
-          productId,
-        },
-      }),
+        prisma.review.count({
+          where: {
+            productId,
+          },
+        }),
 
-      prisma.click.count({
-        where: {
-          productId,
-        },
-      }),
+        prisma.click.count({
+          where: {
+            productId,
+          },
+        }),
 
-      prisma.siteProduct.count({
-        where: {
-          productId,
-          active: true,
-        },
-      }),
-    ]);
+        prisma.siteProduct.count({
+          where: {
+            productId,
+
+            active:
+              true,
+          },
+        }),
+      ]);
 
     if (
       tests === 0 &&
@@ -693,7 +867,8 @@ async function reconcileMissingOffers({
     ) {
       await prisma.product.delete({
         where: {
-          id: productId,
+          id:
+            productId,
         },
       });
 
@@ -702,15 +877,21 @@ async function reconcileMissingOffers({
       continue;
     }
 
-    if (activeSiteProducts === 0) {
+    if (
+      activeSiteProducts === 0
+    ) {
       await prisma.product.update({
         where: {
-          id: productId,
+          id:
+            productId,
         },
 
         data: {
-          active: false,
-          published: false,
+          active:
+            false,
+
+          published:
+            false,
         },
       });
 
@@ -720,34 +901,41 @@ async function reconcileMissingOffers({
 }
 
 export function calculateNextRunAt(
-  frequency: FeedRuntime["frequency"],
-  from: Date
+  frequency:
+    FeedRuntime["frequency"],
+  from:
+    Date
 ): Date | null {
-  const next = new Date(from);
+  const next =
+    new Date(from);
 
   switch (frequency) {
     case "EVERY_6_HOURS":
       next.setHours(
         next.getHours() + 6
       );
+
       return next;
 
     case "EVERY_12_HOURS":
       next.setHours(
         next.getHours() + 12
       );
+
       return next;
 
     case "DAILY":
       next.setDate(
         next.getDate() + 1
       );
+
       return next;
 
     case "WEEKLY":
       next.setDate(
         next.getDate() + 7
       );
+
       return next;
 
     case "MANUAL_ONLY":
@@ -757,24 +945,34 @@ export function calculateNextRunAt(
 }
 
 function decodeFeedContent(
-  buffer: ArrayBuffer,
-  encoding: string
+  buffer:
+    ArrayBuffer,
+  encoding:
+    string
 ): string {
   try {
     return new TextDecoder(
-      encoding || "utf-8"
-    ).decode(buffer);
+      encoding ||
+        "utf-8"
+    ).decode(
+      buffer
+    );
   } catch {
     return new TextDecoder(
       "utf-8"
-    ).decode(buffer);
+    ).decode(
+      buffer
+    );
   }
 }
 
 function extractFilename(
-  contentDisposition: string | null
+  contentDisposition:
+    string | null
 ): string | undefined {
-  if (!contentDisposition) {
+  if (
+    !contentDisposition
+  ) {
     return undefined;
   }
 
@@ -783,7 +981,9 @@ function extractFilename(
       /filename\*=UTF-8''([^;]+)/i
     );
 
-  if (utf8Match?.[1]) {
+  if (
+    utf8Match?.[1]
+  ) {
     return decodeURIComponent(
       utf8Match[1].replace(
         /^["']|["']$/g,
@@ -797,11 +997,13 @@ function extractFilename(
       /filename=["']?([^;"']+)["']?/i
     );
 
-  return normalMatch?.[1]?.trim();
+  return normalMatch?.[1]
+    ?.trim();
 }
 
 function extensionForFormat(
-  format: FeedRuntime["format"]
+  format:
+    FeedRuntime["format"]
 ): string {
   switch (format) {
     case "TSV":
