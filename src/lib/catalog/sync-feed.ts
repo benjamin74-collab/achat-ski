@@ -294,10 +294,16 @@ for (const item of normalizedItems) {
     continue;
   }
 
-if (!mappedCategoryResolution) {
-  stats.skippedRows += 1;
-  continue;
-}
+  const mappedCategoryResolution =
+    resolveFeedCategories(
+      item.categoryPath,
+      categorySource
+    );
+	
+  if (!mappedCategoryResolution) {
+    stats.skippedRows += 1;
+    continue;
+  }
 
   const categoryResolution =
     enrichFeedCategories(
