@@ -14,13 +14,23 @@ import { matchFeedItem } from "./matching";
 
 import {
   buildProductSlug,
+  formatBrandDisplayName,
+  normalizeBrandKey,
   normalizeGtin,
   normalizeProductName,
   slugify,
   toPriceCents,
 } from "./normalize";
 
-type BrandCache = Map<string, number>;
+type ResolvedBrand = {
+  id: number;
+  name: string;
+};
+
+type BrandCache = Map<
+  string,
+  ResolvedBrand
+>;
 
 export async function upsertFeedMerchant(
   prisma: PrismaClient,
@@ -66,11 +76,18 @@ export async function importAggregatedFeedItem(
     categories,
   } = aggregated;
 
-  const brandId = await upsertBrand(
+const resolvedBrand =
+  await upsertBrand(
     prisma,
     item,
     brandCache
   );
+
+const brandId =
+  resolvedBrand?.id;
+
+const brandName =
+  resolvedBrand?.name;
 
   const match = await matchFeedItem(
     prisma,
@@ -79,20 +96,22 @@ export async function importAggregatedFeedItem(
     brandId
   );
 
-  const product = match.productId
-    ? await updateMatchedProduct(
-        prisma,
-        aggregated,
-        match.productId,
-        brandId,
-        stats
-      )
-    : await createProduct(
-        prisma,
-        aggregated,
-        brandId,
-        stats
-      );
+const product = match.productId
+  ? await updateMatchedProduct(
+      prisma,
+      aggregated,
+      match.productId,
+      brandId,
+      brandName,
+      stats
+    )
+  : await createProduct(
+      prisma,
+      aggregated,
+      brandId,
+      brandName,
+      stats
+    );
 
   await syncProductCategories(
     prisma,
@@ -124,32 +143,153 @@ async function upsertBrand(
   prisma: PrismaClient,
   item: NormalizedFeedItem,
   cache: BrandCache
-): Promise<number | undefined> {
-  if (!item.brand) return undefined;
+): Promise<ResolvedBrand | undefined> {
+  if (!item.brand) {
+    return undefined;
+  }
 
-  const brandSlug = slugify(item.brand);
-  const cached = cache.get(brandSlug);
+  const brandKey =
+    normalizeBrandKey(item.brand);
 
-  if (cached) return cached;
+  if (!brandKey) {
+    return undefined;
+  }
 
-  const brand = await prisma.brand.upsert({
-    where: {
-      slug: brandSlug,
-    },
-    update: {
-      name: item.brand,
-      active: true,
-    },
-    create: {
-      name: item.brand,
-      slug: brandSlug,
-      active: true,
-    },
-  });
+  /*
+   * Le cache utilise la clé normalisée et non le slug.
+   */
+  const cached =
+    cache.get(brandKey);
 
-  cache.set(brandSlug, brand.id);
+  if (cached) {
+    return cached;
+  }
 
-  return brand.id;
+  /*
+   * Recherche dans le référentiel existant.
+   *
+   * On préfère parcourir les marques existantes plutôt
+   * que de créer une marque sur la seule base du slug.
+   *
+   * Le nombre de marques est faible par rapport au
+   * nombre de produits d'un flux.
+   */
+  const existingBrands =
+    await prisma.brand.findMany({
+      select: {
+        id: true,
+        name: true,
+        slug: true,
+        active: true,
+      },
+    });
+
+  const existingBrand =
+    existingBrands.find(
+      (brand) =>
+        normalizeBrandKey(
+          brand.name
+        ) === brandKey
+    );
+
+  if (existingBrand) {
+    /*
+     * IMPORTANT :
+     *
+     * On ne modifie JAMAIS le nom officiel d'une
+     * marque à partir d'un flux marchand.
+     */
+    if (!existingBrand.active) {
+      await prisma.brand.update({
+        where: {
+          id: existingBrand.id,
+        },
+        data: {
+          active: true,
+        },
+      });
+    }
+
+    const resolved: ResolvedBrand = {
+      id: existingBrand.id,
+      name: existingBrand.name,
+    };
+
+    cache.set(
+      brandKey,
+      resolved
+    );
+
+    return resolved;
+  }
+
+  /*
+   * Aucune marque existante trouvée :
+   * on peut réellement créer une nouvelle marque.
+   */
+  const displayName =
+    formatBrandDisplayName(
+      item.brand
+    );
+
+  if (!displayName) {
+    return undefined;
+  }
+
+  let brandSlug =
+    slugify(displayName);
+
+  if (!brandSlug) {
+    brandSlug = `brand-${Date.now()}`;
+  }
+
+  /*
+   * Sécurité en cas de collision de slug avec
+   * une marque qui aurait un autre nom normalisé.
+   */
+  let finalSlug = brandSlug;
+  let suffix = 2;
+
+  while (
+    await prisma.brand.findUnique({
+      where: {
+        slug: finalSlug,
+      },
+      select: {
+        id: true,
+      },
+    })
+  ) {
+    finalSlug =
+      `${brandSlug}-${suffix}`;
+
+    suffix += 1;
+  }
+
+  const brand =
+    await prisma.brand.create({
+      data: {
+        name: displayName,
+        slug: finalSlug,
+        active: true,
+      },
+      select: {
+        id: true,
+        name: true,
+      },
+    });
+
+  const resolved: ResolvedBrand = {
+    id: brand.id,
+    name: brand.name,
+  };
+
+  cache.set(
+    brandKey,
+    resolved
+  );
+
+  return resolved;
 }
 
 async function updateMatchedProduct(
@@ -157,6 +297,7 @@ async function updateMatchedProduct(
   aggregated: AggregatedFeedItem,
   productId: number,
   brandId: number | undefined,
+  brandName: string | undefined,
   stats: ImportStats
 ) {
   const {
@@ -181,8 +322,12 @@ async function updateMatchedProduct(
     data: {
       name,
       model: name,
-      brand: item.brand,
-      brandId,
+	  brand:
+	    brandName ||
+	    formatBrandDisplayName(
+		  item.brand
+	    ),
+	  brandId,
 	  gtin: gtin || undefined,
 
       categoryId: primaryCategory.id,
@@ -222,6 +367,7 @@ async function createProduct(
   prisma: PrismaClient,
   aggregated: AggregatedFeedItem,
   brandId: number | undefined,
+  brandName: string | undefined,
   stats: ImportStats
 ) {
   const {
@@ -247,8 +393,12 @@ async function createProduct(
       data: {
         name,
         model: name,
-        brand: item.brand,
-        brandId,
+        brand:
+	    brandName ||
+	    formatBrandDisplayName(
+	  	  item.brand
+	    ),
+	    brandId,
 		
 		gtin,
 

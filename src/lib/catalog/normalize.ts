@@ -49,7 +49,120 @@ export function normalizeBrandName(
   value: string | null | undefined
 ): string | undefined {
   const normalized = normalizeText(value);
-  return normalized ? normalized.toUpperCase() : undefined;
+
+  return normalized || undefined;
+}
+
+/**
+ * Produit une clé technique destinée uniquement
+ * à comparer deux noms de marque.
+ *
+ * Cette clé ne doit jamais être utilisée comme
+ * nom d'affichage.
+ *
+ * Exemples :
+ * - Arc'Teryx      -> arcteryx
+ * - ARC TERYX      -> arcteryx
+ * - Norrøna        -> norrona
+ * - NORRONA        -> norrona
+ * - The North Face -> northface
+ * - North Face     -> northface
+ */
+export function normalizeBrandKey(
+  value: string | null | undefined
+): string {
+  let normalized =
+    normalizeText(value);
+
+  if (!normalized) {
+    return "";
+  }
+
+  normalized = normalized
+    .replace(/[øØ]/g, "o")
+    .replace(/[æÆ]/g, "ae")
+    .replace(/[œŒ]/g, "oe")
+    .toLowerCase()
+    .trim();
+
+  /*
+   * Pour le matching des marques uniquement,
+   * "The North Face" et "North Face"
+   * doivent être considérés comme identiques.
+   */
+  normalized = normalized.replace(
+    /^the\s+/i,
+    ""
+  );
+
+  return normalized
+    .replace(/[^a-z0-9]+/g, "")
+    .trim();
+}
+
+/**
+ * Formate raisonnablement le nom d'une nouvelle marque
+ * lorsque le flux l'envoie entièrement en majuscules
+ * ou entièrement en minuscules.
+ *
+ * Une marque existante ne doit jamais passer ici :
+ * son nom officiel enregistré en base est conservé.
+ */
+export function formatBrandDisplayName(
+  value: string | null | undefined
+): string | undefined {
+  const normalized =
+    normalizeText(value);
+
+  if (!normalized) {
+    return undefined;
+  }
+
+  const letters = normalized.replace(
+    /[^A-Za-zÀ-ÖØ-öø-ÿ]/g,
+    ""
+  );
+
+  if (!letters) {
+    return normalized;
+  }
+
+  const isAllUppercase =
+    letters === letters.toUpperCase();
+
+  const isAllLowercase =
+    letters === letters.toLowerCase();
+
+  /*
+   * Si le marchand fournit déjà une casse élaborée,
+   * on la conserve.
+   *
+   * Exemple : Arc'Teryx
+   */
+  if (
+    !isAllUppercase &&
+    !isAllLowercase
+  ) {
+    return normalized;
+  }
+
+  const lowercase =
+    normalized.toLocaleLowerCase(
+      "fr-FR"
+    );
+
+  return lowercase.replace(
+    /(^|[\s\-/'’])([a-zà-öø-ÿ])/g,
+    (
+      _match,
+      separator: string,
+      letter: string
+    ) =>
+      separator +
+      letter.toLocaleUpperCase(
+        "fr-FR"
+      )
+  );
 }
 
 export function normalizeAvailability(
