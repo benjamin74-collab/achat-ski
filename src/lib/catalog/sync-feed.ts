@@ -383,10 +383,13 @@ for (const item of normalizedItems) {
       );
     }
 
-    const brandCache = new Map<
-      string,
-      number
-    >();
+const brandCache = new Map<
+  string,
+  {
+    id: number;
+    name: string;
+  }
+>();
 
     for (const aggregated of grouped) {
       try {
