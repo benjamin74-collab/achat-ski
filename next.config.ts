@@ -10,6 +10,16 @@ const nextConfig: NextConfig = {
         hostname: "res.cloudinary.com",
         pathname: "/ekoweb/image/upload/**",
       },
+	  {
+        protocol: "https",
+        hostname: "www.tonton-outdoor.com",
+        pathname: "/media/**",
+      },
+      {
+        protocol: "https",
+        hostname: "tonton-outdoor.com",
+        pathname: "/media/**",
+      },
     ],
   },
 
