@@ -1347,54 +1347,50 @@ async function syncSiteProductsBulk(
      * updateMany réactive les lignes existantes.
      * createMany crée uniquement les associations absentes.
      */
-    await Promise.all([
-      prisma.siteProduct.updateMany({
-        where: {
-          siteId,
+	await Promise.all([
+	  prisma.siteProduct.updateMany({
+		where: {
+		  siteId,
 
-          productId: {
-            in:
-              chunk,
-          },
-        },
+		  productId: {
+			in: chunk,
+		  },
+		},
 
-        data: {
-          active:
-            true,
+		data: {
+		  published: true,
+		  active: true,
 
-          lastSeenAt:
-            seenAt,
+		  lastSeenAt:
+			seenAt,
 
-          archivedAt:
-            null,
-        },
-      }),
+		  archivedAt:
+			null,
+		},
+	  }),
 
-      prisma.siteProduct.createMany({
-        data:
-          chunk.map(
-            (productId) => ({
-              siteId,
-              productId,
+	  prisma.siteProduct.createMany({
+		data:
+		  chunk.map(
+			(productId) => ({
+			  siteId,
+			  productId,
 
-              published:
-                false,
+			  published: true,
+			  active: true,
 
-              active:
-                true,
+			  firstSeenAt:
+				seenAt,
 
-              firstSeenAt:
-                seenAt,
+			  lastSeenAt:
+				seenAt,
+			})
+		  ),
 
-              lastSeenAt:
-                seenAt,
-            })
-          ),
-
-        skipDuplicates:
-          true,
-      }),
-    ]);
+		skipDuplicates:
+		  true,
+	  }),
+	]);
   }
 }
 
