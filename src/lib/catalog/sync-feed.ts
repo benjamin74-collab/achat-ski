@@ -33,6 +33,7 @@ import {
 
 import {
   createEmptyImportStats,
+  type AggregatedFeedItem,
   type FeedImportResult,
   type ImportStats,
 } from "./feed-types";
@@ -44,6 +45,13 @@ import {
 import {
   validateFeedItem,
 } from "./validate";
+
+import {
+  normalizeBrandKey,
+} from "./normalize";
+
+const IMPORT_CONCURRENCY = 5;
+const BULK_CHUNK_SIZE = 500;
 
 export type SyncFeedTrigger =
   | "MANUAL"
@@ -385,140 +393,274 @@ export async function syncFeedContent({
     }
 
     /*
-     * Cache des marques résolues pendant cet import.
-     *
-     * Il évite de refaire inutilement les mêmes
-     * résolutions de marque pour chaque produit.
+     * Précharge toutes les marques actives en une seule requête.
+     * Cela évite que upsertBrand() recharge toute la table Brand
+     * pour chaque nouvelle clé rencontrée pendant l'import.
      */
     const brandCache =
-      new Map<
-        string,
-        {
-          id: number;
-          name: string;
-        }
-      >();
+      await buildBrandCache(
+        prisma
+      );
+
+    const merchant = {
+      id:
+        runtime.merchant.id,
+
+      name:
+        runtime.merchant.name,
+
+      slug:
+        runtime.merchant.slug,
+
+      platform:
+        runtime.merchant.platform,
+
+      network:
+        runtime.merchant.platform
+          .toLowerCase(),
+
+      programId:
+        null,
+
+      status:
+        "active",
+
+      websiteUrl:
+        null,
+
+      active:
+        true,
+
+      createdAt:
+        startedAt,
+
+      updatedAt:
+        startedAt,
+    };
+
+    /*
+     * Pour les marques réellement nouvelles, le premier produit
+     * de chaque marque est traité séquentiellement. Cela évite
+     * que plusieurs promesses concurrentes tentent de créer
+     * simultanément la même marque.
+     */
+    const brandKeysSeen =
+      new Set(
+        brandCache.keys()
+      );
+
+    const warmupItems:
+      AggregatedFeedItem[] =
+      [];
+
+    const parallelItems:
+      AggregatedFeedItem[] =
+      [];
 
     for (
       const aggregated of
       grouped
     ) {
-      try {
-        const imported =
-          await importAggregatedFeedItem(
-            prisma,
-            aggregated,
-            {
-              id:
-                runtime
-                  .merchant
-                  .id,
+      const brandKey =
+        normalizeBrandKey(
+          aggregated.item.brand
+        );
 
-              name:
-                runtime
-                  .merchant
-                  .name,
+      if (
+        brandKey &&
+        !brandKeysSeen.has(
+          brandKey
+        )
+      ) {
+        brandKeysSeen.add(
+          brandKey
+        );
 
-              slug:
-                runtime
-                  .merchant
-                  .slug,
+        warmupItems.push(
+          aggregated
+        );
 
-              platform:
-                runtime
-                  .merchant
-                  .platform,
+        continue;
+      }
 
-              network:
-                runtime
-                  .merchant
-                  .platform
-                  .toLowerCase(),
+      parallelItems.push(
+        aggregated
+      );
+    }
 
-              programId:
-                null,
+    const importOne =
+      async (
+        aggregated:
+          AggregatedFeedItem
+      ): Promise<number | null> => {
+        try {
+          const imported =
+            await importAggregatedFeedItem(
+              prisma,
+              aggregated,
+              merchant,
+              feedKey,
+              startedAt,
+              stats,
+              brandCache
+            );
 
-              status:
-                "active",
+          return (
+            imported.product.id
+          );
+        } catch (error) {
+          stats.errors += 1;
 
-              websiteUrl:
-                null,
-
-              active:
-                true,
-
-              createdAt:
-                startedAt,
-
-              updatedAt:
-                startedAt,
-            },
-            feedKey,
-            startedAt,
-            stats,
-            brandCache
+          console.error(
+            `[universal-feed] ${runtime.slug} / ${aggregated.groupKey}`,
+            error
           );
 
-        await prisma.siteProduct.upsert({
-          where: {
-            siteId_productId: {
-              siteId:
-                runtime.siteId,
+          return null;
+        }
+      };
 
-              productId:
-                imported
-                  .product
-                  .id,
-            },
-          },
+    /*
+     * Amorçage des nouvelles marques.
+     */
+    const warmupProductIds:
+      number[] = [];
 
-          update: {
-            active:
-              true,
+    for (
+      const aggregated of
+      warmupItems
+    ) {
+      const productId =
+        await importOne(
+          aggregated
+        );
 
-            lastSeenAt:
-              startedAt,
-
-            archivedAt:
-              null,
-          },
-
-          create: {
-            siteId:
-              runtime.siteId,
-
-            productId:
-              imported
-                .product
-                .id,
-
-            published:
-              false,
-
-            active:
-              true,
-
-            firstSeenAt:
-              startedAt,
-
-            lastSeenAt:
-              startedAt,
-          },
-        });
-      } catch (error) {
-        stats.errors += 1;
-
-        /*
-         * On conserve ce log :
-         * contrairement aux anciens logs de debug,
-         * celui-ci correspond à une vraie erreur
-         * d'import d'un produit retenu.
-         */
-        console.error(
-          `[universal-feed] ${runtime.slug} / ${aggregated.groupKey}`,
-          error
+      if (productId) {
+        warmupProductIds.push(
+          productId
         );
       }
+    }
+
+    await syncSiteProductsBulk(
+      prisma,
+      runtime.siteId,
+      warmupProductIds,
+      startedAt
+    );
+
+    /*
+     * Si l'amorçage d'une nouvelle marque a échoué avant
+     * la mise en cache de celle-ci, les autres produits de
+     * cette marque restent traités séquentiellement.
+     */
+    const safeParallelItems:
+      AggregatedFeedItem[] =
+      [];
+
+    const fallbackSequentialItems:
+      AggregatedFeedItem[] =
+      [];
+
+    for (
+      const aggregated of
+      parallelItems
+    ) {
+      const brandKey =
+        normalizeBrandKey(
+          aggregated.item.brand
+        );
+
+      if (
+        brandKey &&
+        !brandCache.has(
+          brandKey
+        )
+      ) {
+        fallbackSequentialItems.push(
+          aggregated
+        );
+      } else {
+        safeParallelItems.push(
+          aggregated
+        );
+      }
+    }
+
+    const fallbackProductIds:
+      number[] = [];
+
+    for (
+      const aggregated of
+      fallbackSequentialItems
+    ) {
+      const productId =
+        await importOne(
+          aggregated
+        );
+
+      if (productId) {
+        fallbackProductIds.push(
+          productId
+        );
+      }
+    }
+
+    await syncSiteProductsBulk(
+      prisma,
+      runtime.siteId,
+      fallbackProductIds,
+      startedAt
+    );
+
+    /*
+     * Les produits dont la marque est désormais connue sont
+     * traités avec une concurrence limitée.
+     *
+     * Cela réduit fortement le temps mur sans saturer le pool
+     * PostgreSQL/Neon.
+     */
+    for (
+      let index = 0;
+      index <
+      safeParallelItems.length;
+      index +=
+        IMPORT_CONCURRENCY
+    ) {
+      const batch =
+        safeParallelItems.slice(
+          index,
+          index +
+            IMPORT_CONCURRENCY
+        );
+
+      const productIds =
+        (
+          await Promise.all(
+            batch.map(
+              importOne
+            )
+          )
+        ).filter(
+          (
+            productId
+          ): productId is number =>
+            productId !== null
+        );
+
+      /*
+       * Au lieu d'un upsert SiteProduct par produit :
+       * - un updateMany pour tous les produits existants ;
+       * - un createMany avec skipDuplicates pour les nouveaux.
+       *
+       * On passe ainsi de N requêtes à 2 requêtes par lot.
+       */
+      await syncSiteProductsBulk(
+        prisma,
+        runtime.siteId,
+        productIds,
+        startedAt
+      );
     }
 
     await reconcileMissingOffers({
@@ -708,6 +850,10 @@ async function reconcileMissingOffers({
   startedAt,
   stats,
 }: ReconcileOptions): Promise<void> {
+  /*
+   * 1. Récupère en une requête toutes les offres du flux
+   *    qui n'ont pas été vues pendant cet import.
+   */
   const missingOffers =
     await prisma.offer.findMany({
       where: {
@@ -748,6 +894,10 @@ async function reconcileMissingOffers({
     return;
   }
 
+  /*
+   * 2. Désactive toutes les offres manquantes en une seule
+   *    opération au lieu de les traiter individuellement.
+   */
   await prisma.offer.updateMany({
     where: {
       id: {
@@ -781,109 +931,300 @@ async function reconcileMissingOffers({
       )
     );
 
-  for (
-    const productId of
-    productIds
+  if (
+    productIds.length === 0
   ) {
-    const activeOffers =
-      await prisma.offer.count({
-        where: {
-          productId,
+    return;
+  }
 
-          active:
-            true,
-        },
-      });
-
-    if (
-      activeOffers > 0
-    ) {
-      continue;
-    }
-
-    await prisma.siteProduct.updateMany({
+  /*
+   * 3. Cherche en une seule requête les produits qui ont
+   *    encore au moins une offre active.
+   *
+   * L'ancienne version faisait un offer.count() par produit.
+   */
+  const productsWithActiveOffers =
+    await prisma.offer.findMany({
       where: {
-        siteId:
-          runtime.siteId,
-
-        productId,
+        productId: {
+          in:
+            productIds,
+        },
 
         active:
           true,
       },
 
-      data: {
-        active:
-          false,
-
-        published:
-          false,
-
-        archivedAt:
-          new Date(),
+      select: {
+        productId:
+          true,
       },
+
+      distinct: [
+        "productId",
+      ],
     });
 
-    const [
-      tests,
-      reviews,
-      clicks,
-      activeSiteProducts,
-    ] =
-      await Promise.all([
-        prisma.editorialTest.count({
-          where: {
-            productId,
-          },
-        }),
+  const activeOfferProductIds =
+    new Set(
+      productsWithActiveOffers.map(
+        (offer) =>
+          offer.productId
+      )
+    );
 
-        prisma.review.count({
-          where: {
-            productId,
-          },
-        }),
+  const orphanProductIds =
+    productIds.filter(
+      (productId) =>
+        !activeOfferProductIds.has(
+          productId
+        )
+    );
 
-        prisma.click.count({
-          where: {
-            productId,
-          },
-        }),
+  if (
+    orphanProductIds.length === 0
+  ) {
+    return;
+  }
 
-        prisma.siteProduct.count({
-          where: {
-            productId,
+  /*
+   * 4. Archive les SiteProduct du site courant en une seule
+   *    requête pour tous les produits devenus sans offre.
+   */
+  await prisma.siteProduct.updateMany({
+    where: {
+      siteId:
+        runtime.siteId,
 
-            active:
-              true,
-          },
-        }),
-      ]);
+      productId: {
+        in:
+          orphanProductIds,
+      },
 
-    if (
-      tests === 0 &&
-      reviews === 0 &&
-      clicks === 0 &&
-      activeSiteProducts === 0
-    ) {
-      await prisma.product.delete({
+      active:
+        true,
+    },
+
+    data: {
+      active:
+        false,
+
+      published:
+        false,
+
+      archivedAt:
+        new Date(),
+    },
+  });
+
+  /*
+   * 5. Toutes les vérifications qui étaient auparavant
+   *    réalisées produit par produit sont chargées en parallèle
+   *    et sous forme d'ensembles de productId.
+   *
+   * Ancienne mécanique :
+   *   jusqu'à 5 requêtes supplémentaires par produit.
+   *
+   * Nouvelle mécanique :
+   *   4 requêtes au total, quel que soit le nombre de produits.
+   */
+  const [
+    productsWithTests,
+    productsWithReviews,
+    productsWithClicks,
+    productsWithActiveSites,
+  ] =
+    await Promise.all([
+      prisma.editorialTest.findMany({
         where: {
-          id:
-            productId,
+          productId: {
+            in:
+              orphanProductIds,
+          },
+        },
+
+        select: {
+          productId:
+            true,
+        },
+
+        distinct: [
+          "productId",
+        ],
+      }),
+
+      prisma.review.findMany({
+        where: {
+          productId: {
+            in:
+              orphanProductIds,
+          },
+        },
+
+        select: {
+          productId:
+            true,
+        },
+
+        distinct: [
+          "productId",
+        ],
+      }),
+
+      prisma.click.findMany({
+        where: {
+          productId: {
+            in:
+              orphanProductIds,
+          },
+        },
+
+        select: {
+          productId:
+            true,
+        },
+
+        distinct: [
+          "productId",
+        ],
+      }),
+
+      prisma.siteProduct.findMany({
+        where: {
+          productId: {
+            in:
+              orphanProductIds,
+          },
+
+          active:
+            true,
+        },
+
+        select: {
+          productId:
+            true,
+        },
+
+        distinct: [
+          "productId",
+        ],
+      }),
+    ]);
+
+  const protectedProductIds =
+    new Set<number>();
+
+  for (
+    const row of
+    productsWithTests
+  ) {
+    protectedProductIds.add(
+      row.productId
+    );
+  }
+
+  for (
+    const row of
+    productsWithReviews
+  ) {
+    protectedProductIds.add(
+      row.productId
+    );
+  }
+
+  for (
+    const row of
+    productsWithClicks
+  ) {
+    protectedProductIds.add(
+      row.productId
+    );
+  }
+
+  const activeSiteProductIds =
+    new Set(
+      productsWithActiveSites.map(
+        (row) =>
+          row.productId
+      )
+    );
+
+  /*
+   * Un produit peut être supprimé uniquement s'il :
+   * - n'a plus aucune offre active ;
+   * - n'est actif sur aucun site ;
+   * - n'a ni test, ni avis, ni clic.
+   *
+   * Cette logique est identique à l'ancienne version,
+   * mais les contrôles sont désormais groupés.
+   */
+  const deletableProductIds =
+    orphanProductIds.filter(
+      (productId) =>
+        !activeSiteProductIds.has(
+          productId
+        ) &&
+        !protectedProductIds.has(
+          productId
+        )
+    );
+
+  for (
+    const chunk of
+    chunkArray(
+      deletableProductIds,
+      BULK_CHUNK_SIZE
+    )
+  ) {
+    const result =
+      await prisma.product.deleteMany({
+        where: {
+          id: {
+            in:
+              chunk,
+          },
         },
       });
 
-      stats.deletedProducts += 1;
+    stats.deletedProducts +=
+      result.count;
+  }
 
-      continue;
-    }
+  const deletableSet =
+    new Set(
+      deletableProductIds
+    );
 
-    if (
-      activeSiteProducts === 0
-    ) {
-      await prisma.product.update({
+  /*
+   * Les produits protégés par du contenu éditorial ou de
+   * l'historique restent en base mais sont désactivés lorsqu'ils
+   * ne sont plus actifs sur aucun site.
+   */
+  const deactivatableProductIds =
+    orphanProductIds.filter(
+      (productId) =>
+        !activeSiteProductIds.has(
+          productId
+        ) &&
+        !deletableSet.has(
+          productId
+        )
+    );
+
+  for (
+    const chunk of
+    chunkArray(
+      deactivatableProductIds,
+      BULK_CHUNK_SIZE
+    )
+  ) {
+    const result =
+      await prisma.product.updateMany({
         where: {
-          id:
-            productId,
+          id: {
+            in:
+              chunk,
+          },
         },
 
         data: {
@@ -895,9 +1236,192 @@ async function reconcileMissingOffers({
         },
       });
 
-      stats.deactivatedProducts += 1;
+    stats.deactivatedProducts +=
+      result.count;
+  }
+}
+
+async function buildBrandCache(
+  prisma:
+    PrismaClient
+): Promise<
+  Map<
+    string,
+    {
+      id: number;
+      name: string;
+    }
+  >
+> {
+  /*
+   * On précharge uniquement les marques actives.
+   *
+   * Une marque inactive n'est volontairement pas mise
+   * en cache : upsertBrand() pourra alors la retrouver
+   * et la réactiver selon sa logique existante.
+   */
+  const brands =
+    await prisma.brand.findMany({
+      where: {
+        active:
+          true,
+      },
+
+      select: {
+        id:
+          true,
+
+        name:
+          true,
+      },
+    });
+
+  const cache =
+    new Map<
+      string,
+      {
+        id: number;
+        name: string;
+      }
+    >();
+
+  for (
+    const brand of
+    brands
+  ) {
+    const key =
+      normalizeBrandKey(
+        brand.name
+      );
+
+    if (
+      key
+    ) {
+      cache.set(
+        key,
+        {
+          id:
+            brand.id,
+
+          name:
+            brand.name,
+        }
+      );
     }
   }
+
+  return cache;
+}
+
+async function syncSiteProductsBulk(
+  prisma:
+    PrismaClient,
+  siteId:
+    string,
+  productIds:
+    number[],
+  seenAt:
+    Date
+): Promise<void> {
+  const uniqueProductIds =
+    Array.from(
+      new Set(
+        productIds
+      )
+    );
+
+  if (
+    uniqueProductIds.length === 0
+  ) {
+    return;
+  }
+
+  for (
+    const chunk of
+    chunkArray(
+      uniqueProductIds,
+      BULK_CHUNK_SIZE
+    )
+  ) {
+    /*
+     * updateMany réactive les lignes existantes.
+     * createMany crée uniquement les associations absentes.
+     */
+    await Promise.all([
+      prisma.siteProduct.updateMany({
+        where: {
+          siteId,
+
+          productId: {
+            in:
+              chunk,
+          },
+        },
+
+        data: {
+          active:
+            true,
+
+          lastSeenAt:
+            seenAt,
+
+          archivedAt:
+            null,
+        },
+      }),
+
+      prisma.siteProduct.createMany({
+        data:
+          chunk.map(
+            (productId) => ({
+              siteId,
+              productId,
+
+              published:
+                false,
+
+              active:
+                true,
+
+              firstSeenAt:
+                seenAt,
+
+              lastSeenAt:
+                seenAt,
+            })
+          ),
+
+        skipDuplicates:
+          true,
+      }),
+    ]);
+  }
+}
+
+function chunkArray<T>(
+  values:
+    T[],
+  size:
+    number
+): T[][] {
+  const chunks:
+    T[][] = [];
+
+  for (
+    let index = 0;
+    index <
+    values.length;
+    index += size
+  ) {
+    chunks.push(
+      values.slice(
+        index,
+        index + size
+      )
+    );
+  }
+
+  return chunks;
 }
 
 export function calculateNextRunAt(
