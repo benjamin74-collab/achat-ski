@@ -99,20 +99,41 @@ export async function matchFeedItem(
     }
   }
 
-  const normalizedName = normalizeProductName(
-    item.cleanName ?? item.title
-  );
+/*
+ * Le matching par nom est uniquement un fallback
+ * lorsque le flux ne fournit AUCUN identifiant fiable.
+ *
+ * S'il existe un GTIN, un identifiant marchand,
+ * un parent marchand ou une référence fabricant qui
+ * n'a trouvé aucune correspondance, cela signifie
+ * normalement que nous sommes face à un nouveau produit.
+ *
+ * Il ne faut surtout pas alors le rattacher à un produit
+ * existant uniquement parce que son nom est similaire.
+ */
+const hasStrongIdentifier =
+  Boolean(gtin) ||
+  Boolean(item.parentExternalId) ||
+  Boolean(item.externalId) ||
+  Boolean(item.manufacturerReference);
+
+if (!hasStrongIdentifier) {
+  const normalizedName =
+    normalizeProductName(
+      item.cleanName ?? item.title
+    );
 
   if (normalizedName) {
-    const product = await prisma.product.findFirst({
-      where: {
-        normalizedName,
-        ...brandWhere,
-      },
-      select: {
-        id: true,
-      },
-    });
+    const product =
+      await prisma.product.findFirst({
+        where: {
+          normalizedName,
+          ...brandWhere,
+        },
+        select: {
+          id: true,
+        },
+      });
 
     if (product) {
       return {
@@ -122,6 +143,7 @@ export async function matchFeedItem(
       };
     }
   }
+}
 
   return {
     confidence: 0,
