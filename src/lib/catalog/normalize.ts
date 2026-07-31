@@ -48,9 +48,9 @@ export function normalizeEan(
 export function normalizeBrandName(
   value: string | null | undefined
 ): string | undefined {
-  const normalized = normalizeText(value);
-
-  return normalized || undefined;
+  return resolveBrandAlias(
+    value
+  );
 }
 
 /**
@@ -344,4 +344,41 @@ export function normalizeGtin(
   }
 
   return normalized;
+}
+
+const BRAND_ALIASES: Record<
+  string,
+  string
+> = {
+  picture: "Picture Organic",
+
+  "picture organic clothing":
+    "Picture Organic",
+
+  "north face":
+    "The North Face",
+
+  "the north face":
+    "The North Face",
+};
+
+export function resolveBrandAlias(
+  value: string | null | undefined
+): string | undefined {
+  const normalized =
+    normalizeText(value);
+
+  if (!normalized) {
+    return undefined;
+  }
+
+  const key =
+    normalized
+      .toLowerCase()
+      .trim();
+
+  return (
+    BRAND_ALIASES[key] ??
+    normalized
+  );
 }

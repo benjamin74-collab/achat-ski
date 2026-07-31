@@ -20,6 +20,11 @@ const nextConfig: NextConfig = {
         hostname: "tonton-outdoor.com",
         pathname: "/media/**",
       },
+	  {
+        protocol: "https",
+        hostname: "edge.disstg.commercecloud.salesforce.com",
+        pathname: "/dw/image/**",
+      },
     ],
   },
 

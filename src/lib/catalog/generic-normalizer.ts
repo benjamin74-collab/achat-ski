@@ -162,7 +162,10 @@ export function normalizeGenericFeedRow(
 
 	const rawCleanName =
 	  toOptionalString(mappedValues.cleanName) ??
-	  normalizeProductName(title);
+	  deriveFeedProductName(
+		title,
+		brand
+	  );
 
 	const cleanName =
 	  removeLeadingBrandFromProductName(
@@ -647,4 +650,57 @@ export function validateRuntimeColumnMappings(
   }
 
   return errors;
+}
+
+function deriveFeedProductName(
+  title: string,
+  brand?: string
+): string {
+  const cleanTitle =
+    normalizeText(title);
+
+  const cleanBrand =
+    normalizeText(brand);
+
+  const parts =
+    cleanTitle
+      .split(/\s+-\s+/)
+      .map((part) =>
+        part.trim()
+      )
+      .filter(Boolean);
+
+  /*
+   * Certains flux, notamment Picture, utilisent :
+   *
+   * Picture Veste de ski - Veste SANY - Femme - M - Noir
+   *
+   * Le deuxième segment contient donc le véritable
+   * nom/modèle du produit.
+   */
+  if (
+    cleanBrand &&
+    parts.length >= 2 &&
+    parts[0]
+      .toLowerCase()
+      .startsWith(
+        cleanBrand.toLowerCase() + " "
+      )
+  ) {
+    const candidate =
+      removeLeadingBrandFromProductName(
+        parts[1],
+        cleanBrand
+      );
+
+    if (candidate) {
+      return normalizeProductName(
+        candidate
+      );
+    }
+  }
+
+  return normalizeProductName(
+    cleanTitle
+  );
 }
