@@ -1,7 +1,7 @@
-import type {
-  Merchant,
+import {
   Prisma,
-  PrismaClient,
+  type Merchant,
+  type PrismaClient,
 } from "@prisma/client";
 
 import type {
@@ -382,48 +382,122 @@ async function createProduct(
     normalizeProductName(name);
 
   const baseSlug =
-    buildProductSlug(item);
-	
-  const gtin = normalizeGtin(
-    item.gtin
-  );
+    buildProductSlug(item) ||
+    "produit";
+
+  const gtin =
+    normalizeGtin(item.gtin);
+
+  const productData = {
+    name,
+    model: name,
+
+    brand:
+      brandName ||
+      formatBrandDisplayName(
+        item.brand
+      ),
+
+    brandId,
+    gtin,
+
+    categoryId:
+      primaryCategory.id,
+
+    description:
+      item.description,
+
+    normalizedName,
+
+    manufacturerReference:
+      item.manufacturerReference,
+
+    imageUrl:
+      item.imageUrl,
+
+    published:
+      true,
+
+    active:
+      true,
+
+    attributes:
+      buildProductAttributes(
+        aggregated
+      ),
+  };
+
+  /*
+   * La recherche préalable d'un slug libre ne suffit
+   * pas lorsque plusieurs produits sont créés en parallèle.
+   *
+   * On tente donc la création et, en cas de collision P2002
+   * sur le slug, on recommence avec un suffixe.
+   */
+  for (
+    let attempt = 1;
+    attempt <= 20;
+    attempt += 1
+  ) {
+    const slug =
+      attempt === 1
+        ? baseSlug
+        : `${baseSlug}-${attempt}`;
+
+    try {
+      const product =
+        await prisma.product.create({
+          data: {
+            ...productData,
+            slug,
+          },
+        });
+
+      stats.createdProducts += 1;
+
+      return product;
+    } catch (error) {
+      const isSlugCollision =
+        error instanceof
+          Prisma.PrismaClientKnownRequestError &&
+        error.code === "P2002" &&
+        isUniqueConstraintField(
+          error.meta?.target,
+          "slug"
+        );
+
+      if (!isSlugCollision) {
+        throw error;
+      }
+    }
+  }
+
+  /*
+   * Sécurité exceptionnelle si plus de 20 produits
+   * produisent exactement la même base de slug.
+   */
+  const fallbackSlug = [
+    baseSlug,
+    item.manufacturerReference,
+    item.gtin,
+    item.externalId,
+    Date.now(),
+  ]
+    .filter(Boolean)
+    .map((value) =>
+      slugify(String(value))
+    )
+    .filter(Boolean)
+    .join("-")
+    .slice(0, 180);
 
   const product =
     await prisma.product.create({
       data: {
-        name,
-        model: name,
-        brand:
-	    brandName ||
-	    formatBrandDisplayName(
-	  	  item.brand
-	    ),
-	    brandId,
-		
-		gtin,
-
-        categoryId: primaryCategory.id,
-
-        slug: await uniqueProductSlug(
-          prisma,
-          baseSlug
-        ),
-
-        description: item.description,
-        normalizedName,
-
-        manufacturerReference:
-          item.manufacturerReference,
-
-        imageUrl: item.imageUrl,
-
-        published: true,
-        active: true,
-
-        attributes:
-          buildProductAttributes(
-            aggregated
-          ),
+        ...productData,
+        slug:
+          fallbackSlug ||
+          `produit-${Date.now()}`,
       },
     });
 
@@ -698,31 +772,25 @@ function buildProductAttributes(
   };
 }
 
-async function uniqueProductSlug(
-  prisma: PrismaClient,
-  baseSlug: string
-): Promise<string> {
-  const safeBaseSlug =
-    baseSlug || "produit";
-
-  let slug = safeBaseSlug;
-  let counter = 2;
-
-  while (
-    await prisma.product.findUnique({
-      where: {
-        slug,
-      },
-      select: {
-        id: true,
-      },
-    })
-  ) {
-    slug = `${safeBaseSlug}-${counter}`;
-    counter += 1;
+function isUniqueConstraintField(
+  target: unknown,
+  expectedField: string
+): boolean {
+  if (typeof target === "string") {
+    return target.includes(
+      expectedField
+    );
   }
 
-  return slug;
+  if (Array.isArray(target)) {
+    return target.some(
+      (field) =>
+        String(field) ===
+        expectedField
+    );
+  }
+
+  return false;
 }
 
 function merchantNameFromSlug(
