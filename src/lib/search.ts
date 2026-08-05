@@ -7,156 +7,449 @@ export type ProductSearchItem = {
   brand: string | null;
   model: string | null;
   season: string | null;
-  category: string | null; // ✅ désormais: Category.name
+  category: string | null;
   minPriceCents: number | null;
   offerCount: number;
-  rank: number; // score FTS
-  prefixScore: number; // 0/1 si préfixe brand/model
-  simScore: number; // similarité trigram
+  rank: number;
+  prefixScore: number;
+  simScore: number;
 };
 
 export async function searchProducts(opts: {
   q: string;
   page?: number;
   pageSize?: number;
-  category?: string; // ✅ désormais: Category.slug
+  category?: string;
   inStockOnly?: boolean;
   minPriceCents?: number | null;
   maxPriceCents?: number | null;
   sort?: "relevance" | "price_asc" | "price_desc";
 }) {
   const qs = (opts.q ?? "").trim();
-  const page = Math.max(1, opts.page ?? 1);
-  const pageSize = Math.min(50, Math.max(1, opts.pageSize ?? 20));
-  const offset = (page - 1) * pageSize;
 
-  const category = opts.category ?? null; // slug
-  const inStockOnly = Boolean(opts.inStockOnly);
-  const minPriceCents = opts.minPriceCents ?? null;
-  const maxPriceCents = opts.maxPriceCents ?? null;
-  const sort = opts.sort ?? "relevance";
+  const page = Math.max(
+    1,
+    opts.page ?? 1
+  );
 
-  const rows = await prisma.$queryRaw<ProductSearchItem[]>`
-    WITH base AS (
-      SELECT
-        p.id,
-        p.slug,
-        p.brand,
-        p.model,
-        p.season,
-        c.name AS category, -- ✅ remplace p.category
-        MIN(CASE WHEN o."inStock" THEN o."priceCents" END)::int AS "minPriceCents",
-        COUNT(CASE WHEN o."inStock" THEN 1 END)::int           AS "offerCount",
+  const pageSize = Math.min(
+    50,
+    Math.max(
+      1,
+      opts.pageSize ?? 20
+    )
+  );
+
+  const offset =
+    (page - 1) * pageSize;
+
+  const category =
+    opts.category ?? null;
+
+  const inStockOnly =
+    Boolean(opts.inStockOnly);
+
+  const minPriceCents =
+    opts.minPriceCents ?? null;
+
+  const maxPriceCents =
+    opts.maxPriceCents ?? null;
+
+  const sort =
+    opts.sort ?? "relevance";
+
+  const rows =
+    await prisma.$queryRaw<
+      ProductSearchItem[]
+    >`
+      WITH base AS (
+        SELECT
+          p.id,
+          p.slug,
+          p.brand,
+          p.model,
+          p.season,
+          c.name AS category,
+
+          MIN(
+            CASE
+              WHEN o."inStock"
+              THEN o."priceCents"
+            END
+          )::int AS "minPriceCents",
+
+          COUNT(
+            CASE
+              WHEN o."inStock"
+              THEN 1
+            END
+          )::int AS "offerCount",
+
+          CASE
+            WHEN ${qs}::text = ''::text
+            THEN 0::float4
+
+            ELSE ts_rank(
+              to_tsvector(
+                'french',
+                unaccent(
+                  coalesce(p.brand, '') ||
+                  ' ' ||
+                  coalesce(p.model, '') ||
+                  ' ' ||
+                  coalesce(p.season, '')
+                )
+              ),
+
+              websearch_to_tsquery(
+                'french',
+                unaccent(
+                  ${qs}::text
+                )
+              )
+            )::float4
+          END AS rank,
+
+          GREATEST(
+            (
+              unaccent(
+                coalesce(p.brand, '')
+              )
+              ILIKE
+              unaccent(
+                ${qs}::text || '%'
+              )
+            )::int,
+
+            (
+              unaccent(
+                coalesce(p.model, '')
+              )
+              ILIKE
+              unaccent(
+                ${qs}::text || '%'
+              )
+            )::int
+          ) AS "prefixScore",
+
+          GREATEST(
+            similarity(
+              unaccent(
+                coalesce(p.brand, '')
+              ),
+              unaccent(
+                ${qs}::text
+              )
+            )::float4,
+
+            similarity(
+              unaccent(
+                coalesce(p.model, '')
+              ),
+              unaccent(
+                ${qs}::text
+              )
+            )::float4
+          ) AS "simScore"
+
+        FROM "Product" p
+
+        LEFT JOIN "Category" c
+          ON c.id = p."categoryId"
+
+        LEFT JOIN "Offer" o
+          ON o."productId" = p.id
+          AND o.active = TRUE
+
+        WHERE
+          p.active = TRUE
+          AND p.published = TRUE
+
+          AND (
+            ${qs}::text = ''::text
+
+            OR to_tsvector(
+              'french',
+              unaccent(
+                coalesce(p.brand, '') ||
+                ' ' ||
+                coalesce(p.model, '') ||
+                ' ' ||
+                coalesce(p.season, '')
+              )
+            )
+            @@ websearch_to_tsquery(
+              'french',
+              unaccent(
+                ${qs}::text
+              )
+            )
+
+            OR unaccent(
+              coalesce(p.brand, '')
+            )
+            ILIKE unaccent(
+              ${qs}::text || '%'
+            )
+
+            OR unaccent(
+              coalesce(p.model, '')
+            )
+            ILIKE unaccent(
+              ${qs}::text || '%'
+            )
+
+            OR p.brand % ${qs}::text
+            OR p.model % ${qs}::text
+          )
+
+          AND (
+            COALESCE(
+              ${category}::text,
+              ''::text
+            ) = ''::text
+
+            OR c.slug =
+              ${category}::text
+          )
+
+          AND (
+            CASE
+              WHEN ${inStockOnly}::boolean
+              THEN o."inStock" = TRUE
+              ELSE TRUE
+            END
+          )
+
+        GROUP BY
+          p.id,
+          c.name
+
+        HAVING
+          (
+            COALESCE(
+              ${minPriceCents}::int,
+              -1
+            ) = -1
+
+            OR MIN(
+              CASE
+                WHEN o."inStock"
+                THEN o."priceCents"
+              END
+            )::int >=
+              ${minPriceCents}::int
+          )
+
+          AND
+
+          (
+            COALESCE(
+              ${maxPriceCents}::int,
+              -1
+            ) = -1
+
+            OR MIN(
+              CASE
+                WHEN o."inStock"
+                THEN o."priceCents"
+              END
+            )::int <=
+              ${maxPriceCents}::int
+          )
+      )
+
+      SELECT *
+      FROM base
+
+      ORDER BY
+        CASE
+          WHEN ${sort}::text = 'price_asc'
+          THEN 0
+
+          WHEN ${sort}::text = 'price_desc'
+          THEN 1
+
+          ELSE 2
+        END ASC,
 
         CASE
-          WHEN ${qs}::text = ''::text THEN 0::float4
-          ELSE ts_rank(
-                 to_tsvector('french', unaccent(
-                   coalesce(p.brand,'') || ' ' || coalesce(p.model,'') || ' ' || coalesce(p.season,'')
-                 )),
-                 websearch_to_tsquery('french', unaccent(${qs}::text))
-               )::float4
-        END AS rank,
+          WHEN ${sort}::text = 'price_asc'
+          THEN "minPriceCents"
+        END ASC NULLS LAST,
 
-        GREATEST(
-          (unaccent(coalesce(p.brand,'')) ILIKE unaccent(${qs}::text || '%'))::int,
-          (unaccent(coalesce(p.model,'')) ILIKE unaccent(${qs}::text || '%'))::int
-        ) AS "prefixScore",
+        CASE
+          WHEN ${sort}::text = 'price_desc'
+          THEN "minPriceCents"
+        END DESC NULLS LAST,
 
-        GREATEST(
-          similarity(unaccent(coalesce(p.brand,'')), unaccent(${qs}::text))::float4,
-          similarity(unaccent(coalesce(p.model,'')), unaccent(${qs}::text))::float4
-        ) AS "simScore"
+        CASE
+          WHEN ${sort}::text = 'relevance'
+          THEN "prefixScore"
+        END DESC,
 
-      FROM "Product" p
-      LEFT JOIN "Category" c ON c.id = p."categoryId" -- ✅ join catégorie
-      LEFT JOIN "Sku"   s ON s."productId" = p.id
-      LEFT JOIN "Offer" o ON o."skuId"     = s.id
-      WHERE
-        (
-          ${qs}::text = ''::text
-          OR to_tsvector('french', unaccent(
-               coalesce(p.brand,'') || ' ' || coalesce(p.model,'') || ' ' || coalesce(p.season,'')
-             ))
-             @@ websearch_to_tsquery('french', unaccent(${qs}::text))
-          OR unaccent(coalesce(p.brand,'')) ILIKE unaccent(${qs}::text || '%')
-          OR unaccent(coalesce(p.model,'')) ILIKE unaccent(${qs}::text || '%')
-          OR p.brand % ${qs}::text
-          OR p.model % ${qs}::text
-        )
-        AND (
-          COALESCE(${category}::text, ''::text) = ''::text
-          OR c.slug = ${category}::text -- ✅ filtre sur slug
-        )
-        AND (
-          CASE WHEN ${inStockOnly}::boolean
-               THEN o."inStock" = TRUE
-               ELSE TRUE
-          END
-        )
-      GROUP BY p.id, c.name
-      HAVING
-        (COALESCE(${minPriceCents}::int, -1) = -1 OR MIN(CASE WHEN o."inStock" THEN o."priceCents" END)::int >= ${minPriceCents}::int)
-        AND
-        (COALESCE(${maxPriceCents}::int, -1) = -1 OR MIN(CASE WHEN o."inStock" THEN o."priceCents" END)::int <= ${maxPriceCents}::int)
-    )
-    SELECT *
-    FROM base
-    ORDER BY
-      CASE WHEN ${sort}::text = 'price_asc'  THEN 0
-           WHEN ${sort}::text = 'price_desc' THEN 1
-           ELSE 2
-      END ASC,
-      CASE WHEN ${sort}::text = 'price_asc' THEN "minPriceCents" END ASC NULLS LAST,
-      CASE WHEN ${sort}::text = 'price_desc' THEN "minPriceCents" END DESC NULLS LAST,
-      CASE WHEN ${sort}::text = 'relevance' THEN "prefixScore" END DESC,
-      CASE WHEN ${sort}::text = 'relevance' THEN rank END DESC,
-      CASE WHEN ${sort}::text = 'relevance' THEN "simScore" END DESC,
-      id ASC
-    LIMIT ${pageSize} OFFSET ${offset};
-  `;
+        CASE
+          WHEN ${sort}::text = 'relevance'
+          THEN rank
+        END DESC,
 
-  const countRows = await prisma.$queryRaw<Array<{ count: number }>>`
-    WITH base AS (
+        CASE
+          WHEN ${sort}::text = 'relevance'
+          THEN "simScore"
+        END DESC,
+
+        id ASC
+
+      LIMIT ${pageSize}
+      OFFSET ${offset};
+    `;
+
+  const countRows =
+    await prisma.$queryRaw<
+      Array<{
+        count: number;
+      }>
+    >`
+      WITH base AS (
+        SELECT
+          p.id,
+
+          MIN(
+            CASE
+              WHEN o."inStock"
+              THEN o."priceCents"
+            END
+          )::int AS "minPriceCents"
+
+        FROM "Product" p
+
+        LEFT JOIN "Category" c
+          ON c.id = p."categoryId"
+
+        LEFT JOIN "Offer" o
+          ON o."productId" = p.id
+          AND o.active = TRUE
+
+        WHERE
+          p.active = TRUE
+          AND p.published = TRUE
+
+          AND (
+            ${qs}::text = ''::text
+
+            OR to_tsvector(
+              'french',
+              unaccent(
+                coalesce(p.brand, '') ||
+                ' ' ||
+                coalesce(p.model, '') ||
+                ' ' ||
+                coalesce(p.season, '')
+              )
+            )
+            @@ websearch_to_tsquery(
+              'french',
+              unaccent(
+                ${qs}::text
+              )
+            )
+
+            OR unaccent(
+              coalesce(p.brand, '')
+            )
+            ILIKE unaccent(
+              ${qs}::text || '%'
+            )
+
+            OR unaccent(
+              coalesce(p.model, '')
+            )
+            ILIKE unaccent(
+              ${qs}::text || '%'
+            )
+
+            OR p.brand % ${qs}::text
+            OR p.model % ${qs}::text
+          )
+
+          AND (
+            COALESCE(
+              ${category}::text,
+              ''::text
+            ) = ''::text
+
+            OR c.slug =
+              ${category}::text
+          )
+
+          AND (
+            CASE
+              WHEN ${inStockOnly}::boolean
+              THEN o."inStock" = TRUE
+              ELSE TRUE
+            END
+          )
+
+        GROUP BY
+          p.id
+
+        HAVING
+          (
+            COALESCE(
+              ${minPriceCents}::int,
+              -1
+            ) = -1
+
+            OR MIN(
+              CASE
+                WHEN o."inStock"
+                THEN o."priceCents"
+              END
+            )::int >=
+              ${minPriceCents}::int
+          )
+
+          AND
+
+          (
+            COALESCE(
+              ${maxPriceCents}::int,
+              -1
+            ) = -1
+
+            OR MIN(
+              CASE
+                WHEN o."inStock"
+                THEN o."priceCents"
+              END
+            )::int <=
+              ${maxPriceCents}::int
+          )
+      )
+
       SELECT
-        p.id,
-        MIN(CASE WHEN o."inStock" THEN o."priceCents" END)::int AS "minPriceCents"
-      FROM "Product" p
-      LEFT JOIN "Category" c ON c.id = p."categoryId" -- ✅ join catégorie
-      LEFT JOIN "Sku"   s ON s."productId" = p.id
-      LEFT JOIN "Offer" o ON o."skuId"     = s.id
-      WHERE
-        (
-          ${qs}::text = ''::text
-          OR to_tsvector('french', unaccent(
-               coalesce(p.brand,'') || ' ' || coalesce(p.model,'') || ' ' || coalesce(p.season,'')
-             ))
-             @@ websearch_to_tsquery('french', unaccent(${qs}::text))
-          OR unaccent(coalesce(p.brand,'')) ILIKE unaccent(${qs}::text || '%')
-          OR unaccent(coalesce(p.model,'')) ILIKE unaccent(${qs}::text || '%')
-          OR p.brand % ${qs}::text
-          OR p.model % ${qs}::text
-        )
-        AND (
-          COALESCE(${category}::text, ''::text) = ''::text
-          OR c.slug = ${category}::text -- ✅ filtre sur slug
-        )
-        AND (
-          CASE WHEN ${inStockOnly}::boolean
-               THEN o."inStock" = TRUE
-               ELSE TRUE
-          END
-        )
-      GROUP BY p.id
-      HAVING
-        (COALESCE(${minPriceCents}::int, -1) = -1 OR MIN(CASE WHEN o."inStock" THEN o."priceCents" END)::int >= ${minPriceCents}::int)
-        AND
-        (COALESCE(${maxPriceCents}::int, -1) = -1 OR MIN(CASE WHEN o."inStock" THEN o."priceCents" END)::int <= ${maxPriceCents}::int)
-    )
-    SELECT COUNT(*)::int AS count FROM base;
-  `;
+        COUNT(*)::int AS count
 
-  const total = countRows[0]?.count ?? 0;
-  const totalPages = Math.max(1, Math.ceil(total / pageSize));
-  return { items: rows, page, pageSize, total, totalPages, q: qs };
+      FROM base;
+    `;
+
+  const total =
+    countRows[0]?.count ?? 0;
+
+  const totalPages =
+    Math.max(
+      1,
+      Math.ceil(
+        total / pageSize
+      )
+    );
+
+  return {
+    items: rows,
+    page,
+    pageSize,
+    total,
+    totalPages,
+    q: qs,
+  };
 }
