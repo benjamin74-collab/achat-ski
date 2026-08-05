@@ -64,6 +64,7 @@ export default async function CategoryPage({
   searchParams?: { [key: string]: string | string[] | undefined };
 }) {
   const site = await getCurrentSiteUrl();
+  const siteId = await getCurrentSiteId();
   const { category } = await params;
   const parsed = parseSearchParams(searchParams);
   const { page, sort, brands, season } = parsed;
@@ -94,8 +95,31 @@ export default async function CategoryPage({
   const pageSize = 12;
   const skip = (page - 1) * pageSize;
 
+  /*
+   * La navigation par catégorie doit utiliser ProductCategory,
+   * et non uniquement Product.categoryId.
+   *
+   * Product.categoryId représente seulement la catégorie principale.
+   * ProductCategory contient la catégorie principale, les catégories
+   * secondaires et tous les parents ajoutés par le moteur d'import.
+   */
   const baseCategoryWhere: Prisma.ProductWhereInput = {
-    category: { is: { slug: category } },
+    active: true,
+    published: true,
+
+    sites: {
+      some: {
+        siteId,
+        active: true,
+        published: true,
+      },
+    },
+
+    categories: {
+      some: {
+        categoryId: cat.id,
+      },
+    },
   };
 
   const [brandRows, seasonRows] = await Promise.all([
@@ -122,11 +146,19 @@ export default async function CategoryPage({
     .filter((v): v is string => typeof v === "string" && v.length > 0);
 
   const where: Prisma.ProductWhereInput = {
-    category: { is: { slug: category } },
+    ...baseCategoryWhere,
   };
 
-  if (brands.length) where.brand = { in: brands };
-  if (season) where.season = season;
+  if (brands.length) {
+    where.brand = {
+      in: brands,
+      mode: "insensitive",
+    };
+  }
+
+  if (season) {
+    where.season = season;
+  }
 
   const [total, productsRaw] = await Promise.all([
     prisma.product.count({ where }),
@@ -142,7 +174,11 @@ export default async function CategoryPage({
 			  slug: true,
 			},
 		  },
-		  offers: true,
+		  offers: {
+		    where: {
+		      active: true,
+		    },
+		  },
 		},
     }),
   ]);
