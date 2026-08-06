@@ -49,6 +49,11 @@ const NAV_SECTIONS: NavSection[] = [
         label: "Flux d’affiliation",
         desc: "Imports, mappings et historique",
       },
+	  {
+	    href: "/admin/classification",
+	    label: "Classification",
+	    desc: "Règles d'enrichissement"
+	  },
     ],
   },
   {
