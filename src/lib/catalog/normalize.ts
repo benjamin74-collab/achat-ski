@@ -209,6 +209,65 @@ export function normalizeProductName(
   return normalized;
 }
 
+export function normalizeIdentifierValue(
+  value: string | null | undefined
+): string | undefined {
+  const normalized = normalizeText(value)
+    .toUpperCase()
+    .replace(/[’']/g, "")
+    .replace(/\s+/g, "")
+    .trim();
+
+  return normalized || undefined;
+}
+
+/**
+ * Extrait un code modèle exploitable pour regrouper une gamme.
+ *
+ * Exemples Picture :
+ * - WPT0138       -> WPT0138
+ * - WPT0138-A     -> WPT0138
+ * - MVT0525-B     -> MVT0525
+ * - KPT0051-C     -> KPT0051
+ *
+ * Les EAN purs sont volontairement ignorés : ils représentent
+ * une variante taille/couleur, pas le code modèle.
+ */
+export function extractProductStyleCode(
+  value: string | null | undefined
+): string | undefined {
+  const normalized = normalizeIdentifierValue(value);
+
+  if (!normalized) {
+    return undefined;
+  }
+
+  const digitsOnly = normalized.replace(/\D/g, "");
+
+  if (
+    digitsOnly === normalized &&
+    [8, 12, 13, 14].includes(digitsOnly.length)
+  ) {
+    return undefined;
+  }
+
+  const directMatch = normalized.match(
+    /^([A-Z]{2,8}\d{3,8})(?:[-_][A-Z0-9]{1,8})?$/
+  );
+
+  if (directMatch?.[1]) {
+    return directMatch[1];
+  }
+
+  const compact = normalized.replace(/[-_]/g, "");
+
+  if (/^[A-Z]{2,8}\d{3,8}$/.test(compact)) {
+    return compact;
+  }
+
+  return undefined;
+}
+
 export function removeLeadingBrandFromProductName(
   name: string | null | undefined,
   brand: string | null | undefined

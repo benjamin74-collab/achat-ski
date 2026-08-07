@@ -1,5 +1,6 @@
 import {
   Prisma,
+  ProductIdentifierType,
   type Merchant,
   type PrismaClient,
 } from "@prisma/client";
@@ -14,9 +15,11 @@ import { matchFeedItem } from "./matching";
 
 import {
   buildProductSlug,
+  extractProductStyleCode,
   formatBrandDisplayName,
   normalizeBrandKey,
   normalizeGtin,
+  normalizeIdentifierValue,
   normalizeProductName,
   slugify,
   toPriceCents,
@@ -66,6 +69,7 @@ export async function importAggregatedFeedItem(
   aggregated: AggregatedFeedItem,
   merchant: Merchant,
   feedKey: string,
+  siteId: string,
   seenAt: Date,
   stats: ImportStats,
   brandCache: BrandCache
@@ -91,9 +95,11 @@ const brandName =
 
   const match = await matchFeedItem(
     prisma,
-    item,
+    aggregated,
     merchant.id,
-    brandId
+    siteId,
+    brandId,
+    brandName
   );
 
 const product = match.productId
@@ -118,6 +124,15 @@ const product = match.productId
     product.id,
     primaryCategory.id,
     categories.map((category) => category.id)
+  );
+
+  await syncProductIdentifiers(
+    prisma,
+    product.id,
+    siteId,
+    merchant.slug,
+    brandName || item.brand,
+    aggregated
   );
 
   const offer = await upsertOffer(
@@ -315,6 +330,13 @@ async function updateMatchedProduct(
     item.gtin
   );
 
+  const writableLegacyGtin =
+    await resolveWritableLegacyGtin(
+      prisma,
+      productId,
+      gtin
+    );
+
   const product = await prisma.product.update({
     where: {
       id: productId,
@@ -328,7 +350,7 @@ async function updateMatchedProduct(
 		  item.brand
 	    ),
 	  brandId,
-	  gtin: gtin || undefined,
+	  gtin: writableLegacyGtin,
 
       categoryId: primaryCategory.id,
 
@@ -388,6 +410,13 @@ async function createProduct(
   const gtin =
     normalizeGtin(item.gtin);
 
+  const writableLegacyGtin =
+    await resolveWritableLegacyGtin(
+      prisma,
+      undefined,
+      gtin
+    );
+
   const productData = {
     name,
     model: name,
@@ -399,7 +428,7 @@ async function createProduct(
       ),
 
     brandId,
-    gtin,
+    gtin: writableLegacyGtin,
 
     categoryId:
       primaryCategory.id,
@@ -769,7 +798,218 @@ function buildProductAttributes(
 
     sourceGroupKey:
       aggregated.groupKey,
+
+    variantGtins:
+      aggregated.variantGtins,
+
+    manufacturerReferences:
+      aggregated.manufacturerReferences,
+
+    styleCodes:
+      aggregated.styleCodes,
+
+    merchantExternalIds:
+      aggregated.merchantExternalIds,
+
+    merchantParentExternalIds:
+      aggregated.merchantParentExternalIds,
   };
+}
+
+
+type ProductIdentifierInput = {
+  type: ProductIdentifierType;
+  value: string;
+  brandKey: string;
+  merchantSlug: string;
+};
+
+async function syncProductIdentifiers(
+  prisma: PrismaClient,
+  productId: number,
+  siteId: string,
+  merchantSlug: string,
+  brandName: string | undefined,
+  aggregated: AggregatedFeedItem
+): Promise<void> {
+  const identifiers =
+    buildProductIdentifierInputs(
+      siteId,
+      merchantSlug,
+      brandName,
+      aggregated
+    );
+
+  for (const identifier of identifiers) {
+    await prisma.productIdentifier.upsert({
+      where: {
+        siteId_type_value_brandKey_merchantSlug: {
+          siteId,
+          type: identifier.type,
+          value: identifier.value,
+          brandKey: identifier.brandKey,
+          merchantSlug: identifier.merchantSlug,
+        },
+      },
+      update: {
+        productId,
+      },
+      create: {
+        productId,
+        siteId,
+        type: identifier.type,
+        value: identifier.value,
+        brandKey: identifier.brandKey,
+        merchantSlug: identifier.merchantSlug,
+      },
+    });
+  }
+}
+
+function buildProductIdentifierInputs(
+  siteId: string,
+  merchantSlug: string,
+  brandName: string | undefined,
+  aggregated: AggregatedFeedItem
+): ProductIdentifierInput[] {
+  const item = aggregated.item;
+  const brandKey = normalizeBrandKey(
+    brandName || item.brand
+  );
+
+  const identifiers = new Map<
+    string,
+    ProductIdentifierInput
+  >();
+
+  const addIdentifier = (
+    type: ProductIdentifierType,
+    rawValue: string | null | undefined,
+    options?: {
+      brandKey?: string;
+      merchantSlug?: string;
+    }
+  ) => {
+    const value =
+      type === ProductIdentifierType.GTIN
+        ? normalizeGtin(rawValue)
+        : normalizeIdentifierValue(rawValue);
+
+    if (!value) {
+      return;
+    }
+
+    const normalizedBrandKey =
+      options?.brandKey ?? "";
+
+    const normalizedMerchantSlug =
+      options?.merchantSlug ?? "";
+
+    const key = [
+      type,
+      value,
+      normalizedBrandKey,
+      normalizedMerchantSlug,
+    ].join("|");
+
+    identifiers.set(key, {
+      type,
+      value,
+      brandKey: normalizedBrandKey,
+      merchantSlug: normalizedMerchantSlug,
+    });
+  };
+
+  for (const gtin of [
+    ...aggregated.variantGtins,
+    item.gtin,
+  ]) {
+    addIdentifier(
+      ProductIdentifierType.GTIN,
+      gtin
+    );
+  }
+
+  if (brandKey) {
+    for (const styleCode of [
+      ...aggregated.styleCodes,
+      extractProductStyleCode(
+        item.manufacturerReference
+      ),
+      extractProductStyleCode(
+        item.parentExternalId
+      ),
+    ]) {
+      addIdentifier(
+        ProductIdentifierType.STYLE_CODE,
+        styleCode,
+        { brandKey }
+      );
+    }
+
+    for (const manufacturerReference of [
+      ...aggregated.manufacturerReferences,
+      item.manufacturerReference,
+    ]) {
+      addIdentifier(
+        ProductIdentifierType.MANUFACTURER_REFERENCE,
+        manufacturerReference,
+        { brandKey }
+      );
+    }
+  }
+
+  for (const parentExternalId of [
+    ...aggregated.merchantParentExternalIds,
+    item.parentExternalId,
+  ]) {
+    addIdentifier(
+      ProductIdentifierType.MERCHANT_PARENT_ID,
+      parentExternalId,
+      { merchantSlug }
+    );
+  }
+
+  for (const sourceGroupKey of [
+    ...aggregated.sourceGroupKeys,
+    aggregated.groupKey,
+  ]) {
+    addIdentifier(
+      ProductIdentifierType.SOURCE_GROUP_KEY,
+      sourceGroupKey,
+      { merchantSlug }
+    );
+  }
+
+  return Array.from(
+    identifiers.values()
+  );
+}
+
+async function resolveWritableLegacyGtin(
+  prisma: PrismaClient,
+  productId: number | undefined,
+  gtin: string | undefined
+): Promise<string | undefined> {
+  if (!gtin) {
+    return undefined;
+  }
+
+  const existing =
+    await prisma.product.findUnique({
+      where: {
+        gtin,
+      },
+      select: {
+        id: true,
+      },
+    });
+
+  if (!existing || existing.id === productId) {
+    return gtin;
+  }
+
+  return undefined;
 }
 
 function isUniqueConstraintField(

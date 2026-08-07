@@ -15,6 +15,9 @@
     "prisma:push": "prisma db push",
 
     "seed:brands": "tsx prisma/seed-brands.ts",
+	"seed:categories": "tsx prisma/seed-categories.ts",
+	"seed:pages": "tsx prisma/seed-pages.ts",
+	"seed:category-enrichment": "tsx prisma/seed-category-enrichment.ts",
     "prisma:seed:categories:sprint": "tsx prisma/seed-categories-ski-snowboard-rando-sprint.ts",
     "prisma:seed:menu-structure": "tsx prisma/seed-categories-menu-structure.ts",
     "prisma:seed": "tsx prisma/seed.ts",
@@ -25,7 +28,11 @@
     "feed:import:tonton": "tsx prisma/import-tonton-feed.ts",
 	"feed:audit:ekosport-categories": "tsx prisma/audit-ekosport-categories.ts",
 	"feed:map:ekosport-categories": "tsx prisma/seed-ekosport-category-mappings.ts",
-	"feed:seed:ekosport": "tsx prisma/seed-universal-ekosport.ts"
+	"feed:seed:ekosport": "tsx prisma/seed-universal-ekosport.ts",
+	"feed:audit:classification": "tsx prisma/audit-category-classification.ts",
+	
+	"catalog:reclassify": "tsx prisma/reclassify-products.ts",
+	"catalog:identifiers:backfill": "tsx prisma/backfill-product-identifiers.ts"
   },
   "dependencies": {
     "@next-auth/prisma-adapter": "^1.0.7",

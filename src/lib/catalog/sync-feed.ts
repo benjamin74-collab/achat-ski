@@ -500,6 +500,7 @@ export async function syncFeedContent({
               aggregated,
               merchant,
               feedKey,
+              runtime.siteId,
               startedAt,
               stats,
               brandCache
@@ -663,6 +664,10 @@ export async function syncFeedContent({
       );
     }
 
+console.log(
+  `[universal-feed] ${runtime.slug} - début reconcileMissingOffers`
+);
+
     await reconcileMissingOffers({
       prisma,
       runtime,
@@ -670,6 +675,10 @@ export async function syncFeedContent({
       startedAt,
       stats,
     });
+
+console.log(
+  `[universal-feed] ${runtime.slug} - fin reconcileMissingOffers`
+);
 
     const status =
       stats.errors > 0

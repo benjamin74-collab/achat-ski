@@ -57,6 +57,7 @@ export type MatchingReason =
   | "MERCHANT_PARENT_EXTERNAL_ID"
   | "MERCHANT_EXTERNAL_ID"
   | "BRAND_MANUFACTURER_REFERENCE"
+  | "BRAND_STYLE_CODE"
   | "BRAND_NORMALIZED_NAME"
   | "NEW_PRODUCT";
 
@@ -88,6 +89,18 @@ export interface AggregatedFeedItem {
   availableSizes: string[];
   availableColors: string[];
   availableGenders: string[];
+
+  /**
+   * Identifiants collectés sur toutes les variantes du groupe.
+   * Un Product représente une gamme / modèle, alors que les GTIN
+   * sont souvent au niveau taille + couleur.
+   */
+  variantGtins: string[];
+  manufacturerReferences: string[];
+  styleCodes: string[];
+  merchantExternalIds: string[];
+  merchantParentExternalIds: string[];
+  sourceGroupKeys: string[];
 }
 
 export type ImportStats = {

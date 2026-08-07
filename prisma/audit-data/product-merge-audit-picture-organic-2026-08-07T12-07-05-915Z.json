@@ -1,0 +1,2161 @@
+{
+  "generatedAt": "2026-08-07T12:07:05.829Z",
+  "siteId": "meilleur-ski",
+  "brand": "Picture Organic",
+  "counts": {
+    "products": 344,
+    "multiOfferProducts": 1,
+    "productsWithoutOffer": 0,
+    "duplicateGroups": 68,
+    "genericNameProducts": 0
+  },
+  "multiOfferProducts": [
+    {
+      "id": 4253,
+      "slug": "picture-organic-picture-exa-printed-pants-w",
+      "brand": "Picture Organic",
+      "name": "Exa Printed",
+      "model": "Exa Printed",
+      "gtin": "3663270952553",
+      "manufacturerReference": "3663270952553",
+      "category": {
+        "slug": "pantalons-ski",
+        "name": "Pantalons de ski"
+      },
+      "offers": [
+        {
+          "id": 6161,
+          "merchant": "ekosport",
+          "externalId": "K107445",
+          "parentExternalId": "K107445",
+          "priceCents": 13311,
+          "merchantProductUrl": "https://iza.ekosport.fr/?P4E23158990717S1UE41267304754600V4",
+          "imageUrl": "https://res.cloudinary.com/ekoweb/image/upload/s--QO88yV66--/f_auto%2Ch_600%2Cq_auto:eco%2Cw_600/v1/products/K107445/views/k107445_exa-printed-pants-w_wpt0138-a_01"
+        },
+        {
+          "id": 6423,
+          "merchant": "picture-organic",
+          "externalId": "WPT0138",
+          "parentExternalId": "WPT0138",
+          "priceCents": 23500,
+          "merchantProductUrl": "https://dgr.picture-organic-clothing.com/?P51230B58990715S1UC4135a1076968V4",
+          "imageUrl": "https://edge.disstg.commercecloud.salesforce.com/dw/image/v2/BGFP_PRD/on/demandware.static/-/Sites-poc-master-catalog/default/dwf54bc9f7/images/WPT0138_EXA-PRINTED-PANTS_TIMELESS-FLOWER-PRINT_A_P_04%20(1).jpg?sw=1200%26sh=1200%26sm=fit"
+        }
+      ],
+      "attributes": {
+        "categorySlugs": [
+          "pantalons-ski",
+          "vetements-ski"
+        ],
+        "availableSizes": [],
+        "sourceGroupKey": "picture-organic:parent:WPT0138",
+        "availableColors": [],
+        "sourceItemCount": 1,
+        "availableGenders": [],
+        "sourceCategoryPath": "Vetements et accessoires > Vetements > Vetements de plein air > Pantalons et combinaisons de ski",
+        "primaryCategorySlug": "pantalons-ski"
+      }
+    }
+  ],
+  "duplicateGroups": [
+    {
+      "key": "name:pictureorganic:combinaison",
+      "reason": "Marque + nom normalisé identiques",
+      "productCount": 10,
+      "offerCount": 10,
+      "merchantCount": 1,
+      "productIds": [
+        919,
+        940,
+        965,
+        1090,
+        1095,
+        1333,
+        1335,
+        4606,
+        4613,
+        4615
+      ],
+      "productNames": [
+        "PICTURE COMBINAISON"
+      ],
+      "productSlugs": [
+        "picture-combinaison",
+        "picture-combinaison-2",
+        "picture-combinaison-3",
+        "picture-combinaison-4",
+        "picture-combinaison-5",
+        "picture-organic-picture-combinaison",
+        "picture-organic-picture-combinaison-2",
+        "picture-organic-picture-combinaison-3",
+        "picture-organic-picture-combinaison-4",
+        "picture-organic-picture-combinaison-5"
+      ],
+      "merchants": [
+        "picture-organic"
+      ],
+      "gtins": [
+        "3663270814561",
+        "3663270920491",
+        "3663270737860",
+        "3663270892927",
+        "3663270793330",
+        "3663270951327",
+        "3663270988880",
+        "3663270893061",
+        "3663270831438",
+        "3663270831285"
+      ],
+      "manufacturerReferences": [
+        "3663270814561",
+        "3663270920491",
+        "3663270737860",
+        "3663270892927",
+        "3663270793330",
+        "3663270951327",
+        "3663270988880",
+        "3663270893061",
+        "3663270831438",
+        "3663270831285"
+      ]
+    },
+    {
+      "key": "name:pictureorganic:time",
+      "reason": "Marque + nom normalisé identiques",
+      "productCount": 6,
+      "offerCount": 6,
+      "merchantCount": 1,
+      "productIds": [
+        921,
+        923,
+        933,
+        1218,
+        4514,
+        4517
+      ],
+      "productNames": [
+        "Time"
+      ],
+      "productSlugs": [
+        "picture-pantalon-de-ski-snowboard-2",
+        "picture-pantalon-de-ski-snowboard-3",
+        "picture-pantalon-de-ski-snowboard-5",
+        "picture-organic-picture-pantalon-de-ski-snowboard-2",
+        "picture-organic-time",
+        "picture-organic-time-2"
+      ],
+      "merchants": [
+        "picture-organic"
+      ],
+      "gtins": [
+        "3663270927667",
+        "3663270627260",
+        "3663270733367",
+        "3663270627338",
+        "3663270626843",
+        "3663270627406"
+      ],
+      "manufacturerReferences": [
+        "3663270927667",
+        "3663270627260",
+        "3663270733367",
+        "3663270627338",
+        "3663270626843",
+        "3663270627406"
+      ]
+    },
+    {
+      "key": "name:pictureorganic:doudoune en duvet mid puff down",
+      "reason": "Marque + nom normalisé identiques",
+      "productCount": 4,
+      "offerCount": 4,
+      "merchantCount": 1,
+      "productIds": [
+        1320,
+        1324,
+        4595,
+        4602
+      ],
+      "productNames": [
+        "Doudoune en duvet MID PUFF DOWN"
+      ],
+      "productSlugs": [
+        "picture-organic-picture-blouson-19",
+        "picture-organic-picture-blouson-20",
+        "picture-organic-doudoune-en-duvet-mid-puff-down",
+        "picture-organic-doudoune-en-duvet-mid-puff-down-2"
+      ],
+      "merchants": [
+        "picture-organic"
+      ],
+      "gtins": [
+        "3663270854659",
+        "3663270855946",
+        "3663270758940",
+        "3663270763135"
+      ],
+      "manufacturerReferences": [
+        "3663270854659",
+        "3663270855946",
+        "3663270758940",
+        "3663270763135"
+      ]
+    },
+    {
+      "key": "name:pictureorganic:exa",
+      "reason": "Marque + nom normalisé identiques",
+      "productCount": 4,
+      "offerCount": 4,
+      "merchantCount": 1,
+      "productIds": [
+        1361,
+        4619,
+        4627,
+        4649
+      ],
+      "productNames": [
+        "Exa"
+      ],
+      "productSlugs": [
+        "picture-organic-picture-blouson-26",
+        "picture-organic-exa",
+        "picture-organic-exa-2",
+        "picture-organic-exa-3"
+      ],
+      "merchants": [
+        "picture-organic"
+      ],
+      "gtins": [
+        "3663270864337",
+        "3663270953079",
+        "3663270769304",
+        "3663270959514"
+      ],
+      "manufacturerReferences": [
+        "3663270864337",
+        "3663270953079",
+        "3663270769304",
+        "3663270959514"
+      ]
+    },
+    {
+      "key": "name:pictureorganic:object pants",
+      "reason": "Marque + nom normalisé identiques",
+      "productCount": 4,
+      "offerCount": 4,
+      "merchantCount": 1,
+      "productIds": [
+        4036,
+        4051,
+        4053,
+        4259
+      ],
+      "productNames": [
+        "PICTURE OBJECT PANTS"
+      ],
+      "productSlugs": [
+        "picture-organic-picture-object-pants",
+        "picture-organic-picture-object-pants-2",
+        "picture-organic-picture-object-pants-3",
+        "picture-organic-picture-object-pants-4"
+      ],
+      "merchants": [
+        "ekosport"
+      ],
+      "gtins": [
+        "3663270932388",
+        "3663270964983",
+        "3663270965089",
+        "3663270932517"
+      ],
+      "manufacturerReferences": [
+        "MPT0187-A",
+        "MPT0187-E",
+        "MPT0187-F",
+        "MPT0187-C"
+      ]
+    },
+    {
+      "key": "name:pictureorganic:snowy toddler bib",
+      "reason": "Marque + nom normalisé identiques",
+      "productCount": 3,
+      "offerCount": 3,
+      "merchantCount": 1,
+      "productIds": [
+        925,
+        1223,
+        4515
+      ],
+      "productNames": [
+        "Snowy Toddler Bib"
+      ],
+      "productSlugs": [
+        "picture-pantalon-de-ski-snowboard-4",
+        "picture-organic-picture-pantalon-de-ski-snowboard-4",
+        "picture-organic-snowy-toddler-bib"
+      ],
+      "merchants": [
+        "picture-organic"
+      ],
+      "gtins": [
+        "3663270627734",
+        "3663270734104",
+        "3663270627659"
+      ],
+      "manufacturerReferences": [
+        "3663270627734",
+        "3663270734104",
+        "3663270627659"
+      ]
+    },
+    {
+      "key": "name:pictureorganic:olyvera jkt",
+      "reason": "Marque + nom normalisé identiques",
+      "productCount": 3,
+      "offerCount": 3,
+      "merchantCount": 1,
+      "productIds": [
+        930,
+        4524,
+        4529
+      ],
+      "productNames": [
+        "Olyvera Jkt"
+      ],
+      "productSlugs": [
+        "picture-veste-de-ski-snowboard-2",
+        "picture-organic-olyvera-jkt",
+        "picture-organic-olyvera-jkt-2"
+      ],
+      "merchants": [
+        "picture-organic"
+      ],
+      "gtins": [
+        "3663270836198",
+        "3663270630994",
+        "3663270735903"
+      ],
+      "manufacturerReferences": [
+        "3663270836198",
+        "3663270630994",
+        "3663270735903"
+      ]
+    },
+    {
+      "key": "name:pictureorganic:kamelya jkt",
+      "reason": "Marque + nom normalisé identiques",
+      "productCount": 3,
+      "offerCount": 3,
+      "merchantCount": 1,
+      "productIds": [
+        931,
+        4525,
+        4532
+      ],
+      "productNames": [
+        "Kamelya Jkt"
+      ],
+      "productSlugs": [
+        "picture-blouson-2",
+        "picture-organic-kamelya-jkt",
+        "picture-organic-kamelya-jkt-2"
+      ],
+      "merchants": [
+        "picture-organic"
+      ],
+      "gtins": [
+        "3663270836051",
+        "3663270631427",
+        "3663270736092"
+      ],
+      "manufacturerReferences": [
+        "3663270836051",
+        "3663270631427",
+        "3663270736092"
+      ]
+    },
+    {
+      "key": "name:pictureorganic:seady jkt",
+      "reason": "Marque + nom normalisé identiques",
+      "productCount": 3,
+      "offerCount": 3,
+      "merchantCount": 1,
+      "productIds": [
+        958,
+        1222,
+        1240
+      ],
+      "productNames": [
+        "Seady Jkt"
+      ],
+      "productSlugs": [
+        "picture-veste-de-ski-snowboard-7",
+        "picture-organic-picture-blouson",
+        "picture-organic-picture-veste-de-ski-snowboard-5"
+      ],
+      "merchants": [
+        "picture-organic"
+      ],
+      "gtins": [
+        "3663270631700",
+        "3663270836266",
+        "3663270736603"
+      ],
+      "manufacturerReferences": [
+        "3663270631700",
+        "3663270836266",
+        "3663270736603"
+      ]
+    },
+    {
+      "key": "name:pictureorganic:citrik",
+      "reason": "Marque + nom normalisé identiques",
+      "productCount": 3,
+      "offerCount": 3,
+      "merchantCount": 1,
+      "productIds": [
+        1000,
+        1017,
+        4646
+      ],
+      "productNames": [
+        "Citrik"
+      ],
+      "productSlugs": [
+        "picture-blouson-10",
+        "picture-veste-de-ski-snowboard-12",
+        "picture-organic-citrik"
+      ],
+      "merchants": [
+        "picture-organic"
+      ],
+      "gtins": [
+        "3663270851214",
+        "3663270940727",
+        "3663270959378"
+      ],
+      "manufacturerReferences": [
+        "3663270851214",
+        "3663270940727",
+        "3663270959378"
+      ]
+    },
+    {
+      "key": "name:pictureorganic:akna",
+      "reason": "Marque + nom normalisé identiques",
+      "productCount": 3,
+      "offerCount": 3,
+      "merchantCount": 1,
+      "productIds": [
+        1026,
+        4618,
+        4644
+      ],
+      "productNames": [
+        "Akna"
+      ],
+      "productSlugs": [
+        "picture-veste-de-ski-snowboard-14",
+        "picture-organic-akna",
+        "picture-organic-akna-2"
+      ],
+      "merchants": [
+        "picture-organic"
+      ],
+      "gtins": [
+        "3663270942899",
+        "3663270952515",
+        "3663270958883"
+      ],
+      "manufacturerReferences": [
+        "3663270942899",
+        "3663270952515",
+        "3663270958883"
+      ]
+    },
+    {
+      "key": "name:pictureorganic:seen",
+      "reason": "Marque + nom normalisé identiques",
+      "productCount": 3,
+      "offerCount": 3,
+      "merchantCount": 1,
+      "productIds": [
+        1132,
+        1143,
+        4617
+      ],
+      "productNames": [
+        "Seen"
+      ],
+      "productSlugs": [
+        "picture-blouson-32",
+        "picture-veste-de-ski-snowboard-18",
+        "picture-organic-seen"
+      ],
+      "merchants": [
+        "picture-organic"
+      ],
+      "gtins": [
+        "3663270864528",
+        "3663270958043",
+        "3663270952447"
+      ],
+      "manufacturerReferences": [
+        "3663270864528",
+        "3663270958043",
+        "3663270952447"
+      ]
+    },
+    {
+      "key": "name:pictureorganic:randonnee abstral 2.5l",
+      "reason": "Marque + nom normalisé identiques",
+      "productCount": 3,
+      "offerCount": 3,
+      "merchantCount": 1,
+      "productIds": [
+        1201,
+        4557,
+        4636
+      ],
+      "productNames": [
+        "randonnee ABSTRAL+ 2.5L"
+      ],
+      "productSlugs": [
+        "picture-blouson-43",
+        "picture-organic-randonnee-abstral-2-5l",
+        "picture-organic-randonnee-abstral-2-5l-2"
+      ],
+      "merchants": [
+        "picture-organic"
+      ],
+      "gtins": [
+        "3663270779761",
+        "3663270921917",
+        "3663270923065"
+      ],
+      "manufacturerReferences": [
+        "3663270779761",
+        "3663270921917",
+        "3663270923065"
+      ]
+    },
+    {
+      "key": "name:pictureorganic:object",
+      "reason": "Marque + nom normalisé identiques",
+      "productCount": 3,
+      "offerCount": 3,
+      "merchantCount": 1,
+      "productIds": [
+        1260,
+        1286,
+        4537
+      ],
+      "productNames": [
+        "Object"
+      ],
+      "productSlugs": [
+        "picture-organic-picture-blouson-5",
+        "picture-organic-picture-veste-de-ski-snowboard-9",
+        "picture-organic-object"
+      ],
+      "merchants": [
+        "picture-organic"
+      ],
+      "gtins": [
+        "3663270848412",
+        "3663270942332",
+        "3663270932609"
+      ],
+      "manufacturerReferences": [
+        "3663270848412",
+        "3663270942332",
+        "3663270932609"
+      ]
+    },
+    {
+      "key": "name:pictureorganic:randonnee stall",
+      "reason": "Marque + nom normalisé identiques",
+      "productCount": 3,
+      "offerCount": 3,
+      "merchantCount": 1,
+      "productIds": [
+        1276,
+        4588,
+        4638
+      ],
+      "productNames": [
+        "randonnee STALL"
+      ],
+      "productSlugs": [
+        "picture-organic-picture-blouson-9",
+        "picture-organic-randonnee-stall",
+        "picture-organic-randonnee-stall-2"
+      ],
+      "merchants": [
+        "picture-organic"
+      ],
+      "gtins": [
+        "3663270971653",
+        "3663270809864",
+        "3663270902374"
+      ],
+      "manufacturerReferences": [
+        "3663270971653",
+        "3663270809864",
+        "3663270902374"
+      ]
+    },
+    {
+      "key": "name:pictureorganic:object jacket",
+      "reason": "Marque + nom normalisé identiques",
+      "productCount": 3,
+      "offerCount": 3,
+      "merchantCount": 1,
+      "productIds": [
+        3547,
+        3576,
+        3578
+      ],
+      "productNames": [
+        "PICTURE OBJECT JACKET"
+      ],
+      "productSlugs": [
+        "picture-organic-picture-object-jacket",
+        "picture-organic-picture-object-jacket-2",
+        "picture-organic-picture-object-jacket-3"
+      ],
+      "merchants": [
+        "ekosport"
+      ],
+      "gtins": [
+        "3663270848399",
+        "3663270942318",
+        "3663270942455"
+      ],
+      "manufacturerReferences": [
+        "MVT0525-B",
+        "MVT0584-A",
+        "MVT0584-C"
+      ]
+    },
+    {
+      "key": "name:pictureorganic:exa pants",
+      "reason": "Marque + nom normalisé identiques",
+      "productCount": 3,
+      "offerCount": 3,
+      "merchantCount": 1,
+      "productIds": [
+        4030,
+        4033,
+        4035
+      ],
+      "productNames": [
+        "PICTURE EXA PANTS"
+      ],
+      "productSlugs": [
+        "picture-organic-picture-exa-pants",
+        "picture-organic-picture-exa-pants-2",
+        "picture-organic-picture-exa-pants-3"
+      ],
+      "merchants": [
+        "ekosport"
+      ],
+      "gtins": [
+        "3663270952621",
+        "3663270952690",
+        "3663270952904"
+      ],
+      "manufacturerReferences": [
+        "WPT0139-A",
+        "WPT0139-B",
+        "WPT0139-E"
+      ]
+    },
+    {
+      "key": "name:pictureorganic:naikoon",
+      "reason": "Marque + nom normalisé identiques",
+      "productCount": 3,
+      "offerCount": 3,
+      "merchantCount": 1,
+      "productIds": [
+        4538,
+        4551,
+        4563
+      ],
+      "productNames": [
+        "Naikoon"
+      ],
+      "productSlugs": [
+        "picture-organic-naikoon",
+        "picture-organic-naikoon-2",
+        "picture-organic-naikoon-3"
+      ],
+      "merchants": [
+        "picture-organic"
+      ],
+      "gtins": [
+        "3663270932180",
+        "3663270849389",
+        "3663270940161"
+      ],
+      "manufacturerReferences": [
+        "3663270932180",
+        "3663270849389",
+        "3663270940161"
+      ]
+    },
+    {
+      "key": "name:pictureorganic:stony jkt",
+      "reason": "Marque + nom normalisé identiques",
+      "productCount": 2,
+      "offerCount": 2,
+      "merchantCount": 1,
+      "productIds": [
+        935,
+        4530
+      ],
+      "productNames": [
+        "Stony Jkt"
+      ],
+      "productSlugs": [
+        "picture-blouson-3",
+        "picture-organic-stony-jkt"
+      ],
+      "merchants": [
+        "picture-organic"
+      ],
+      "gtins": [
+        "3663270837317",
+        "3663270736467"
+      ],
+      "manufacturerReferences": [
+        "3663270837317",
+        "3663270736467"
+      ]
+    },
+    {
+      "key": "name:pictureorganic:edytor jkt",
+      "reason": "Marque + nom normalisé identiques",
+      "productCount": 2,
+      "offerCount": 2,
+      "merchantCount": 1,
+      "productIds": [
+        950,
+        1244
+      ],
+      "productNames": [
+        "Edytor Jkt"
+      ],
+      "productSlugs": [
+        "picture-veste-de-ski-snowboard-6",
+        "picture-organic-picture-veste-de-ski-snowboard-6"
+      ],
+      "merchants": [
+        "picture-organic"
+      ],
+      "gtins": [
+        "3663270631281",
+        "3663270737242"
+      ],
+      "manufacturerReferences": [
+        "3663270631281",
+        "3663270737242"
+      ]
+    },
+    {
+      "key": "name:pictureorganic:cowan youth",
+      "reason": "Marque + nom normalisé identiques",
+      "productCount": 2,
+      "offerCount": 2,
+      "merchantCount": 1,
+      "productIds": [
+        955,
+        1237
+      ],
+      "productNames": [
+        "Cowan Youth"
+      ],
+      "productSlugs": [
+        "picture-blouson-5",
+        "picture-organic-picture-blouson-3"
+      ],
+      "merchants": [
+        "picture-organic"
+      ],
+      "gtins": [
+        "3663270720329",
+        "3663270632837"
+      ],
+      "manufacturerReferences": [
+        "3663270720329",
+        "3663270632837"
+      ]
+    },
+    {
+      "key": "name:pictureorganic:olyver jkt",
+      "reason": "Marque + nom normalisé identiques",
+      "productCount": 2,
+      "offerCount": 2,
+      "merchantCount": 1,
+      "productIds": [
+        961,
+        1233
+      ],
+      "productNames": [
+        "Olyver Jkt"
+      ],
+      "productSlugs": [
+        "picture-veste-de-ski-snowboard-8",
+        "picture-organic-picture-veste-de-ski-snowboard-3"
+      ],
+      "merchants": [
+        "picture-organic"
+      ],
+      "gtins": [
+        "3663270735972",
+        "3663270630864"
+      ],
+      "manufacturerReferences": [
+        "3663270735972",
+        "3663270630864"
+      ]
+    },
+    {
+      "key": "name:pictureorganic:daumy jkt",
+      "reason": "Marque + nom normalisé identiques",
+      "productCount": 2,
+      "offerCount": 2,
+      "merchantCount": 1,
+      "productIds": [
+        967,
+        1224
+      ],
+      "productNames": [
+        "Daumy Jkt"
+      ],
+      "productSlugs": [
+        "picture-veste-de-ski-snowboard-9",
+        "picture-organic-picture-blouson-2"
+      ],
+      "merchants": [
+        "picture-organic"
+      ],
+      "gtins": [
+        "3663270736894",
+        "3663270836471"
+      ],
+      "manufacturerReferences": [
+        "3663270736894",
+        "3663270836471"
+      ]
+    },
+    {
+      "key": "name:pictureorganic:dark blue",
+      "reason": "Marque + nom normalisé identiques",
+      "productCount": 2,
+      "offerCount": 2,
+      "merchantCount": 1,
+      "productIds": [
+        989,
+        1349
+      ],
+      "productNames": [
+        "Dark Blue"
+      ],
+      "productSlugs": [
+        "picture-pantalon-de-ski-snowboard-10",
+        "picture-organic-picture-pantalon-de-ski-snowboard-12"
+      ],
+      "merchants": [
+        "picture-organic"
+      ],
+      "gtins": [
+        "3663270741744",
+        "3663270769861"
+      ],
+      "manufacturerReferences": [
+        "3663270741744",
+        "3663270769861"
+      ]
+    },
+    {
+      "key": "name:pictureorganic:nitric",
+      "reason": "Marque + nom normalisé identiques",
+      "productCount": 2,
+      "offerCount": 2,
+      "merchantCount": 1,
+      "productIds": [
+        996,
+        4566
+      ],
+      "productNames": [
+        "Nitric"
+      ],
+      "productSlugs": [
+        "picture-blouson-9",
+        "picture-organic-nitric"
+      ],
+      "merchants": [
+        "picture-organic"
+      ],
+      "gtins": [
+        "3663270868007",
+        "3663270941144"
+      ],
+      "manufacturerReferences": [
+        "3663270868007",
+        "3663270941144"
+      ]
+    },
+    {
+      "key": "name:pictureorganic:3 couches broader",
+      "reason": "Marque + nom normalisé identiques",
+      "productCount": 2,
+      "offerCount": 2,
+      "merchantCount": 1,
+      "productIds": [
+        1010,
+        4545
+      ],
+      "productNames": [
+        "3 couches BROADER"
+      ],
+      "productSlugs": [
+        "picture-veste-de-ski-snowboard-10",
+        "picture-organic-3-couches-broader"
+      ],
+      "merchants": [
+        "picture-organic"
+      ],
+      "gtins": [
+        "3663270939677",
+        "3663270847415"
+      ],
+      "manufacturerReferences": [
+        "3663270939677",
+        "3663270847415"
+      ]
+    },
+    {
+      "key": "name:pictureorganic:gore tex lassen",
+      "reason": "Marque + nom normalisé identiques",
+      "productCount": 2,
+      "offerCount": 2,
+      "merchantCount": 1,
+      "productIds": [
+        1015,
+        1154
+      ],
+      "productNames": [
+        "Gore-Tex Lassen",
+        "Gore-Tex LASSEN"
+      ],
+      "productSlugs": [
+        "picture-veste-de-ski-snowboard-11",
+        "picture-veste-de-ski-snowboard-21"
+      ],
+      "merchants": [
+        "picture-organic"
+      ],
+      "gtins": [
+        "3663270940000",
+        "3663270960770"
+      ],
+      "manufacturerReferences": [
+        "3663270940000",
+        "3663270960770"
+      ]
+    },
+    {
+      "key": "name:pictureorganic:gore tex merepi",
+      "reason": "Marque + nom normalisé identiques",
+      "productCount": 2,
+      "offerCount": 2,
+      "merchantCount": 1,
+      "productIds": [
+        1020,
+        4653
+      ],
+      "productNames": [
+        "Gore-Tex MEREPI"
+      ],
+      "productSlugs": [
+        "picture-veste-de-ski-snowboard-13",
+        "picture-organic-gtx-merepi"
+      ],
+      "merchants": [
+        "picture-organic"
+      ],
+      "gtins": [
+        "3663270941991",
+        "3663270960565"
+      ],
+      "manufacturerReferences": [
+        "3663270941991",
+        "3663270960565"
+      ]
+    },
+    {
+      "key": "name:pictureorganic:doudoune impermeable sperky",
+      "reason": "Marque + nom normalisé identiques",
+      "productCount": 2,
+      "offerCount": 2,
+      "merchantCount": 1,
+      "productIds": [
+        1025,
+        4584
+      ],
+      "productNames": [
+        "Doudoune impermeable SPERKY"
+      ],
+      "productSlugs": [
+        "picture-blouson-13",
+        "picture-organic-doudoune-impermeable-sperky"
+      ],
+      "merchants": [
+        "picture-organic"
+      ],
+      "gtins": [
+        "3663270943384",
+        "3663270756823"
+      ],
+      "manufacturerReferences": [
+        "3663270943384",
+        "3663270756823"
+      ]
+    },
+    {
+      "key": "name:pictureorganic:scale printed",
+      "reason": "Marque + nom normalisé identiques",
+      "productCount": 2,
+      "offerCount": 2,
+      "merchantCount": 1,
+      "productIds": [
+        1044,
+        1385
+      ],
+      "productNames": [
+        "Scale Printed"
+      ],
+      "productSlugs": [
+        "picture-blouson-17",
+        "picture-organic-picture-blouson-31"
+      ],
+      "merchants": [
+        "picture-organic"
+      ],
+      "gtins": [
+        "3663270986367",
+        "3663270995499"
+      ],
+      "manufacturerReferences": [
+        "3663270986367",
+        "3663270995499"
+      ]
+    },
+    {
+      "key": "name:pictureorganic:randonnee volute 2.5l",
+      "reason": "Marque + nom normalisé identiques",
+      "productCount": 2,
+      "offerCount": 2,
+      "merchantCount": 1,
+      "productIds": [
+        1068,
+        1138
+      ],
+      "productNames": [
+        "randonnee VOLUTE 2.5L"
+      ],
+      "productSlugs": [
+        "picture-blouson-23",
+        "picture-blouson-34"
+      ],
+      "merchants": [
+        "picture-organic"
+      ],
+      "gtins": [
+        "3663270809796",
+        "3663270902695"
+      ],
+      "manufacturerReferences": [
+        "3663270809796",
+        "3663270902695"
+      ]
+    },
+    {
+      "key": "name:pictureorganic:isolante outif softshell",
+      "reason": "Marque + nom normalisé identiques",
+      "productCount": 2,
+      "offerCount": 2,
+      "merchantCount": 1,
+      "productIds": [
+        1085,
+        4594
+      ],
+      "productNames": [
+        "isolante OUTIF SOFTSHELL"
+      ],
+      "productSlugs": [
+        "picture-blouson-27",
+        "picture-organic-isolante-outif-softshell"
+      ],
+      "merchants": [
+        "picture-organic"
+      ],
+      "gtins": [
+        "3663270973992",
+        "3663270972230"
+      ],
+      "manufacturerReferences": [
+        "3663270973992",
+        "3663270972230"
+      ]
+    },
+    {
+      "key": "name:pictureorganic:elwy bib",
+      "reason": "Marque + nom normalisé identiques",
+      "productCount": 2,
+      "offerCount": 2,
+      "merchantCount": 1,
+      "productIds": [
+        1100,
+        1114
+      ],
+      "productNames": [
+        "Elwy Bib"
+      ],
+      "productSlugs": [
+        "picture-pantalon-de-ski-snowboard-12",
+        "picture-pantalon-de-ski-snowboard-15"
+      ],
+      "merchants": [
+        "picture-organic"
+      ],
+      "gtins": [
+        "3663270952164",
+        "3663270768161"
+      ],
+      "manufacturerReferences": [
+        "3663270952164",
+        "3663270768161"
+      ]
+    },
+    {
+      "key": "name:pictureorganic:treva printed",
+      "reason": "Marque + nom normalisé identiques",
+      "productCount": 2,
+      "offerCount": 2,
+      "merchantCount": 1,
+      "productIds": [
+        1115,
+        1342
+      ],
+      "productNames": [
+        "Treva Printed"
+      ],
+      "productSlugs": [
+        "picture-pantalon-de-ski-snowboard-16",
+        "picture-organic-picture-pantalon-de-ski-snowboard-9"
+      ],
+      "merchants": [
+        "picture-organic"
+      ],
+      "gtins": [
+        "3663270770126",
+        "3663270953338"
+      ],
+      "manufacturerReferences": [
+        "3663270770126",
+        "3663270953338"
+      ]
+    },
+    {
+      "key": "name:pictureorganic:randonnee scale",
+      "reason": "Marque + nom normalisé identiques",
+      "productCount": 2,
+      "offerCount": 2,
+      "merchantCount": 1,
+      "productIds": [
+        1133,
+        4558
+      ],
+      "productNames": [
+        "randonnee SCALE"
+      ],
+      "productSlugs": [
+        "picture-blouson-33",
+        "picture-organic-randonnee-scale"
+      ],
+      "merchants": [
+        "picture-organic"
+      ],
+      "gtins": [
+        "3663270902589",
+        "3663270886896"
+      ],
+      "manufacturerReferences": [
+        "3663270902589",
+        "3663270886896"
+      ]
+    },
+    {
+      "key": "name:pictureorganic:3 couches sylva",
+      "reason": "Marque + nom normalisé identiques",
+      "productCount": 2,
+      "offerCount": 2,
+      "merchantCount": 1,
+      "productIds": [
+        1149,
+        4628
+      ],
+      "productNames": [
+        "3 couches SYLVA"
+      ],
+      "productSlugs": [
+        "picture-veste-de-ski-snowboard-20",
+        "picture-organic-3-couches-sylva"
+      ],
+      "merchants": [
+        "picture-organic"
+      ],
+      "gtins": [
+        "3663270959866",
+        "3663270862661"
+      ],
+      "manufacturerReferences": [
+        "3663270959866",
+        "3663270862661"
+      ]
+    },
+    {
+      "key": "name:pictureorganic:haakon jkt",
+      "reason": "Marque + nom normalisé identiques",
+      "productCount": 2,
+      "offerCount": 2,
+      "merchantCount": 1,
+      "productIds": [
+        1173,
+        4671
+      ],
+      "productNames": [
+        "Haakon Jkt"
+      ],
+      "productSlugs": [
+        "picture-veste-de-ski-snowboard-22",
+        "picture-organic-haakon-jkt"
+      ],
+      "merchants": [
+        "picture-organic"
+      ],
+      "gtins": [
+        "3663270666016",
+        "3663270776494"
+      ],
+      "manufacturerReferences": [
+        "3663270666016",
+        "3663270776494"
+      ]
+    },
+    {
+      "key": "name:pictureorganic:glawi jkt",
+      "reason": "Marque + nom normalisé identiques",
+      "productCount": 2,
+      "offerCount": 2,
+      "merchantCount": 1,
+      "productIds": [
+        1181,
+        4673
+      ],
+      "productNames": [
+        "Glawi Jkt"
+      ],
+      "productSlugs": [
+        "picture-veste-de-ski-snowboard-24",
+        "picture-organic-glawi-jkt"
+      ],
+      "merchants": [
+        "picture-organic"
+      ],
+      "gtins": [
+        "3663270667419",
+        "3663270778047"
+      ],
+      "manufacturerReferences": [
+        "3663270667419",
+        "3663270778047"
+      ]
+    },
+    {
+      "key": "name:pictureorganic:snowy",
+      "reason": "Marque + nom normalisé identiques",
+      "productCount": 2,
+      "offerCount": 2,
+      "merchantCount": 1,
+      "productIds": [
+        1215,
+        1228
+      ],
+      "productNames": [
+        "Snowy"
+      ],
+      "productSlugs": [
+        "picture-organic-picture-pantalon-de-ski-snowboard",
+        "picture-organic-picture-veste-de-ski-snowboard"
+      ],
+      "merchants": [
+        "picture-organic"
+      ],
+      "gtins": [
+        "3663270928091",
+        "3663270920170"
+      ],
+      "manufacturerReferences": [
+        "3663270928091",
+        "3663270920170"
+      ]
+    },
+    {
+      "key": "name:pictureorganic:plan",
+      "reason": "Marque + nom normalisé identiques",
+      "productCount": 2,
+      "offerCount": 2,
+      "merchantCount": 1,
+      "productIds": [
+        1246,
+        4542
+      ],
+      "productNames": [
+        "Plan"
+      ],
+      "productSlugs": [
+        "picture-organic-picture-pantalon-de-ski-snowboard-5",
+        "picture-organic-plan"
+      ],
+      "merchants": [
+        "picture-organic"
+      ],
+      "gtins": [
+        "3663270931275",
+        "3663270635166"
+      ],
+      "manufacturerReferences": [
+        "3663270931275",
+        "3663270635166"
+      ]
+    },
+    {
+      "key": "name:pictureorganic:parker printed",
+      "reason": "Marque + nom normalisé identiques",
+      "productCount": 2,
+      "offerCount": 2,
+      "merchantCount": 1,
+      "productIds": [
+        1264,
+        4570
+      ],
+      "productNames": [
+        "Parker Printed"
+      ],
+      "productSlugs": [
+        "picture-organic-picture-blouson-6",
+        "picture-organic-parker-printed"
+      ],
+      "merchants": [
+        "picture-organic"
+      ],
+      "gtins": [
+        "3663270850231",
+        "3663270942684"
+      ],
+      "manufacturerReferences": [
+        "3663270850231",
+        "3663270942684"
+      ]
+    },
+    {
+      "key": "name:pictureorganic:bemidji",
+      "reason": "Marque + nom normalisé identiques",
+      "productCount": 2,
+      "offerCount": 2,
+      "merchantCount": 1,
+      "productIds": [
+        1272,
+        4576
+      ],
+      "productNames": [
+        "Bemidji"
+      ],
+      "productSlugs": [
+        "picture-organic-picture-blouson-8",
+        "picture-organic-bemidji"
+      ],
+      "merchants": [
+        "picture-organic"
+      ],
+      "gtins": [
+        "3663270851511",
+        "3663270944572"
+      ],
+      "manufacturerReferences": [
+        "3663270851511",
+        "3663270944572"
+      ]
+    },
+    {
+      "key": "name:pictureorganic:parker",
+      "reason": "Marque + nom normalisé identiques",
+      "productCount": 2,
+      "offerCount": 2,
+      "merchantCount": 1,
+      "productIds": [
+        1279,
+        4552
+      ],
+      "productNames": [
+        "Parker"
+      ],
+      "productSlugs": [
+        "picture-organic-picture-veste-de-ski-snowboard-7",
+        "picture-organic-parker"
+      ],
+      "merchants": [
+        "picture-organic"
+      ],
+      "gtins": [
+        "3663270940994",
+        "3663270849877"
+      ],
+      "manufacturerReferences": [
+        "3663270940994",
+        "3663270849877"
+      ]
+    },
+    {
+      "key": "name:pictureorganic:3 couches gore tex huron",
+      "reason": "Marque + nom normalisé identiques",
+      "productCount": 2,
+      "offerCount": 2,
+      "merchantCount": 1,
+      "productIds": [
+        1282,
+        4541
+      ],
+      "productNames": [
+        "3 couches Gore-Tex HURON",
+        "3 couches GORE-TEX HURON"
+      ],
+      "productSlugs": [
+        "picture-organic-picture-veste-de-ski-snowboard-8",
+        "picture-organic-3-couches-gtx-huron"
+      ],
+      "merchants": [
+        "picture-organic"
+      ],
+      "gtins": [
+        "3663270941410",
+        "3663270933163"
+      ],
+      "manufacturerReferences": [
+        "3663270941410",
+        "3663270933163"
+      ]
+    },
+    {
+      "key": "name:pictureorganic:brita bib",
+      "reason": "Marque + nom normalisé identiques",
+      "productCount": 2,
+      "offerCount": 2,
+      "merchantCount": 1,
+      "productIds": [
+        1345,
+        4626
+      ],
+      "productNames": [
+        "Brita Bib"
+      ],
+      "productSlugs": [
+        "picture-organic-picture-pantalon-de-ski-snowboard-10",
+        "picture-organic-brita-bib"
+      ],
+      "merchants": [
+        "picture-organic"
+      ],
+      "gtins": [
+        "3663270953284",
+        "3663270769519"
+      ],
+      "manufacturerReferences": [
+        "3663270953284",
+        "3663270769519"
+      ]
+    },
+    {
+      "key": "name:pictureorganic:sygna",
+      "reason": "Marque + nom normalisé identiques",
+      "productCount": 2,
+      "offerCount": 2,
+      "merchantCount": 1,
+      "productIds": [
+        1355,
+        4645
+      ],
+      "productNames": [
+        "Sygna"
+      ],
+      "productSlugs": [
+        "picture-organic-picture-blouson-24",
+        "picture-organic-sygna"
+      ],
+      "merchants": [
+        "picture-organic"
+      ],
+      "gtins": [
+        "3663270863583",
+        "3663270959309"
+      ],
+      "manufacturerReferences": [
+        "3663270863583",
+        "3663270959309"
+      ]
+    },
+    {
+      "key": "name:pictureorganic:haakon",
+      "reason": "Marque + nom normalisé identiques",
+      "productCount": 2,
+      "offerCount": 2,
+      "merchantCount": 1,
+      "productIds": [
+        1359,
+        1370
+      ],
+      "productNames": [
+        "Haakon"
+      ],
+      "productSlugs": [
+        "picture-organic-picture-blouson-25",
+        "picture-organic-picture-veste-de-ski-snowboard-13"
+      ],
+      "merchants": [
+        "picture-organic"
+      ],
+      "gtins": [
+        "3663270863781",
+        "3663270958531"
+      ],
+      "manufacturerReferences": [
+        "3663270863781",
+        "3663270958531"
+      ]
+    },
+    {
+      "key": "name:pictureorganic:orosi",
+      "reason": "Marque + nom normalisé identiques",
+      "productCount": 2,
+      "offerCount": 2,
+      "merchantCount": 1,
+      "productIds": [
+        1377,
+        4569
+      ],
+      "productNames": [
+        "Orosi"
+      ],
+      "productSlugs": [
+        "picture-organic-picture-veste-de-ski-snowboard-15",
+        "picture-organic-orosi"
+      ],
+      "merchants": [
+        "picture-organic"
+      ],
+      "gtins": [
+        "3663270960886",
+        "3663270942127"
+      ],
+      "manufacturerReferences": [
+        "3663270960886",
+        "3663270942127"
+      ]
+    },
+    {
+      "key": "name:pictureorganic:fresya jkt",
+      "reason": "Marque + nom normalisé identiques",
+      "productCount": 2,
+      "offerCount": 2,
+      "merchantCount": 1,
+      "productIds": [
+        1395,
+        1405
+      ],
+      "productNames": [
+        "Fresya Jkt"
+      ],
+      "productSlugs": [
+        "picture-organic-picture-veste-de-ski-snowboard-16",
+        "picture-organic-picture-veste-de-ski-snowboard-18"
+      ],
+      "merchants": [
+        "picture-organic"
+      ],
+      "gtins": [
+        "3663270666603",
+        "3663270776982"
+      ],
+      "manufacturerReferences": [
+        "3663270666603",
+        "3663270776982"
+      ]
+    },
+    {
+      "key": "name:pictureorganic:pmbton zip fleece",
+      "reason": "Marque + nom normalisé identiques",
+      "productCount": 2,
+      "offerCount": 2,
+      "merchantCount": 1,
+      "productIds": [
+        3561,
+        3564
+      ],
+      "productNames": [
+        "PICTURE PMBTON ZIP FLEECE"
+      ],
+      "productSlugs": [
+        "picture-organic-picture-pmbton-zip-fleece",
+        "picture-organic-picture-pmbton-zip-fleece-2"
+      ],
+      "merchants": [
+        "ekosport"
+      ],
+      "gtins": [
+        "3663270933569",
+        "3663270933668"
+      ],
+      "manufacturerReferences": [
+        "MSW0486-A",
+        "MSW0486-B"
+      ]
+    },
+    {
+      "key": "name:pictureorganic:seakrest jacket",
+      "reason": "Marque + nom normalisé identiques",
+      "productCount": 2,
+      "offerCount": 2,
+      "merchantCount": 1,
+      "productIds": [
+        3571,
+        3573
+      ],
+      "productNames": [
+        "PICTURE SEAKREST JACKET"
+      ],
+      "productSlugs": [
+        "picture-organic-picture-seakrest-jacket",
+        "picture-organic-picture-seakrest-jacket-2"
+      ],
+      "merchants": [
+        "ekosport"
+      ],
+      "gtins": [
+        "3663270958227",
+        "3663270958364"
+      ],
+      "manufacturerReferences": [
+        "WVT0399-A",
+        "WVT0399-C"
+      ]
+    },
+    {
+      "key": "name:pictureorganic:nitric jacket",
+      "reason": "Marque + nom normalisé identiques",
+      "productCount": 2,
+      "offerCount": 2,
+      "merchantCount": 1,
+      "productIds": [
+        3579,
+        3581
+      ],
+      "productNames": [
+        "PICTURE NITRIC JACKET"
+      ],
+      "productSlugs": [
+        "picture-organic-picture-nitric-jacket",
+        "picture-organic-picture-nitric-jacket-2"
+      ],
+      "merchants": [
+        "ekosport"
+      ],
+      "gtins": [
+        "3663270941052",
+        "3663270941199"
+      ],
+      "manufacturerReferences": [
+        "MVT0579-A",
+        "MVT0579-C"
+      ]
+    },
+    {
+      "key": "name:pictureorganic:daumy jacket",
+      "reason": "Marque + nom normalisé identiques",
+      "productCount": 2,
+      "offerCount": 2,
+      "merchantCount": 1,
+      "productIds": [
+        3585,
+        3588
+      ],
+      "productNames": [
+        "PICTURE DAUMY JACKET"
+      ],
+      "productSlugs": [
+        "picture-organic-picture-daumy-jacket",
+        "picture-organic-picture-daumy-jacket-2"
+      ],
+      "merchants": [
+        "ekosport"
+      ],
+      "gtins": [
+        "3663270929234",
+        "3663270929449"
+      ],
+      "manufacturerReferences": [
+        "KVT0136-A",
+        "KVT0136-D"
+      ]
+    },
+    {
+      "key": "name:pictureorganic:snowy toddler jacket",
+      "reason": "Marque + nom normalisé identiques",
+      "productCount": 2,
+      "offerCount": 2,
+      "merchantCount": 1,
+      "productIds": [
+        3589,
+        3594
+      ],
+      "productNames": [
+        "PICTURE SNOWY TODDLER JACKET"
+      ],
+      "productSlugs": [
+        "picture-organic-picture-snowy-toddler-jacket",
+        "picture-organic-picture-snowy-toddler-jacket-2"
+      ],
+      "merchants": [
+        "ekosport"
+      ],
+      "gtins": [
+        "3663270920187",
+        "3663270920262"
+      ],
+      "manufacturerReferences": [
+        "KVT0127-C",
+        "KVT0127-D"
+      ]
+    },
+    {
+      "key": "name:pictureorganic:treva pants w",
+      "reason": "Marque + nom normalisé identiques",
+      "productCount": 2,
+      "offerCount": 2,
+      "merchantCount": 1,
+      "productIds": [
+        4010,
+        4013
+      ],
+      "productNames": [
+        "PICTURE TREVA PANTS W"
+      ],
+      "productSlugs": [
+        "picture-organic-picture-treva-pants-w",
+        "picture-organic-picture-treva-pants-w-2"
+      ],
+      "merchants": [
+        "ekosport"
+      ],
+      "gtins": [
+        "3663270857803",
+        "3663270857940"
+      ],
+      "manufacturerReferences": [
+        "WPT0119-B",
+        "WPT0119-D"
+      ]
+    },
+    {
+      "key": "name:pictureorganic:plan pants",
+      "reason": "Marque + nom normalisé identiques",
+      "productCount": 2,
+      "offerCount": 2,
+      "merchantCount": 1,
+      "productIds": [
+        4037,
+        4446
+      ],
+      "productNames": [
+        "PICTURE PLAN PANTS"
+      ],
+      "productSlugs": [
+        "picture-organic-picture-plan-pants",
+        "picture-organic-picture-plan-pants-2"
+      ],
+      "merchants": [
+        "ekosport"
+      ],
+      "gtins": [
+        "3663270931183",
+        "3663270931039"
+      ],
+      "manufacturerReferences": [
+        "MPT0182-D",
+        "MPT0182-B"
+      ]
+    },
+    {
+      "key": "name:pictureorganic:time pants",
+      "reason": "Marque + nom normalisé identiques",
+      "productCount": 2,
+      "offerCount": 2,
+      "merchantCount": 1,
+      "productIds": [
+        4038,
+        4040
+      ],
+      "productNames": [
+        "PICTURE TIME PANTS"
+      ],
+      "productSlugs": [
+        "picture-organic-picture-time-pants",
+        "picture-organic-picture-time-pants-2"
+      ],
+      "merchants": [
+        "ekosport"
+      ],
+      "gtins": [
+        "3663270927650",
+        "3663270927933"
+      ],
+      "manufacturerReferences": [
+        "KPT0050-A",
+        "KPT0050-E"
+      ]
+    },
+    {
+      "key": "name:pictureorganic:snowy toddler bib pants",
+      "reason": "Marque + nom normalisé identiques",
+      "productCount": 2,
+      "offerCount": 2,
+      "merchantCount": 1,
+      "productIds": [
+        4043,
+        4047
+      ],
+      "productNames": [
+        "PICTURE SNOWY TODDLER BIB PANTS"
+      ],
+      "productSlugs": [
+        "picture-organic-picture-snowy-toddler-bib-pants",
+        "picture-organic-picture-snowy-toddler-bib-pants-2"
+      ],
+      "merchants": [
+        "ekosport"
+      ],
+      "gtins": [
+        "3663270928107",
+        "3663270928183"
+      ],
+      "manufacturerReferences": [
+        "KPT0051-A",
+        "KPT0051-B"
+      ]
+    },
+    {
+      "key": "name:pictureorganic:lidy jkt",
+      "reason": "Marque + nom normalisé identiques",
+      "productCount": 2,
+      "offerCount": 2,
+      "merchantCount": 1,
+      "productIds": [
+        4527,
+        4534
+      ],
+      "productNames": [
+        "Lidy Jkt"
+      ],
+      "productSlugs": [
+        "picture-organic-lidy-jkt",
+        "picture-organic-lidy-jkt-2"
+      ],
+      "merchants": [
+        "picture-organic"
+      ],
+      "gtins": [
+        "3663270632059",
+        "3663270736948"
+      ],
+      "manufacturerReferences": [
+        "3663270632059",
+        "3663270736948"
+      ]
+    },
+    {
+      "key": "name:pictureorganic:goods",
+      "reason": "Marque + nom normalisé identiques",
+      "productCount": 2,
+      "offerCount": 2,
+      "merchantCount": 1,
+      "productIds": [
+        4547,
+        4568
+      ],
+      "productNames": [
+        "Goods"
+      ],
+      "productSlugs": [
+        "picture-organic-goods",
+        "picture-organic-goods-2"
+      ],
+      "merchants": [
+        "picture-organic"
+      ],
+      "gtins": [
+        "3663270848689",
+        "3663270941779"
+      ],
+      "manufacturerReferences": [
+        "3663270848689",
+        "3663270941779"
+      ]
+    },
+    {
+      "key": "name:pictureorganic:jomoh",
+      "reason": "Marque + nom normalisé identiques",
+      "productCount": 2,
+      "offerCount": 2,
+      "merchantCount": 1,
+      "productIds": [
+        4548,
+        4565
+      ],
+      "productNames": [
+        "Jomoh"
+      ],
+      "productSlugs": [
+        "picture-organic-jomoh",
+        "picture-organic-jomoh-2"
+      ],
+      "merchants": [
+        "picture-organic"
+      ],
+      "gtins": [
+        "3663270848801",
+        "3663270940444"
+      ],
+      "manufacturerReferences": [
+        "3663270848801",
+        "3663270940444"
+      ]
+    },
+    {
+      "key": "name:pictureorganic:track",
+      "reason": "Marque + nom normalisé identiques",
+      "productCount": 2,
+      "offerCount": 2,
+      "merchantCount": 1,
+      "productIds": [
+        4550,
+        4572
+      ],
+      "productNames": [
+        "Track"
+      ],
+      "productSlugs": [
+        "picture-organic-track",
+        "picture-organic-track-2"
+      ],
+      "merchants": [
+        "picture-organic"
+      ],
+      "gtins": [
+        "3663270849266",
+        "3663270943179"
+      ],
+      "manufacturerReferences": [
+        "3663270849266",
+        "3663270943179"
+      ]
+    },
+    {
+      "key": "name:pictureorganic:multicolor",
+      "reason": "Marque + nom normalisé identiques",
+      "productCount": 2,
+      "offerCount": 2,
+      "merchantCount": 1,
+      "productIds": [
+        4554,
+        4634
+      ],
+      "productNames": [
+        "Multicolor"
+      ],
+      "productSlugs": [
+        "picture-organic-multicolor",
+        "picture-organic-multicolor-2"
+      ],
+      "merchants": [
+        "picture-organic"
+      ],
+      "gtins": [
+        "3663270850446",
+        "3663270864900"
+      ],
+      "manufacturerReferences": [
+        "3663270850446",
+        "3663270864900"
+      ]
+    },
+    {
+      "key": "name:pictureorganic:randonnee surface",
+      "reason": "Marque + nom normalisé identiques",
+      "productCount": 2,
+      "offerCount": 2,
+      "merchantCount": 1,
+      "productIds": [
+        4559,
+        4658
+      ],
+      "productNames": [
+        "randonnee SURFACE"
+      ],
+      "productSlugs": [
+        "picture-organic-randonnee-surface",
+        "picture-organic-randonnee-surface-2"
+      ],
+      "merchants": [
+        "picture-organic"
+      ],
+      "gtins": [
+        "3663270971738",
+        "3663270995604"
+      ],
+      "manufacturerReferences": [
+        "3663270971738",
+        "3663270995604"
+      ]
+    },
+    {
+      "key": "name:pictureorganic:doudoune en duvet hi puff down",
+      "reason": "Marque + nom normalisé identiques",
+      "productCount": 2,
+      "offerCount": 2,
+      "merchantCount": 1,
+      "productIds": [
+        4593,
+        4598
+      ],
+      "productNames": [
+        "Doudoune en duvet HI PUFF DOWN"
+      ],
+      "productSlugs": [
+        "picture-organic-doudoune-en-duvet-hi-puff-down",
+        "picture-organic-doudoune-en-duvet-hi-puff-down-2"
+      ],
+      "merchants": [
+        "picture-organic"
+      ],
+      "gtins": [
+        "3663270854338",
+        "3663270855878"
+      ],
+      "manufacturerReferences": [
+        "3663270854338",
+        "3663270855878"
+      ]
+    },
+    {
+      "key": "name:pictureorganic:seakrest",
+      "reason": "Marque + nom normalisé identiques",
+      "productCount": 2,
+      "offerCount": 2,
+      "merchantCount": 1,
+      "productIds": [
+        4631,
+        4642
+      ],
+      "productNames": [
+        "Seakrest"
+      ],
+      "productSlugs": [
+        "picture-organic-seakrest",
+        "picture-organic-seakrest-2"
+      ],
+      "merchants": [
+        "picture-organic"
+      ],
+      "gtins": [
+        "3663270863095",
+        "3663270958395"
+      ],
+      "manufacturerReferences": [
+        "3663270863095",
+        "3663270958395"
+      ]
+    },
+    {
+      "key": "name:pictureorganic:glawi",
+      "reason": "Marque + nom normalisé identiques",
+      "productCount": 2,
+      "offerCount": 2,
+      "merchantCount": 1,
+      "productIds": [
+        4632,
+        4652
+      ],
+      "productNames": [
+        "Glawi"
+      ],
+      "productSlugs": [
+        "picture-organic-glawi",
+        "picture-organic-glawi-2"
+      ],
+      "merchants": [
+        "picture-organic"
+      ],
+      "gtins": [
+        "3663270864061",
+        "3663270960077"
+      ],
+      "manufacturerReferences": [
+        "3663270864061",
+        "3663270960077"
+      ]
+    },
+    {
+      "key": "name:pictureorganic:berry winter jkt",
+      "reason": "Marque + nom normalisé identiques",
+      "productCount": 2,
+      "offerCount": 2,
+      "merchantCount": 1,
+      "productIds": [
+        4665,
+        4667
+      ],
+      "productNames": [
+        "Berry Winter Jkt"
+      ],
+      "productSlugs": [
+        "picture-organic-berry-winter-jkt",
+        "picture-organic-berry-winter-jkt-2"
+      ],
+      "merchants": [
+        "picture-organic"
+      ],
+      "gtins": [
+        "3663270669284",
+        "3663270669369"
+      ],
+      "manufacturerReferences": [
+        "3663270669284",
+        "3663270669369"
+      ]
+    }
+  ],
+  "genericNameProducts": []
+}

@@ -246,12 +246,13 @@ model Product {
   published             Boolean @default(false)
   active                Boolean @default(true)
 
-  skus    Sku[]
-  offers  Offer[]
-  clicks  Click[]
-  reviews Review[]
-  tests   EditorialTest[]
-  sites   SiteProduct[]
+  skus        Sku[]
+  offers      Offer[]
+  clicks      Click[]
+  reviews     Review[]
+  tests       EditorialTest[]
+  sites       SiteProduct[]
+  identifiers ProductIdentifier[]
 
   @@index([brandId])
   @@index([categoryId])
@@ -259,6 +260,42 @@ model Product {
   @@index([manufacturerReference])
   @@index([published])
   @@index([active])
+}
+
+enum ProductIdentifierType {
+  GTIN
+  STYLE_CODE
+  MANUFACTURER_REFERENCE
+  MERCHANT_PARENT_ID
+  SOURCE_GROUP_KEY
+}
+
+model ProductIdentifier {
+  id Int @id @default(autoincrement())
+
+  productId Int
+  product   Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  siteId String
+  type   ProductIdentifierType
+  value  String
+
+  /**
+   * brandKey et merchantSlug restent non-nullables afin que
+   * l'unicité fonctionne correctement dans PostgreSQL.
+   * Valeur vide = identifiant global au site.
+   */
+  brandKey     String @default("")
+  merchantSlug String @default("")
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([siteId, type, value, brandKey, merchantSlug])
+  @@index([productId])
+  @@index([siteId, type, value])
+  @@index([siteId, type, brandKey, value])
+  @@index([siteId, type, merchantSlug, value])
 }
 
 model Sku {
@@ -533,7 +570,7 @@ model Category {
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
-  
+
   enrichmentRulesAsSource CategoryEnrichmentRule[] @relation("CategoryEnrichmentSource")
   enrichmentRulesAsTarget CategoryEnrichmentRule[] @relation("CategoryEnrichmentTarget")
 
@@ -642,7 +679,7 @@ model FeedSource {
 
   columnMappings   FeedColumnMapping[]
   categoryMappings CategoryExternalMapping[]
-  enrichmentRules CategoryEnrichmentRule[]
+  enrichmentRules  CategoryEnrichmentRule[]
   imports          FeedImport[]
   offers           Offer[]
 
@@ -864,7 +901,6 @@ model CategoryEnrichmentRule {
   /**
    * Si feedSourceId est renseigné, la règle ne s'applique
    * qu'à ce flux.
-   *
    * Si feedSourceId est null, elle s'applique à tous les flux
    * du site.
    */
@@ -874,22 +910,20 @@ model CategoryEnrichmentRule {
   /**
    * Catégorie dans laquelle le produit doit déjà se trouver
    * pour que la règle puisse s'appliquer.
-   *
    * Facultatif : une règle sans catégorie source peut
    * s'appliquer à tous les produits du site.
    */
   sourceCategoryId Int?
-  sourceCategory Category? @relation("CategoryEnrichmentSource", fields: [sourceCategoryId], references: [id], onDelete: Cascade)
+  sourceCategory   Category? @relation("CategoryEnrichmentSource", fields: [sourceCategoryId], references: [id], onDelete: Cascade)
 
   /**
    * Catégorie précise à ajouter au produit.
    */
   targetCategoryId Int
-  targetCategory Category @relation("CategoryEnrichmentTarget", fields: [targetCategoryId], references: [id], onDelete: Cascade)
+  targetCategory   Category @relation("CategoryEnrichmentTarget", fields: [targetCategoryId], references: [id], onDelete: Cascade)
 
   /**
    * Termes recherchés dans les données du produit.
-   *
    * Les recherches sont insensibles à la casse et aux accents.
    */
   includeTerms String[]
@@ -898,7 +932,6 @@ model CategoryEnrichmentRule {
   /**
    * ANY :
    * au moins un terme doit être présent.
-   *
    * ALL :
    * tous les termes doivent être présents.
    */

@@ -8,6 +8,9 @@ import type {
 import {
   buildProductGroupKey,
   cleanProductDisplayName,
+  extractProductStyleCode,
+  normalizeGtin,
+  normalizeIdentifierValue,
   normalizeText,
 } from "./normalize";
 
@@ -112,6 +115,47 @@ export function aggregateFeedItems(
       const primaryCategory =
         choosePrimaryCategory(entries);
 
+      const variantGtins = uniqueIdentifiers(
+        variants.map((item) =>
+          normalizeGtin(item.gtin)
+        )
+      );
+
+      const manufacturerReferences = uniqueIdentifiers(
+        variants.map((item) =>
+          normalizeIdentifierValue(
+            item.manufacturerReference
+          )
+        )
+      );
+
+      const merchantExternalIds = uniqueIdentifiers(
+        variants.map((item) =>
+          normalizeIdentifierValue(
+            item.externalId
+          )
+        )
+      );
+
+      const merchantParentExternalIds = uniqueIdentifiers(
+        variants.map((item) =>
+          normalizeIdentifierValue(
+            item.parentExternalId
+          )
+        )
+      );
+
+      const styleCodes = uniqueIdentifiers(
+        variants.flatMap((item) => [
+          extractProductStyleCode(
+            item.manufacturerReference
+          ),
+          extractProductStyleCode(
+            item.parentExternalId
+          ),
+        ])
+      );
+
       return {
         groupKey,
         item: aggregatedItem,
@@ -130,6 +174,15 @@ export function aggregateFeedItems(
         availableGenders: uniqueValues(
           variants.map((item) => item.gender)
         ),
+
+        variantGtins,
+        manufacturerReferences,
+        styleCodes,
+        merchantExternalIds,
+        merchantParentExternalIds,
+        sourceGroupKeys: uniqueIdentifiers([
+          groupKey,
+        ]),
       };
     }
   );
@@ -233,6 +286,18 @@ function uniqueValues(
       values
         .map((value) => normalizeText(value))
         .filter(Boolean)
+    )
+  ).sort((a, b) => a.localeCompare(b, "fr"));
+}
+
+function uniqueIdentifiers(
+  values: Array<string | null | undefined>
+): string[] {
+  return Array.from(
+    new Set(
+      values
+        .map((value) => normalizeIdentifierValue(value))
+        .filter((value): value is string => Boolean(value))
     )
   ).sort((a, b) => a.localeCompare(b, "fr"));
 }
