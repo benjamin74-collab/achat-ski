@@ -177,7 +177,7 @@ export async function syncFeedSourceById({
   }
 }
 
-export async function syncFeedContent({	
+export async function syncFeedContent({
   prisma,
   runtime,
   content,
@@ -185,13 +185,10 @@ export async function syncFeedContent({
   sourceUrl,
   filename,
 }: SyncFeedContentOptions): Promise<FeedImportResult> {
-	
-	
-console.error(
-  `[universal-feed] START syncFeedContent trigger=${trigger} runtime=${runtime.slug} feedSourceId=${runtime.feedSourceId}`
-);
-	
-	
+  console.error(
+    `[universal-feed] START syncFeedContent trigger=${trigger} runtime=${runtime.slug} feedSourceId=${runtime.feedSourceId}`
+  );
+
   /*
    * Recharge toujours le runtime depuis la base
    * afin d'utiliser la configuration la plus récente.
@@ -201,6 +198,10 @@ console.error(
       prisma,
       runtime.feedSourceId
     );
+
+  console.error(
+    `[universal-feed] ${runtime.slug} runtime loaded format=${runtime.format} delimiter=${JSON.stringify(runtime.delimiter)}`
+  );
 
   if (
     runtime.format !== "CSV" &&
@@ -245,10 +246,9 @@ console.error(
       }
     );
 
-console.error(
-  `[universal-feed] ${runtime.slug} rows parsed=${rows.length}`
-);
-
+  console.error(
+    `[universal-feed] ${runtime.slug} rows parsed=${rows.length}`
+  );
 
   const stats =
     createEmptyImportStats(
@@ -261,10 +261,9 @@ console.error(
       runtime.normalizerConfig
     );
 
-
-console.error(
-  `[universal-feed] ${runtime.slug} normalized=${normalizedItems.length}`
-);
+  console.error(
+    `[universal-feed] ${runtime.slug} normalized=${normalizedItems.length}`
+  );
 
   stats.normalizedRows =
     normalizedItems.length;
@@ -305,6 +304,10 @@ console.error(
       },
     });
 
+  console.error(
+    `[universal-feed] ${runtime.slug} feedImport created id=${feedImport.id}`
+  );
+
   try {
     const [
       categorySource,
@@ -322,6 +325,10 @@ console.error(
           runtime.feedSourceId
         ),
       ]);
+
+    console.error(
+      `[universal-feed] ${runtime.slug} mappings=${categorySource.mappings.length} enrichmentRules=${categoryEnrichmentRules.length}`
+    );
 
     if (
       categorySource
@@ -393,10 +400,9 @@ console.error(
     stats.acceptedRows =
       accepted.length;
 
-console.error(
-  `[universal-feed] ${runtime.slug} accepted=${accepted.length} skipped=${stats.skippedRows} errors=${stats.errors}`
-);
-
+    console.error(
+      `[universal-feed] ${runtime.slug} accepted=${accepted.length} skipped=${stats.skippedRows} errors=${stats.errors}`
+    );
 
     const grouped =
       aggregateFeedItems(
@@ -406,10 +412,9 @@ console.error(
     stats.groupedProducts =
       grouped.length;
 
-console.error(
-  `[universal-feed] ${runtime.slug} grouped=${grouped.length}`
-);
-
+    console.error(
+      `[universal-feed] ${runtime.slug} grouped=${grouped.length}`
+    );
 
     if (
       grouped.length === 0
@@ -428,6 +433,10 @@ console.error(
       await buildBrandCache(
         prisma
       );
+
+    console.error(
+      `[universal-feed] ${runtime.slug} brandCache loaded=${brandCache.size}`
+    );
 
     const merchant = {
       id:
@@ -515,11 +524,18 @@ console.error(
       );
     }
 
+    console.error(
+      `[universal-feed] ${runtime.slug} import split warmup=${warmupItems.length} parallelCandidates=${parallelItems.length}`
+    );
+
     const importOne =
       async (
         aggregated:
           AggregatedFeedItem
       ): Promise<number | null> => {
+        const started =
+          Date.now();
+
         try {
           const imported =
             await importAggregatedFeedItem(
@@ -527,11 +543,19 @@ console.error(
               aggregated,
               merchant,
               feedKey,
-              runtime.siteId,
               startedAt,
               stats,
               brandCache
             );
+
+          const duration =
+            Date.now() - started;
+
+          if (duration > 3000) {
+            console.error(
+              `[universal-feed] ${runtime.slug} slow import groupKey=${aggregated.groupKey} durationMs=${duration} productId=${imported.product.id} match=${imported.match.reason}`
+            );
+          }
 
           return (
             imported.product.id
@@ -540,7 +564,7 @@ console.error(
           stats.errors += 1;
 
           console.error(
-            `[universal-feed] ${runtime.slug} / ${aggregated.groupKey}`,
+            `[universal-feed] ${runtime.slug} import error groupKey=${aggregated.groupKey}`,
             error
           );
 
@@ -551,6 +575,10 @@ console.error(
     /*
      * Amorçage des nouvelles marques.
      */
+    console.error(
+      `[universal-feed] ${runtime.slug} warmup start count=${warmupItems.length}`
+    );
+
     const warmupProductIds:
       number[] = [];
 
@@ -570,11 +598,23 @@ console.error(
       }
     }
 
+    console.error(
+      `[universal-feed] ${runtime.slug} warmup imported productIds=${warmupProductIds.length}`
+    );
+
+    console.error(
+      `[universal-feed] ${runtime.slug} warmup syncSiteProductsBulk start productIds=${warmupProductIds.length}`
+    );
+
     await syncSiteProductsBulk(
       prisma,
       runtime.siteId,
       warmupProductIds,
       startedAt
+    );
+
+    console.error(
+      `[universal-feed] ${runtime.slug} warmup syncSiteProductsBulk done`
     );
 
     /*
@@ -615,8 +655,16 @@ console.error(
       }
     }
 
+    console.error(
+      `[universal-feed] ${runtime.slug} import split fallback=${fallbackSequentialItems.length} safeParallel=${safeParallelItems.length}`
+    );
+
     const fallbackProductIds:
       number[] = [];
+
+    console.error(
+      `[universal-feed] ${runtime.slug} fallback start count=${fallbackSequentialItems.length}`
+    );
 
     for (
       const aggregated of
@@ -634,11 +682,23 @@ console.error(
       }
     }
 
+    console.error(
+      `[universal-feed] ${runtime.slug} fallback imported productIds=${fallbackProductIds.length}`
+    );
+
+    console.error(
+      `[universal-feed] ${runtime.slug} fallback syncSiteProductsBulk start productIds=${fallbackProductIds.length}`
+    );
+
     await syncSiteProductsBulk(
       prisma,
       runtime.siteId,
       fallbackProductIds,
       startedAt
+    );
+
+    console.error(
+      `[universal-feed] ${runtime.slug} fallback syncSiteProductsBulk done`
     );
 
     /*
@@ -648,6 +708,10 @@ console.error(
      * Cela réduit fortement le temps mur sans saturer le pool
      * PostgreSQL/Neon.
      */
+    console.error(
+      `[universal-feed] ${runtime.slug} safeParallel start count=${safeParallelItems.length} concurrency=${IMPORT_CONCURRENCY}`
+    );
+
     for (
       let index = 0;
       index <
@@ -661,6 +725,10 @@ console.error(
           index +
             IMPORT_CONCURRENCY
         );
+
+      console.error(
+        `[universal-feed] ${runtime.slug} batch start index=${index} size=${batch.length}`
+      );
 
       const productIds =
         (
@@ -676,6 +744,10 @@ console.error(
             productId !== null
         );
 
+      console.error(
+        `[universal-feed] ${runtime.slug} batch imported index=${index} productIds=${productIds.length}`
+      );
+
       /*
        * Au lieu d'un upsert SiteProduct par produit :
        * - un updateMany pour tous les produits existants ;
@@ -683,17 +755,29 @@ console.error(
        *
        * On passe ainsi de N requêtes à 2 requêtes par lot.
        */
+      console.error(
+        `[universal-feed] ${runtime.slug} batch syncSiteProductsBulk start index=${index} productIds=${productIds.length}`
+      );
+
       await syncSiteProductsBulk(
         prisma,
         runtime.siteId,
         productIds,
         startedAt
       );
+
+      console.error(
+        `[universal-feed] ${runtime.slug} batch done index=${index} productIds=${productIds.length}`
+      );
     }
 
-console.log(
-  `[universal-feed] ${runtime.slug} - début reconcileMissingOffers`
-);
+    console.error(
+      `[universal-feed] ${runtime.slug} safeParallel done`
+    );
+
+    console.error(
+      `[universal-feed] ${runtime.slug} début reconcileMissingOffers`
+    );
 
     await reconcileMissingOffers({
       prisma,
@@ -703,9 +787,9 @@ console.log(
       stats,
     });
 
-console.log(
-  `[universal-feed] ${runtime.slug} - fin reconcileMissingOffers`
-);
+    console.error(
+      `[universal-feed] ${runtime.slug} fin reconcileMissingOffers`
+    );
 
     const status =
       stats.errors > 0
@@ -714,6 +798,10 @@ console.log(
 
     const finishedAt =
       new Date();
+
+    console.error(
+      `[universal-feed] ${runtime.slug} final update start status=${status} createdProducts=${stats.createdProducts} updatedProducts=${stats.updatedProducts} createdOffers=${stats.createdOffers} updatedOffers=${stats.updatedOffers} errors=${stats.errors}`
+    );
 
     await Promise.all([
       prisma.feedImport.update({
@@ -793,6 +881,10 @@ console.log(
       }),
     ]);
 
+    console.error(
+      `[universal-feed] ${runtime.slug} final update done status=${status}`
+    );
+
     return {
       feedImportId:
         feedImport.id,
@@ -811,6 +903,10 @@ console.log(
       error instanceof Error
         ? error.message
         : String(error);
+
+    console.error(
+      `[universal-feed] ${runtime.slug} FAILED ${errorMessage}`
+    );
 
     await Promise.all([
       prisma.feedImport.update({
