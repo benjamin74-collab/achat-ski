@@ -248,29 +248,81 @@ export function normalizeVariant(
     .join(" | ");
 }
 
+type ProductNameLike = Pick<
+  NormalizedFeedItem,
+  "title"
+> &
+  Partial<
+    Pick<
+      NormalizedFeedItem,
+      "brand" | "cleanName" | "size" | "color" | "gender"
+    >
+  >;
+
 export function cleanProductDisplayName(item: NormalizedFeedItem): string {
-  let name = normalizeText(item.cleanName || item.title);
+  const cleanName =
+    normalizeText(item.cleanName);
 
-  for (const rawValue of [item.size, item.color]) {
-    const value = normalizeText(rawValue);
-    if (!value) continue;
+  const title =
+    normalizeText(item.title);
 
-    const escaped = escapeRegExp(value);
+  const baseName =
+    cleanName || title;
 
-    name = name
-      .replace(new RegExp(`\\s*[-–—|/]\\s*${escaped}\\s*$`, "i"), "")
-      .replace(new RegExp(`\\s+${escaped}\\s*$`, "i"), "")
-      .trim();
+  const extractedModel =
+    extractStructuredProductModelName(item);
+
+  /*
+   * Cas typique textile / vêtements :
+   *
+   * "Picture Pantalon de Ski & Snowboard - Pantalon de ski enfant NINGE BIB - Enfant - 10 - Bleu"
+   *
+   * Le cleanName marchand peut être trop générique :
+   * "Picture Pantalon de Ski & Snowboard"
+   *
+   * On préfère alors le vrai modèle extrait du titre :
+   * "Ninge Bib"
+   */
+  if (
+    extractedModel &&
+    (
+      isLikelyGenericProductName(baseName, item.brand) ||
+      hasGenericStructuredTitlePrefix(item)
+    )
+  ) {
+    return extractedModel;
   }
 
-  return name || normalizeText(item.title);
+  const cleaned =
+    stripKnownVariantSuffixes(baseName, item);
+
+  return cleaned || title;
 }
 
 export function buildProductSlug(
-  item: Pick<NormalizedFeedItem, "brand" | "cleanName" | "title">
+  item: Pick<
+    NormalizedFeedItem,
+    "brand" | "cleanName" | "title"
+  > &
+    Partial<
+      Pick<
+        NormalizedFeedItem,
+        "size" | "color" | "gender"
+      >
+    >
 ): string {
-  const name = item.cleanName || item.title;
-  return slugify([item.brand, normalizeProductName(name)].filter(Boolean).join(" "));
+  const name =
+    cleanProductDisplayName(
+      item as NormalizedFeedItem
+    ) ||
+    item.cleanName ||
+    item.title;
+
+  return slugify(
+    [item.brand, normalizeProductName(name)]
+      .filter(Boolean)
+      .join(" ")
+  );
 }
 
 export function buildProductGroupKey(item: NormalizedFeedItem): string {
@@ -289,13 +341,636 @@ export function buildProductGroupKey(item: NormalizedFeedItem): string {
     ].join(":");
   }
 
+  const displayName =
+    cleanProductDisplayName(item);
+
   return [
     merchant,
     "name",
     normalizeText(item.brand).toUpperCase(),
-    normalizeProductName(item.cleanName || item.title),
+    normalizeProductName(displayName || item.cleanName || item.title),
   ].join(":");
 }
+
+function extractStructuredProductModelName(
+  item: ProductNameLike
+): string {
+  const title =
+    normalizeText(item.title);
+
+  if (!title) {
+    return "";
+  }
+
+  const segments =
+    splitTitleSegments(title);
+
+  if (segments.length < 2) {
+    return "";
+  }
+
+  const candidates =
+    segments
+      .map((segment, index) => {
+        const candidate =
+          cleanStructuredTitleSegment(
+            segment,
+            item
+          );
+
+        if (!candidate) {
+          return null;
+        }
+
+        if (
+          isLikelyGenericProductName(
+            candidate,
+            item.brand
+          )
+        ) {
+          return null;
+        }
+
+        return {
+          value:
+            formatExtractedProductModelName(
+              candidate
+            ),
+          score:
+            scoreStructuredTitleCandidate(
+              segment,
+              candidate,
+              index
+            ),
+        };
+      })
+      .filter(
+        (
+          candidate
+        ): candidate is {
+          value: string;
+          score: number;
+        } => Boolean(candidate)
+      )
+      .sort(
+        (a, b) =>
+          b.score - a.score
+      );
+
+  return candidates[0]?.value ?? "";
+}
+
+function splitTitleSegments(
+  title: string
+): string[] {
+  return title
+    .split(/\s+[-–—]\s+/g)
+    .map((segment) =>
+      normalizeText(segment)
+    )
+    .filter(Boolean);
+}
+
+function hasGenericStructuredTitlePrefix(
+  item: ProductNameLike
+): boolean {
+  const title =
+    normalizeText(item.title);
+
+  const segments =
+    splitTitleSegments(title);
+
+  if (segments.length < 2) {
+    return false;
+  }
+
+  return isLikelyGenericProductName(
+    segments[0],
+    item.brand
+  );
+}
+
+function cleanStructuredTitleSegment(
+  segment: string,
+  item: ProductNameLike
+): string {
+  if (
+    isKnownVariantSegment(
+      segment,
+      item
+    )
+  ) {
+    return "";
+  }
+
+  let value =
+    removeLeadingBrandAliasesFromProductName(
+      segment,
+      item.brand
+    );
+
+  value =
+    stripKnownVariantSuffixes(
+      value,
+      item
+    );
+
+  value =
+    removeGenericProductWords(
+      value
+    );
+
+  value = value
+    .replace(/[()[\]{}]/g, " ")
+    .replace(/\s*[|/]\s*/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+
+  if (
+    !value ||
+    isKnownVariantSegment(
+      value,
+      item
+    )
+  ) {
+    return "";
+  }
+
+  return value;
+}
+
+function scoreStructuredTitleCandidate(
+  originalSegment: string,
+  candidate: string,
+  index: number
+): number {
+  let score =
+    candidate.length;
+
+  if (index > 0) {
+    score += 60;
+  }
+
+  if (
+    candidate
+      .split(/\s+/)
+      .filter(Boolean)
+      .length >= 2
+  ) {
+    score += 15;
+  }
+
+  if (
+    /[A-ZÀ-ÖØ-Þ]{2,}/.test(
+      originalSegment
+    )
+  ) {
+    score += 10;
+  }
+
+  return score;
+}
+
+function stripKnownVariantSuffixes(
+  value: string,
+  item: ProductNameLike
+): string {
+  let name =
+    normalizeText(value);
+
+  for (const rawValue of [
+    item.size,
+    item.color,
+    item.gender,
+  ]) {
+    const normalized =
+      normalizeText(rawValue);
+
+    if (!normalized) {
+      continue;
+    }
+
+    const escaped =
+      escapeRegExp(normalized);
+
+    name = name
+      .replace(
+        new RegExp(
+          `\\s*[-–—|/]\\s*${escaped}\\s*$`,
+          "i"
+        ),
+        ""
+      )
+      .replace(
+        new RegExp(
+          `\\s+${escaped}\\s*$`,
+          "i"
+        ),
+        ""
+      )
+      .trim();
+  }
+
+  return name;
+}
+
+function isLikelyGenericProductName(
+  value: string | null | undefined,
+  brand: string | null | undefined
+): boolean {
+  const withoutBrand =
+    removeLeadingBrandAliasesFromProductName(
+      value,
+      brand
+    );
+
+  const normalized =
+    normalizeText(withoutBrand)
+      .toLowerCase()
+      .replace(/[’']/g, " ")
+      .replace(/&/g, " ")
+      .replace(/[^a-zà-öø-ÿ0-9]+/gi, " ")
+      .replace(/\s+/g, " ")
+      .trim();
+
+  if (!normalized) {
+    return true;
+  }
+
+  const remaining =
+    removeGenericProductWords(
+      normalized
+    )
+      .replace(/[^a-z0-9]+/gi, "")
+      .trim();
+
+  if (!remaining) {
+    return true;
+  }
+
+  const words =
+    normalized
+      .split(/\s+/)
+      .filter(Boolean);
+
+  if (
+    words.length <= 4 &&
+    words.every((word) =>
+      GENERIC_PRODUCT_WORDS.has(
+        normalizeText(word).toLowerCase()
+      )
+    )
+  ) {
+    return true;
+  }
+
+  return false;
+}
+
+function removeLeadingBrandAliasesFromProductName(
+  name: string | null | undefined,
+  brand: string | null | undefined
+): string {
+  let result =
+    normalizeText(name);
+
+  if (!result) {
+    return "";
+  }
+
+  const aliases =
+    getBrandPrefixAliases(brand);
+
+  let changed = true;
+
+  while (changed) {
+    changed = false;
+
+    for (const alias of aliases) {
+      const cleanAlias =
+        normalizeText(alias);
+
+      if (!cleanAlias) {
+        continue;
+      }
+
+      const escaped =
+        escapeRegExp(cleanAlias);
+
+      const next =
+        result
+          .replace(
+            new RegExp(
+              `^(?:${escaped})(?:\\s+|\\s*[-–—:|/]\\s*)`,
+              "i"
+            ),
+            ""
+          )
+          .trim();
+
+      if (next !== result) {
+        result = next;
+        changed = true;
+      }
+    }
+  }
+
+  return result;
+}
+
+function getBrandPrefixAliases(
+  brand: string | null | undefined
+): string[] {
+  const aliases =
+    new Set<string>();
+
+  const normalizedBrand =
+    normalizeText(brand);
+
+  if (normalizedBrand) {
+    aliases.add(normalizedBrand);
+
+    const resolved =
+      resolveBrandAlias(
+        normalizedBrand
+      );
+
+    if (resolved) {
+      aliases.add(resolved);
+    }
+  }
+
+  const brandKey =
+    normalizeBrandKey(
+      normalizedBrand
+    );
+
+  if (
+    brandKey ===
+    normalizeBrandKey(
+      "Picture Organic"
+    )
+  ) {
+    aliases.add("Picture");
+    aliases.add("Picture Organic Clothing");
+    aliases.add("Picture Organic");
+  }
+
+  if (
+    brandKey ===
+    normalizeBrandKey(
+      "The North Face"
+    )
+  ) {
+    aliases.add("North Face");
+    aliases.add("The North Face");
+  }
+
+  return Array.from(aliases).sort(
+    (a, b) => b.length - a.length
+  );
+}
+
+function removeGenericProductWords(
+  value: string
+): string {
+  return normalizeText(value)
+    .replace(/[’']/g, " ")
+    .replace(/&/g, " ")
+    .replace(
+      new RegExp(
+        `\\b(?:${[
+          ...GENERIC_PRODUCT_WORDS,
+        ]
+          .map(escapeRegExp)
+          .join("|")})\\b`,
+        "gi"
+      ),
+      " "
+    )
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function isKnownVariantSegment(
+  value: string,
+  item: ProductNameLike
+): boolean {
+  const normalized =
+    normalizeText(value)
+      .toLowerCase()
+      .replace(/[’']/g, " ")
+      .replace(/[^a-z0-9]+/gi, " ")
+      .replace(/\s+/g, " ")
+      .trim();
+
+  if (!normalized) {
+    return true;
+  }
+
+  for (const rawValue of [
+    item.size,
+    item.color,
+    item.gender,
+  ]) {
+    const reference =
+      normalizeText(rawValue)
+        .toLowerCase()
+        .replace(/[’']/g, " ")
+        .replace(/[^a-z0-9]+/gi, " ")
+        .replace(/\s+/g, " ")
+        .trim();
+
+    if (
+      reference &&
+      normalized === reference
+    ) {
+      return true;
+    }
+  }
+
+  if (
+    /^(xxxs|xxs|xs|s|m|l|xl|xxl|xxxl|[2-9]xl)$/i.test(
+      normalized
+    )
+  ) {
+    return true;
+  }
+
+  if (
+    /^\d{1,3}(?:[./-]\d{1,3})?$/.test(
+      normalized
+    )
+  ) {
+    return true;
+  }
+
+  if (
+    /^\d{1,2}\s?(?:ans|years?)?$/.test(
+      normalized
+    )
+  ) {
+    return true;
+  }
+
+  return VARIANT_WORDS.has(
+    normalized
+  );
+}
+
+function formatExtractedProductModelName(
+  value: string
+): string {
+  const normalized =
+    normalizeText(value);
+
+  const letters =
+    normalized.replace(
+      /[^A-Za-zÀ-ÖØ-öø-ÿ]/g,
+      ""
+    );
+
+  if (!letters) {
+    return normalized;
+  }
+
+  const isAllUppercase =
+    letters === letters.toUpperCase();
+
+  if (!isAllUppercase) {
+    return normalized;
+  }
+
+  return normalized
+    .toLocaleLowerCase("fr-FR")
+    .replace(
+      /(^|[\s\-/'’])([a-zà-öø-ÿ0-9])/g,
+      (
+        _match,
+        separator: string,
+        letter: string
+      ) =>
+        separator +
+        letter.toLocaleUpperCase(
+          "fr-FR"
+        )
+    )
+    .replace(
+      /\b(?:gtx|mips|boa|otg|mnc|wtr|dva|arva|abs|gps|3l|2l)\b/gi,
+      (match) =>
+        match.toUpperCase()
+    );
+}
+
+const GENERIC_PRODUCT_WORDS =
+  new Set([
+    "accessoire",
+    "accessoires",
+    "adulte",
+    "alpin",
+    "alpine",
+    "and",
+    "anorak",
+    "anoraks",
+    "baselayer",
+    "blouson",
+    "blousons",
+    "boot",
+    "boots",
+    "casque",
+    "casques",
+    "chaussure",
+    "chaussures",
+    "child",
+    "children",
+    "de",
+    "des",
+    "du",
+    "enfant",
+    "enfants",
+    "et",
+    "femme",
+    "femmes",
+    "fille",
+    "filles",
+    "garcon",
+    "garcons",
+    "gant",
+    "gants",
+    "hardshell",
+    "helmet",
+    "homme",
+    "hommes",
+    "jacket",
+    "jackets",
+    "junior",
+    "kid",
+    "kids",
+    "masque",
+    "masques",
+    "men",
+    "mixte",
+    "moufle",
+    "moufles",
+    "pant",
+    "pants",
+    "pantalon",
+    "pantalons",
+    "parka",
+    "parkas",
+    "ski",
+    "snow",
+    "snowboard",
+    "technical",
+    "technique",
+    "unisex",
+    "unisexe",
+    "vest",
+    "veste",
+    "vestes",
+    "vetement",
+    "vetements",
+    "women",
+  ]);
+
+const VARIANT_WORDS =
+  new Set([
+    "adulte",
+    "beige",
+    "black",
+    "bleu",
+    "blue",
+    "blanc",
+    "blanche",
+    "brown",
+    "enfant",
+    "femme",
+    "green",
+    "gris",
+    "grise",
+    "grey",
+    "homme",
+    "jaune",
+    "junior",
+    "kid",
+    "kids",
+    "marron",
+    "mixte",
+    "noir",
+    "noire",
+    "orange",
+    "pink",
+    "purple",
+    "red",
+    "rose",
+    "rouge",
+    "vert",
+    "verte",
+    "violet",
+    "violette",
+    "white",
+    "yellow",
+  ]);
 
 export function safeString(value: unknown): string | undefined {
   if (value === null || value === undefined) return undefined;
