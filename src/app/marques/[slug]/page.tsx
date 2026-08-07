@@ -690,25 +690,19 @@ export default async function BrandPage({
                   .join(" ");
 
                 return (
-                  <ProductCard
-                    key={p.id}
-                    href={`/p/${p.slug}`}
-                    title={title}
-                    subtitle={
-                      p.category
-                        ?.name
-                    }
-                    imageUrl={
-                      p.imageUrl
-                    }
-                    offerCount={
-                      p.offerCount
-                    }
-                    minPriceCents={
-                      p.minTotal ??
-                      null
-                    }
-                  />
+					<ProductCard
+					  key={p.id}
+					  href={`/p/${p.slug}`}
+					  title={title}
+					  subtitle={p.category?.name}
+					  imageUrl={
+						p.imageUrl?.trim() ||
+						p.offers.find((offer) => offer.imageUrl?.trim())?.imageUrl?.trim() ||
+						undefined
+					  }
+					  offerCount={p.offerCount}
+					  minPriceCents={p.minTotal ?? null}
+					/>
                 );
               }
             )}

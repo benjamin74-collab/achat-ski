@@ -475,12 +475,16 @@ export default async function CategoryPage({
                 {sorted.map((p) => {
                   const cardTitle = [p.brand, p.model, p.season].filter(Boolean).join(" ");
                   return (
-                    <ProductCard
+					<ProductCard
 					  key={p.id}
 					  href={`/p/${p.slug}`}
 					  title={cardTitle}
 					  subtitle={p.category?.name ?? undefined}
-					  imageUrl={p.imageUrl?.trim() || undefined}
+					  imageUrl={
+						p.imageUrl?.trim() ||
+						p.offers.find((offer) => offer.imageUrl?.trim())?.imageUrl?.trim() ||
+						undefined
+					  }
 					  offerCount={p.offerCount}
 					  minPriceCents={p.minTotal ?? null}
 					/>
