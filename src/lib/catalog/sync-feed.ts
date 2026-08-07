@@ -178,6 +178,12 @@ export async function syncFeedSourceById({
 }
 
 export async function syncFeedContent({
+	
+console.error(
+  `[universal-feed] START syncFeedContent trigger=${trigger} runtime=${runtime.slug} feedSourceId=${runtime.feedSourceId}`
+);
+	
+	
   prisma,
   runtime,
   content,
@@ -238,6 +244,11 @@ export async function syncFeedContent({
       }
     );
 
+console.error(
+  `[universal-feed] ${runtime.slug} rows parsed=${rows.length}`
+);
+
+
   const stats =
     createEmptyImportStats(
       rows.length
@@ -248,6 +259,11 @@ export async function syncFeedContent({
       rows,
       runtime.normalizerConfig
     );
+
+
+console.error(
+  `[universal-feed] ${runtime.slug} normalized=${normalizedItems.length}`
+);
 
   stats.normalizedRows =
     normalizedItems.length;
@@ -376,6 +392,11 @@ export async function syncFeedContent({
     stats.acceptedRows =
       accepted.length;
 
+console.error(
+  `[universal-feed] ${runtime.slug} accepted=${accepted.length} skipped=${stats.skippedRows} errors=${stats.errors}`
+);
+
+
     const grouped =
       aggregateFeedItems(
         accepted
@@ -383,6 +404,11 @@ export async function syncFeedContent({
 
     stats.groupedProducts =
       grouped.length;
+
+console.error(
+  `[universal-feed] ${runtime.slug} grouped=${grouped.length}`
+);
+
 
     if (
       grouped.length === 0
