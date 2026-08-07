@@ -177,13 +177,7 @@ export async function syncFeedSourceById({
   }
 }
 
-export async function syncFeedContent({
-	
-console.error(
-  `[universal-feed] START syncFeedContent trigger=${trigger} runtime=${runtime.slug} feedSourceId=${runtime.feedSourceId}`
-);
-	
-	
+export async function syncFeedContent({	
   prisma,
   runtime,
   content,
@@ -191,6 +185,13 @@ console.error(
   sourceUrl,
   filename,
 }: SyncFeedContentOptions): Promise<FeedImportResult> {
+	
+	
+console.error(
+  `[universal-feed] START syncFeedContent trigger=${trigger} runtime=${runtime.slug} feedSourceId=${runtime.feedSourceId}`
+);
+	
+	
   /*
    * Recharge toujours le runtime depuis la base
    * afin d'utiliser la configuration la plus récente.
