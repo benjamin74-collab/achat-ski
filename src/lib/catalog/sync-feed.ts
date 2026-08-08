@@ -50,7 +50,7 @@ import {
   normalizeBrandKey,
 } from "./normalize";
 
-const IMPORT_CONCURRENCY = 2;
+const IMPORT_CONCURRENCY = 6;
 const BULK_CHUNK_SIZE = 500;
 
 export type SyncFeedTrigger =
@@ -185,9 +185,6 @@ export async function syncFeedContent({
   sourceUrl,
   filename,
 }: SyncFeedContentOptions): Promise<FeedImportResult> {
-  console.error(
-    `[universal-feed] START syncFeedContent trigger=${trigger} runtime=${runtime.slug} feedSourceId=${runtime.feedSourceId}`
-  );
 
   /*
    * Recharge toujours le runtime depuis la base
@@ -198,10 +195,6 @@ export async function syncFeedContent({
       prisma,
       runtime.feedSourceId
     );
-
-  console.error(
-    `[universal-feed] ${runtime.slug} runtime loaded format=${runtime.format} delimiter=${JSON.stringify(runtime.delimiter)}`
-  );
 
   if (
     runtime.format !== "CSV" &&
@@ -246,10 +239,6 @@ export async function syncFeedContent({
       }
     );
 
-  console.error(
-    `[universal-feed] ${runtime.slug} rows parsed=${rows.length}`
-  );
-
   const stats =
     createEmptyImportStats(
       rows.length
@@ -260,10 +249,6 @@ export async function syncFeedContent({
       rows,
       runtime.normalizerConfig
     );
-
-  console.error(
-    `[universal-feed] ${runtime.slug} normalized=${normalizedItems.length}`
-  );
 
   stats.normalizedRows =
     normalizedItems.length;
@@ -304,10 +289,6 @@ export async function syncFeedContent({
       },
     });
 
-  console.error(
-    `[universal-feed] ${runtime.slug} feedImport created id=${feedImport.id}`
-  );
-
   try {
     const [
       categorySource,
@@ -325,10 +306,6 @@ export async function syncFeedContent({
           runtime.feedSourceId
         ),
       ]);
-
-    console.error(
-      `[universal-feed] ${runtime.slug} mappings=${categorySource.mappings.length} enrichmentRules=${categoryEnrichmentRules.length}`
-    );
 
     if (
       categorySource
@@ -400,10 +377,6 @@ export async function syncFeedContent({
     stats.acceptedRows =
       accepted.length;
 
-    console.error(
-      `[universal-feed] ${runtime.slug} accepted=${accepted.length} skipped=${stats.skippedRows} errors=${stats.errors}`
-    );
-
     const grouped =
       aggregateFeedItems(
         accepted
@@ -411,10 +384,6 @@ export async function syncFeedContent({
 
     stats.groupedProducts =
       grouped.length;
-
-    console.error(
-      `[universal-feed] ${runtime.slug} grouped=${grouped.length}`
-    );
 
     if (
       grouped.length === 0
@@ -433,10 +402,6 @@ export async function syncFeedContent({
       await buildBrandCache(
         prisma
       );
-
-    console.error(
-      `[universal-feed] ${runtime.slug} brandCache loaded=${brandCache.size}`
-    );
 
     const merchant = {
       id:
@@ -523,10 +488,6 @@ export async function syncFeedContent({
         aggregated
       );
     }
-
-    console.error(
-      `[universal-feed] ${runtime.slug} import split warmup=${warmupItems.length} parallelCandidates=${parallelItems.length}`
-    );
 
     const importOne =
       async (
