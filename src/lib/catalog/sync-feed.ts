@@ -50,7 +50,7 @@ import {
   normalizeBrandKey,
 } from "./normalize";
 
-const IMPORT_CONCURRENCY = 6;
+const IMPORT_CONCURRENCY = 12;
 const BULK_CHUNK_SIZE = 500;
 
 export type SyncFeedTrigger =
