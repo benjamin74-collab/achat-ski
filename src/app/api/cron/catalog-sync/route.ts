@@ -13,9 +13,9 @@ import {
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
-export const maxDuration = 300;
+export const maxDuration = 900;
 
-const MAX_FEEDS_PER_RUN = 3;
+const MAX_FEEDS_PER_RUN = 1;
 
 export async function GET(
   req: NextRequest
