@@ -543,6 +543,7 @@ export async function syncFeedContent({
               aggregated,
               merchant,
               feedKey,
+			  runtime.siteId,
               startedAt,
               stats,
               brandCache
