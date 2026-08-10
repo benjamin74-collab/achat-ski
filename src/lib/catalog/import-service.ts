@@ -844,56 +844,6 @@ async function upsertOffer(
   }
 }
 
-  const offer = await prisma.offer.create({
-    data: {
-      productId,
-      merchantId,
-
-      affiliateUrl:
-        item.affiliateUrl,
-
-      priceCents,
-      oldPriceCents,
-      shippingCents,
-
-      currency: item.currency,
-      inStock: item.inStock,
-      availability:
-        item.availability,
-
-      externalId:
-        item.externalId,
-
-      parentExternalId:
-        item.parentExternalId,
-
-      merchantProductUrl:
-        item.merchantProductUrl,
-
-      imageUrl:
-        item.imageUrl,
-
-      active: true,
-      feedKey,
-      sourceItemCount,
-      lastSeen: seenAt,
-    },
-  });
-
-  await createPriceHistory(
-    prisma,
-    offer.id,
-    item,
-    priceCents,
-    oldPriceCents,
-    shippingCents
-  );
-
-  stats.createdOffers += 1;
-
-  return offer;
-}
-
 async function createPriceHistory(
   prisma: PrismaClient,
   offerId: number,
