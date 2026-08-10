@@ -457,12 +457,42 @@ async function createProduct(
   };
 
   /*
-   * La recherche préalable d'un slug libre ne suffit
-   * pas lorsque plusieurs produits sont créés en parallèle.
+   * Cas important :
+   * si le slug existe déjà, on considère que le produit
+   * existe déjà et on le remet à jour au lieu de créer
+   * un doublon avec un slug suffixé.
    *
-   * On tente donc la création et, en cas de collision P2002
-   * sur le slug, on recommence avec un suffixe.
+   * Cela évite les séries massives de P2002 pendant
+   * les réimports ou après un import partiellement réussi.
    */
+  const existingByBaseSlug =
+    await prisma.product.findUnique({
+      where: {
+        slug:
+          baseSlug,
+      },
+    });
+
+  if (
+    existingByBaseSlug
+  ) {
+    const product =
+      await prisma.product.update({
+        where: {
+          id:
+            existingByBaseSlug.id,
+        },
+
+        data: {
+          ...productData,
+        },
+      });
+
+    stats.updatedProducts += 1;
+
+    return product;
+  }
+
   for (
     let attempt = 1;
     attempt <= 20;
@@ -495,8 +525,37 @@ async function createProduct(
           "slug"
         );
 
-      if (!isSlugCollision) {
+      if (
+        !isSlugCollision
+      ) {
         throw error;
+      }
+
+      const existingProduct =
+        await prisma.product.findUnique({
+          where: {
+            slug,
+          },
+        });
+
+      if (
+        existingProduct
+      ) {
+        const product =
+          await prisma.product.update({
+            where: {
+              id:
+                existingProduct.id,
+            },
+
+            data: {
+              ...productData,
+            },
+          });
+
+        stats.updatedProducts += 1;
+
+        return product;
       }
     }
   }
@@ -524,6 +583,7 @@ async function createProduct(
     await prisma.product.create({
       data: {
         ...productData,
+
         slug:
           fallbackSlug ||
           `produit-${Date.now()}`,
@@ -631,7 +691,47 @@ async function upsertOffer(
       },
     });
 
-  if (existingOffer) {
+  const offerData = {
+    affiliateUrl:
+      item.affiliateUrl,
+
+    priceCents,
+    oldPriceCents,
+    shippingCents,
+
+    currency:
+      item.currency,
+
+    inStock:
+      item.inStock,
+
+    availability:
+      item.availability,
+
+    externalId:
+      item.externalId ?? null,
+
+    parentExternalId:
+      item.parentExternalId ?? null,
+
+    merchantProductUrl:
+      item.merchantProductUrl ?? null,
+
+    imageUrl:
+      item.imageUrl || null,
+
+    active:
+      true,
+
+    feedKey,
+    sourceItemCount,
+    lastSeen:
+      seenAt,
+  };
+
+  if (
+    existingOffer
+  ) {
     const priceChanged =
       existingOffer.priceCents !==
         priceCents ||
@@ -645,46 +745,24 @@ async function upsertOffer(
     const offer =
       await prisma.offer.update({
         where: {
-          id: existingOffer.id,
+          id:
+            existingOffer.id,
         },
+
         data: {
-          affiliateUrl:
-            item.affiliateUrl,
-
-          priceCents,
-          oldPriceCents,
-          shippingCents,
-
-          currency: item.currency,
-          inStock: item.inStock,
-          availability:
-            item.availability,
-
-          externalId:
-            item.externalId ?? null,
-
-          parentExternalId:
-            item.parentExternalId ??
-            null,
-
-          merchantProductUrl:
-            item.merchantProductUrl ??
-            null,
+          ...offerData,
 
           imageUrl:
             item.imageUrl ||
             existingOffer.imageUrl,
-
-          active: true,
-          feedKey,
-          sourceItemCount,
-          lastSeen: seenAt,
         },
       });
 
     stats.updatedOffers += 1;
 
-    if (priceChanged) {
+    if (
+      priceChanged
+    ) {
       await createPriceHistory(
         prisma,
         offer.id,
@@ -697,6 +775,74 @@ async function upsertOffer(
 
     return offer;
   }
+
+  try {
+    const offer =
+      await prisma.offer.create({
+        data: {
+          productId,
+          merchantId,
+
+          ...offerData,
+        },
+      });
+
+    await createPriceHistory(
+      prisma,
+      offer.id,
+      item,
+      priceCents,
+      oldPriceCents,
+      shippingCents
+    );
+
+    stats.createdOffers += 1;
+
+    return offer;
+  } catch (error) {
+    const isOfferCollision =
+      error instanceof
+        Prisma.PrismaClientKnownRequestError &&
+      error.code === "P2002" &&
+      isUniqueConstraintField(
+        error.meta?.target,
+        "productId"
+      ) &&
+      isUniqueConstraintField(
+        error.meta?.target,
+        "merchantId"
+      );
+
+    if (
+      !isOfferCollision
+    ) {
+      throw error;
+    }
+
+    /*
+     * Cas de concurrence :
+     * une autre promesse a créé l'offre juste avant nous.
+     * On récupère alors cette offre et on la met à jour.
+     */
+    const offer =
+      await prisma.offer.update({
+        where: {
+          productId_merchantId: {
+            productId,
+            merchantId,
+          },
+        },
+
+        data: {
+          ...offerData,
+        },
+      });
+
+    stats.updatedOffers += 1;
+
+    return offer;
+  }
+}
 
   const offer = await prisma.offer.create({
     data: {

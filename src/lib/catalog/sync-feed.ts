@@ -1,4 +1,4 @@
-import {
+﻿import {
   PrismaClient,
 } from "@prisma/client";
 
@@ -50,7 +50,7 @@ import {
   normalizeBrandKey,
 } from "./normalize";
 
-const IMPORT_CONCURRENCY = 12;
+const IMPORT_CONCURRENCY = 6;
 const BULK_CHUNK_SIZE = 500;
 
 export type SyncFeedTrigger =
@@ -116,7 +116,7 @@ export async function syncFeedSourceById({
 
     if (!response.ok) {
       throw new Error(
-        `Téléchargement impossible : ${response.status} ${response.statusText}`
+        `TÃ©lÃ©chargement impossible : ${response.status} ${response.statusText}`
       );
     }
 
@@ -188,7 +188,7 @@ export async function syncFeedContent({
 
   /*
    * Recharge toujours le runtime depuis la base
-   * afin d'utiliser la configuration la plus récente.
+   * afin d'utiliser la configuration la plus rÃ©cente.
    */
   runtime =
     await loadFeedRuntime(
@@ -313,7 +313,7 @@ export async function syncFeedContent({
         .length === 0
     ) {
       throw new Error(
-        `Aucun CategoryExternalMapping actif n'est configuré pour le flux "${runtime.name}".`
+        `Aucun CategoryExternalMapping actif n'est configurÃ© pour le flux "${runtime.name}".`
       );
     }
 
@@ -322,10 +322,10 @@ export async function syncFeedContent({
       [];
 
     /*
-     * Validation et résolution des catégories.
+     * Validation et rÃ©solution des catÃ©gories.
      *
-     * Les lignes invalides ou non mappées sont
-     * simplement ignorées sans générer un log
+     * Les lignes invalides ou non mappÃ©es sont
+     * simplement ignorÃ©es sans gÃ©nÃ©rer un log
      * individuel pour chaque produit.
      */
     for (
@@ -389,14 +389,14 @@ export async function syncFeedContent({
       grouped.length === 0
     ) {
       throw new Error(
-        "Aucun produit n'a été retenu. La réconciliation est annulée afin d'éviter une désactivation massive."
+        "Aucun produit n'a Ã©tÃ© retenu. La rÃ©conciliation est annulÃ©e afin d'Ã©viter une dÃ©sactivation massive."
       );
     }
 
     /*
-     * Précharge toutes les marques actives en une seule requête.
-     * Cela évite que upsertBrand() recharge toute la table Brand
-     * pour chaque nouvelle clé rencontrée pendant l'import.
+     * PrÃ©charge toutes les marques actives en une seule requÃªte.
+     * Cela Ã©vite que upsertBrand() recharge toute la table Brand
+     * pour chaque nouvelle clÃ© rencontrÃ©e pendant l'import.
      */
     const brandCache =
       await buildBrandCache(
@@ -440,10 +440,10 @@ export async function syncFeedContent({
     };
 
     /*
-     * Pour les marques réellement nouvelles, le premier produit
-     * de chaque marque est traité séquentiellement. Cela évite
-     * que plusieurs promesses concurrentes tentent de créer
-     * simultanément la même marque.
+     * Pour les marques rÃ©ellement nouvelles, le premier produit
+     * de chaque marque est traitÃ© sÃ©quentiellement. Cela Ã©vite
+     * que plusieurs promesses concurrentes tentent de crÃ©er
+     * simultanÃ©ment la mÃªme marque.
      */
     const brandKeysSeen =
       new Set(
@@ -514,34 +514,21 @@ export async function syncFeedContent({
             Date.now() - started;
 
           if (duration > 3000) {
-            console.error(
-              `[universal-feed] ${runtime.slug} slow import groupKey=${aggregated.groupKey} durationMs=${duration} productId=${imported.product.id} match=${imported.match.reason}`
-            );
-          }
+}
 
           return (
             imported.product.id
           );
         } catch (error) {
           stats.errors += 1;
-
-          console.error(
-            `[universal-feed] ${runtime.slug} import error groupKey=${aggregated.groupKey}`,
-            error
-          );
-
-          return null;
+return null;
         }
       };
 
     /*
-     * Amorçage des nouvelles marques.
+     * AmorÃ§age des nouvelles marques.
      */
-    console.error(
-      `[universal-feed] ${runtime.slug} warmup start count=${warmupItems.length}`
-    );
-
-    const warmupProductIds:
+const warmupProductIds:
       number[] = [];
 
     for (
@@ -560,29 +547,16 @@ export async function syncFeedContent({
       }
     }
 
-    console.error(
-      `[universal-feed] ${runtime.slug} warmup imported productIds=${warmupProductIds.length}`
-    );
-
-    console.error(
-      `[universal-feed] ${runtime.slug} warmup syncSiteProductsBulk start productIds=${warmupProductIds.length}`
-    );
-
     await syncSiteProductsBulk(
       prisma,
       runtime.siteId,
       warmupProductIds,
       startedAt
     );
-
-    console.error(
-      `[universal-feed] ${runtime.slug} warmup syncSiteProductsBulk done`
-    );
-
-    /*
-     * Si l'amorçage d'une nouvelle marque a échoué avant
+/*
+     * Si l'amorÃ§age d'une nouvelle marque a Ã©chouÃ© avant
      * la mise en cache de celle-ci, les autres produits de
-     * cette marque restent traités séquentiellement.
+     * cette marque restent traitÃ©s sÃ©quentiellement.
      */
     const safeParallelItems:
       AggregatedFeedItem[] =
@@ -616,19 +590,9 @@ export async function syncFeedContent({
         );
       }
     }
-
-    console.error(
-      `[universal-feed] ${runtime.slug} import split fallback=${fallbackSequentialItems.length} safeParallel=${safeParallelItems.length}`
-    );
-
-    const fallbackProductIds:
+const fallbackProductIds:
       number[] = [];
-
-    console.error(
-      `[universal-feed] ${runtime.slug} fallback start count=${fallbackSequentialItems.length}`
-    );
-
-    for (
+for (
       const aggregated of
       fallbackSequentialItems
     ) {
@@ -644,37 +608,20 @@ export async function syncFeedContent({
       }
     }
 
-    console.error(
-      `[universal-feed] ${runtime.slug} fallback imported productIds=${fallbackProductIds.length}`
-    );
-
-    console.error(
-      `[universal-feed] ${runtime.slug} fallback syncSiteProductsBulk start productIds=${fallbackProductIds.length}`
-    );
-
     await syncSiteProductsBulk(
       prisma,
       runtime.siteId,
       fallbackProductIds,
       startedAt
     );
-
-    console.error(
-      `[universal-feed] ${runtime.slug} fallback syncSiteProductsBulk done`
-    );
-
-    /*
-     * Les produits dont la marque est désormais connue sont
-     * traités avec une concurrence limitée.
+/*
+     * Les produits dont la marque est dÃ©sormais connue sont
+     * traitÃ©s avec une concurrence limitÃ©e.
      *
-     * Cela réduit fortement le temps mur sans saturer le pool
+     * Cela rÃ©duit fortement le temps mur sans saturer le pool
      * PostgreSQL/Neon.
      */
-    console.error(
-      `[universal-feed] ${runtime.slug} safeParallel start count=${safeParallelItems.length} concurrency=${IMPORT_CONCURRENCY}`
-    );
-
-    for (
+for (
       let index = 0;
       index <
       safeParallelItems.length;
@@ -687,12 +634,7 @@ export async function syncFeedContent({
           index +
             IMPORT_CONCURRENCY
         );
-
-      console.error(
-        `[universal-feed] ${runtime.slug} batch start index=${index} size=${batch.length}`
-      );
-
-      const productIds =
+const productIds =
         (
           await Promise.all(
             batch.map(
@@ -705,41 +647,20 @@ export async function syncFeedContent({
           ): productId is number =>
             productId !== null
         );
-
-      console.error(
-        `[universal-feed] ${runtime.slug} batch imported index=${index} productIds=${productIds.length}`
-      );
-
-      /*
+/*
        * Au lieu d'un upsert SiteProduct par produit :
        * - un updateMany pour tous les produits existants ;
        * - un createMany avec skipDuplicates pour les nouveaux.
        *
-       * On passe ainsi de N requêtes à 2 requêtes par lot.
+       * On passe ainsi de N requÃªtes Ã  2 requÃªtes par lot.
        */
-      console.error(
-        `[universal-feed] ${runtime.slug} batch syncSiteProductsBulk start index=${index} productIds=${productIds.length}`
-      );
-
-      await syncSiteProductsBulk(
+await syncSiteProductsBulk(
         prisma,
         runtime.siteId,
         productIds,
         startedAt
       );
-
-      console.error(
-        `[universal-feed] ${runtime.slug} batch done index=${index} productIds=${productIds.length}`
-      );
-    }
-
-    console.error(
-      `[universal-feed] ${runtime.slug} safeParallel done`
-    );
-
-    console.error(
-      `[universal-feed] ${runtime.slug} début reconcileMissingOffers`
-    );
+}
 
     await reconcileMissingOffers({
       prisma,
@@ -748,24 +669,14 @@ export async function syncFeedContent({
       startedAt,
       stats,
     });
-
-    console.error(
-      `[universal-feed] ${runtime.slug} fin reconcileMissingOffers`
-    );
-
-    const status =
+const status =
       stats.errors > 0
         ? "PARTIAL"
         : "SUCCESS";
 
     const finishedAt =
       new Date();
-
-    console.error(
-      `[universal-feed] ${runtime.slug} final update start status=${status} createdProducts=${stats.createdProducts} updatedProducts=${stats.updatedProducts} createdOffers=${stats.createdOffers} updatedOffers=${stats.updatedOffers} errors=${stats.errors}`
-    );
-
-    await Promise.all([
+await Promise.all([
       prisma.feedImport.update({
         where: {
           id:
@@ -842,12 +753,7 @@ export async function syncFeedContent({
         },
       }),
     ]);
-
-    console.error(
-      `[universal-feed] ${runtime.slug} final update done status=${status}`
-    );
-
-    return {
+return {
       feedImportId:
         feedImport.id,
 
@@ -865,12 +771,7 @@ export async function syncFeedContent({
       error instanceof Error
         ? error.message
         : String(error);
-
-    console.error(
-      `[universal-feed] ${runtime.slug} FAILED ${errorMessage}`
-    );
-
-    await Promise.all([
+await Promise.all([
       prisma.feedImport.update({
         where: {
           id:
@@ -945,8 +846,8 @@ async function reconcileMissingOffers({
   stats,
 }: ReconcileOptions): Promise<void> {
   /*
-   * 1. Récupère en une requête toutes les offres du flux
-   *    qui n'ont pas été vues pendant cet import.
+   * 1. RÃ©cupÃ¨re en une requÃªte toutes les offres du flux
+   *    qui n'ont pas Ã©tÃ© vues pendant cet import.
    */
   const missingOffers =
     await prisma.offer.findMany({
@@ -989,8 +890,8 @@ async function reconcileMissingOffers({
   }
 
   /*
-   * 2. Désactive toutes les offres manquantes en une seule
-   *    opération au lieu de les traiter individuellement.
+   * 2. DÃ©sactive toutes les offres manquantes en une seule
+   *    opÃ©ration au lieu de les traiter individuellement.
    */
   await prisma.offer.updateMany({
     where: {
@@ -1032,7 +933,7 @@ async function reconcileMissingOffers({
   }
 
   /*
-   * 3. Cherche en une seule requête les produits qui ont
+   * 3. Cherche en une seule requÃªte les produits qui ont
    *    encore au moins une offre active.
    *
    * L'ancienne version faisait un offer.count() par produit.
@@ -1083,7 +984,7 @@ async function reconcileMissingOffers({
 
   /*
    * 4. Archive les SiteProduct du site courant en une seule
-   *    requête pour tous les produits devenus sans offre.
+   *    requÃªte pour tous les produits devenus sans offre.
    */
   await prisma.siteProduct.updateMany({
     where: {
@@ -1112,15 +1013,15 @@ async function reconcileMissingOffers({
   });
 
   /*
-   * 5. Toutes les vérifications qui étaient auparavant
-   *    réalisées produit par produit sont chargées en parallèle
+   * 5. Toutes les vÃ©rifications qui Ã©taient auparavant
+   *    rÃ©alisÃ©es produit par produit sont chargÃ©es en parallÃ¨le
    *    et sous forme d'ensembles de productId.
    *
-   * Ancienne mécanique :
-   *   jusqu'à 5 requêtes supplémentaires par produit.
+   * Ancienne mÃ©canique :
+   *   jusqu'Ã  5 requÃªtes supplÃ©mentaires par produit.
    *
-   * Nouvelle mécanique :
-   *   4 requêtes au total, quel que soit le nombre de produits.
+   * Nouvelle mÃ©canique :
+   *   4 requÃªtes au total, quel que soit le nombre de produits.
    */
   const [
     productsWithTests,
@@ -1244,13 +1145,13 @@ async function reconcileMissingOffers({
     );
 
   /*
-   * Un produit peut être supprimé uniquement s'il :
+   * Un produit peut Ãªtre supprimÃ© uniquement s'il :
    * - n'a plus aucune offre active ;
    * - n'est actif sur aucun site ;
    * - n'a ni test, ni avis, ni clic.
    *
-   * Cette logique est identique à l'ancienne version,
-   * mais les contrôles sont désormais groupés.
+   * Cette logique est identique Ã  l'ancienne version,
+   * mais les contrÃ´les sont dÃ©sormais groupÃ©s.
    */
   const deletableProductIds =
     orphanProductIds.filter(
@@ -1290,8 +1191,8 @@ async function reconcileMissingOffers({
     );
 
   /*
-   * Les produits protégés par du contenu éditorial ou de
-   * l'historique restent en base mais sont désactivés lorsqu'ils
+   * Les produits protÃ©gÃ©s par du contenu Ã©ditorial ou de
+   * l'historique restent en base mais sont dÃ©sactivÃ©s lorsqu'ils
    * ne sont plus actifs sur aucun site.
    */
   const deactivatableProductIds =
@@ -1348,11 +1249,11 @@ async function buildBrandCache(
   >
 > {
   /*
-   * On précharge uniquement les marques actives.
+   * On prÃ©charge uniquement les marques actives.
    *
    * Une marque inactive n'est volontairement pas mise
    * en cache : upsertBrand() pourra alors la retrouver
-   * et la réactiver selon sa logique existante.
+   * et la rÃ©activer selon sa logique existante.
    */
   const brands =
     await prisma.brand.findMany({
@@ -1438,8 +1339,8 @@ async function syncSiteProductsBulk(
     )
   ) {
     /*
-     * updateMany réactive les lignes existantes.
-     * createMany crée uniquement les associations absentes.
+     * updateMany rÃ©active les lignes existantes.
+     * createMany crÃ©e uniquement les associations absentes.
      */
 	await Promise.all([
 	  prisma.siteProduct.updateMany({
