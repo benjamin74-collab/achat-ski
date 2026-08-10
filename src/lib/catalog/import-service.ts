@@ -403,17 +403,27 @@ async function createProduct(
   const normalizedName =
     normalizeProductName(name);
 
-  const baseSlug =
+  const slug =
     buildProductSlug(item) ||
     "produit";
 
   const gtin =
     normalizeGtin(item.gtin);
 
+  const existingProduct =
+    await prisma.product.findUnique({
+      where: {
+        slug,
+      },
+      select: {
+        id: true,
+      },
+    });
+
   const writableLegacyGtin =
     await resolveWritableLegacyGtin(
       prisma,
-      undefined,
+      existingProduct?.id,
       gtin
     );
 
@@ -457,140 +467,50 @@ async function createProduct(
   };
 
   /*
-   * Cas important :
-   * si le slug existe déjà, on considère que le produit
-   * existe déjà et on le remet à jour au lieu de créer
-   * un doublon avec un slug suffixé.
+   * On utilise upsert(slug) au lieu de create() + catch P2002.
    *
-   * Cela évite les séries massives de P2002 pendant
-   * les réimports ou après un import partiellement réussi.
+   * Avantage :
+   * - pas d'erreur Prisma affichée en rouge ;
+   * - reprise propre après import partiellement réussi ;
+   * - meilleure résistance aux créations concurrentes.
    */
-  const existingByBaseSlug =
-    await prisma.product.findUnique({
+  const product =
+    await prisma.product.upsert({
       where: {
-        slug:
-          baseSlug,
+        slug,
+      },
+
+      update: {
+        ...productData,
+
+        /*
+         * Une URL vide ou absente ne doit pas effacer
+         * une image déjà enregistrée.
+         */
+        imageUrl:
+          item.imageUrl || undefined,
+
+        description:
+          item.description || undefined,
+
+        manufacturerReference:
+          item.manufacturerReference ||
+          undefined,
+      },
+
+      create: {
+        ...productData,
+        slug,
       },
     });
 
   if (
-    existingByBaseSlug
+    existingProduct
   ) {
-    const product =
-      await prisma.product.update({
-        where: {
-          id:
-            existingByBaseSlug.id,
-        },
-
-        data: {
-          ...productData,
-        },
-      });
-
     stats.updatedProducts += 1;
-
-    return product;
+  } else {
+    stats.createdProducts += 1;
   }
-
-  for (
-    let attempt = 1;
-    attempt <= 20;
-    attempt += 1
-  ) {
-    const slug =
-      attempt === 1
-        ? baseSlug
-        : `${baseSlug}-${attempt}`;
-
-    try {
-      const product =
-        await prisma.product.create({
-          data: {
-            ...productData,
-            slug,
-          },
-        });
-
-      stats.createdProducts += 1;
-
-      return product;
-    } catch (error) {
-      const isSlugCollision =
-        error instanceof
-          Prisma.PrismaClientKnownRequestError &&
-        error.code === "P2002" &&
-        isUniqueConstraintField(
-          error.meta?.target,
-          "slug"
-        );
-
-      if (
-        !isSlugCollision
-      ) {
-        throw error;
-      }
-
-      const existingProduct =
-        await prisma.product.findUnique({
-          where: {
-            slug,
-          },
-        });
-
-      if (
-        existingProduct
-      ) {
-        const product =
-          await prisma.product.update({
-            where: {
-              id:
-                existingProduct.id,
-            },
-
-            data: {
-              ...productData,
-            },
-          });
-
-        stats.updatedProducts += 1;
-
-        return product;
-      }
-    }
-  }
-
-  /*
-   * Sécurité exceptionnelle si plus de 20 produits
-   * produisent exactement la même base de slug.
-   */
-  const fallbackSlug = [
-    baseSlug,
-    item.manufacturerReference,
-    item.gtin,
-    item.externalId,
-    Date.now(),
-  ]
-    .filter(Boolean)
-    .map((value) =>
-      slugify(String(value))
-    )
-    .filter(Boolean)
-    .join("-")
-    .slice(0, 180);
-
-  const product =
-    await prisma.product.create({
-      data: {
-        ...productData,
-
-        slug:
-          fallbackSlug ||
-          `produit-${Date.now()}`,
-      },
-    });
-
-  stats.createdProducts += 1;
 
   return product;
 }
@@ -691,6 +611,18 @@ async function upsertOffer(
       },
     });
 
+  const priceChanged =
+    existingOffer
+      ? existingOffer.priceCents !==
+          priceCents ||
+        existingOffer.oldPriceCents !==
+          oldPriceCents ||
+        existingOffer.shippingCents !==
+          shippingCents ||
+        existingOffer.inStock !==
+          item.inStock
+      : true;
+
   const offerData = {
     affiliateUrl:
       item.affiliateUrl,
@@ -717,9 +649,6 @@ async function upsertOffer(
     merchantProductUrl:
       item.merchantProductUrl ?? null,
 
-    imageUrl:
-      item.imageUrl || null,
-
     active:
       true,
 
@@ -729,64 +658,50 @@ async function upsertOffer(
       seenAt,
   };
 
+  /*
+   * On utilise upsert(productId, merchantId) au lieu
+   * de create() + catch P2002.
+   */
+  const offer =
+    await prisma.offer.upsert({
+      where: {
+        productId_merchantId: {
+          productId,
+          merchantId,
+        },
+      },
+
+      update: {
+        ...offerData,
+
+        imageUrl:
+          item.imageUrl ||
+          existingOffer?.imageUrl ||
+          null,
+      },
+
+      create: {
+        productId,
+        merchantId,
+
+        ...offerData,
+
+        imageUrl:
+          item.imageUrl || null,
+      },
+    });
+
   if (
     existingOffer
   ) {
-    const priceChanged =
-      existingOffer.priceCents !==
-        priceCents ||
-      existingOffer.oldPriceCents !==
-        oldPriceCents ||
-      existingOffer.shippingCents !==
-        shippingCents ||
-      existingOffer.inStock !==
-        item.inStock;
-
-    const offer =
-      await prisma.offer.update({
-        where: {
-          id:
-            existingOffer.id,
-        },
-
-        data: {
-          ...offerData,
-
-          imageUrl:
-            item.imageUrl ||
-            existingOffer.imageUrl,
-        },
-      });
-
     stats.updatedOffers += 1;
-
-    if (
-      priceChanged
-    ) {
-      await createPriceHistory(
-        prisma,
-        offer.id,
-        item,
-        priceCents,
-        oldPriceCents,
-        shippingCents
-      );
-    }
-
-    return offer;
+  } else {
+    stats.createdOffers += 1;
   }
 
-  try {
-    const offer =
-      await prisma.offer.create({
-        data: {
-          productId,
-          merchantId,
-
-          ...offerData,
-        },
-      });
-
+  if (
+    priceChanged
+  ) {
     await createPriceHistory(
       prisma,
       offer.id,
@@ -795,53 +710,9 @@ async function upsertOffer(
       oldPriceCents,
       shippingCents
     );
-
-    stats.createdOffers += 1;
-
-    return offer;
-  } catch (error) {
-    const isOfferCollision =
-      error instanceof
-        Prisma.PrismaClientKnownRequestError &&
-      error.code === "P2002" &&
-      isUniqueConstraintField(
-        error.meta?.target,
-        "productId"
-      ) &&
-      isUniqueConstraintField(
-        error.meta?.target,
-        "merchantId"
-      );
-
-    if (
-      !isOfferCollision
-    ) {
-      throw error;
-    }
-
-    /*
-     * Cas de concurrence :
-     * une autre promesse a créé l'offre juste avant nous.
-     * On récupère alors cette offre et on la met à jour.
-     */
-    const offer =
-      await prisma.offer.update({
-        where: {
-          productId_merchantId: {
-            productId,
-            merchantId,
-          },
-        },
-
-        data: {
-          ...offerData,
-        },
-      });
-
-    stats.updatedOffers += 1;
-
-    return offer;
   }
+
+  return offer;
 }
 
 async function createPriceHistory(
