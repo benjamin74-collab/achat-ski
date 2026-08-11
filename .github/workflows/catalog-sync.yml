@@ -1,0 +1,72 @@
+name: Catalog Sync
+
+on:
+  schedule:
+    # Toutes les 30 minutes, à des minutes non rondes.
+    # Le script ne traite qu'un flux dû à la fois.
+    - cron: "7,37 * * * *"
+
+  workflow_dispatch:
+    inputs:
+      feedSourceId:
+        description: "ID du flux à importer. Laisser vide pour traiter les flux dus."
+        required: false
+        type: string
+
+      mode:
+        description: "Mode pour un flux manuel"
+        required: true
+        default: "full"
+        type: choice
+        options:
+          - full
+          - delta
+
+      maxFeeds:
+        description: "Nombre maximum de flux dus à traiter"
+        required: true
+        default: "1"
+        type: string
+
+concurrency:
+  group: catalog-sync
+  cancel-in-progress: false
+
+jobs:
+  catalog-sync:
+    name: Catalog Sync
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+
+    env:
+      DATABASE_URL: ${{ secrets.DATABASE_URL }}
+      DIRECT_URL: ${{ secrets.DIRECT_URL }}
+      NODE_ENV: production
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "npm"
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Generate Prisma client
+        run: npx prisma generate
+
+      - name: Run scheduled delta sync
+        if: github.event_name == 'schedule'
+        run: npm run catalog:sync:due-feeds -- --maxFeeds=1
+
+      - name: Run manual selected feed
+        if: github.event_name == 'workflow_dispatch' && inputs.feedSourceId != ''
+        run: npm run catalog:sync:feed -- --feedSourceId=${{ inputs.feedSourceId }} --mode=${{ inputs.mode }} --trigger=MANUAL
+
+      - name: Run manual due feeds
+        if: github.event_name == 'workflow_dispatch' && inputs.feedSourceId == ''
+        run: npm run catalog:sync:due-feeds -- --maxFeeds=${{ inputs.maxFeeds }}
