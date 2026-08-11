@@ -403,6 +403,10 @@ model Offer {
   lastSeen        DateTime? @default(now())
   feedKey         String?
   sourceItemCount Int       @default(1)
+  sourceGroupKey    String? @db.VarChar(512)
+  sourceProductHash String? @db.VarChar(64)
+  sourceOfferHash   String? @db.VarChar(64)
+  sourceHashVersion Int     @default(1)
 
   clicks       Click[]
   priceHistory PriceHistory[]
@@ -419,6 +423,9 @@ model Offer {
   @@index([lastSeen])
   @@index([feedKey])
   @@index([merchantId, feedKey, lastSeen])
+  @@index([merchantId, feedKey, sourceGroupKey])
+  @@index([merchantId, feedKey, sourceProductHash])
+  @@index([merchantId, feedKey, sourceOfferHash])
 }
 
 model PriceHistory {
@@ -676,7 +683,8 @@ model FeedSource {
   lastFailureAt    DateTime?
   lastStatus       FeedImportStatus?
   lastErrorMessage String?           @db.Text
-
+  lastContentHash   String?   @db.VarChar(64)
+  lastContentHashAt DateTime?
   columnMappings   FeedColumnMapping[]
   categoryMappings CategoryExternalMapping[]
   enrichmentRules  CategoryEnrichmentRule[]
@@ -792,6 +800,11 @@ enum FeedImportTrigger {
   RETRY
 }
 
+enum FeedImportMode {
+  FULL
+  DELTA
+}
+
 enum CategoryEnrichmentMatchMode {
   ANY
   ALL
@@ -807,7 +820,9 @@ model FeedImport {
 
   siteId  String?
   trigger FeedImportTrigger @default(MANUAL)
-
+  mode        FeedImportMode @default(FULL)
+  contentHash String?        @db.VarChar(64)
+  
   platform     String?
   filename     String?
   feedKey      String?
@@ -852,6 +867,8 @@ model FeedImport {
   @@index([statusV2])
   @@index([startedAt])
   @@index([feedKey])
+  @@index([mode])
+  @@index([contentHash])
 }
 
 model RawFeedProduct {

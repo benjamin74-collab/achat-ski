@@ -979,27 +979,6 @@ async function resolveWritableLegacyGtin(
   return undefined;
 }
 
-function isUniqueConstraintField(
-  target: unknown,
-  expectedField: string
-): boolean {
-  if (typeof target === "string") {
-    return target.includes(
-      expectedField
-    );
-  }
-
-  if (Array.isArray(target)) {
-    return target.some(
-      (field) =>
-        String(field) ===
-        expectedField
-    );
-  }
-
-  return false;
-}
-
 function merchantNameFromSlug(
   slug: string
 ): string {
