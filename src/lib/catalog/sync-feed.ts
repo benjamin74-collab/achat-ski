@@ -50,6 +50,10 @@ import {
   normalizeBrandKey,
 } from "./normalize";
 
+import {
+  createHash,
+} from "node:crypto";
+
 const IMPORT_CONCURRENCY = 6;
 const BULK_CHUNK_SIZE = 500;
 
@@ -59,10 +63,15 @@ export type SyncFeedTrigger =
   | "API"
   | "RETRY";
 
+export type SyncFeedMode =
+  | "FULL"
+  | "DELTA";
+
 type SyncFeedSourceOptions = {
   prisma: PrismaClient;
   feedSourceId: number;
   trigger?: SyncFeedTrigger;
+  mode?: SyncFeedMode;
 };
 
 type SyncFeedContentOptions = {
@@ -71,15 +80,22 @@ type SyncFeedContentOptions = {
   content: string;
 
   trigger?: SyncFeedTrigger;
+  mode?: SyncFeedMode;
 
   sourceUrl?: string;
   filename?: string;
 };
 
+
+
+
+
+
 export async function syncFeedSourceById({
   prisma,
   feedSourceId,
   trigger = "CRON",
+  mode = "FULL",
 }: SyncFeedSourceOptions): Promise<FeedImportResult> {
   const runtime =
     await loadFeedRuntime(
@@ -144,6 +160,7 @@ export async function syncFeedSourceById({
       runtime,
       content,
       trigger,
+	  mode,
       sourceUrl:
         runtime.sourceUrl,
       filename,
@@ -182,6 +199,7 @@ export async function syncFeedContent({
   runtime,
   content,
   trigger = "MANUAL",
+  mode = "FULL",
   sourceUrl,
   filename,
 }: SyncFeedContentOptions): Promise<FeedImportResult> {
@@ -195,6 +213,121 @@ export async function syncFeedContent({
       prisma,
       runtime.feedSourceId
     );
+
+  const contentHash =
+    hashFeedContent(content);
+
+  /*
+   * Mode DELTA niveau 1 :
+   * si le fichier complet est strictement identique
+   * au dernier import réussi, on ne fait aucun import.
+   */
+  if (
+    mode === "DELTA" &&
+    runtime.lastContentHash ===
+      contentHash
+  ) {
+    const now =
+      new Date();
+
+    const feedKey = [
+      runtime.siteId,
+      runtime.slug,
+    ].join(":");
+
+    const feedImport =
+      await prisma.feedImport.create({
+        data: {
+          merchantId:
+            runtime.merchant.id,
+
+          feedSourceId:
+            runtime.feedSourceId,
+
+          siteId:
+            runtime.siteId,
+
+          trigger,
+          mode,
+          contentHash,
+
+          platform:
+            runtime.affiliateNetwork.slug,
+
+          filename:
+            filename ??
+            `${runtime.slug}.${extensionForFormat(
+              runtime.format
+            )}`,
+
+          feedKey,
+
+          sourceUrl:
+            sourceUrl ??
+            runtime.sourceUrl,
+
+          status:
+            "SUCCESS",
+
+          notes:
+            "Flux identique au dernier import réussi : delta ignoré.",
+
+          totalRows:
+            0,
+
+          importedRows:
+            0,
+
+          finishedAt:
+            now,
+        },
+      });
+
+    await prisma.feedSource.update({
+      where: {
+        id:
+          runtime.feedSourceId,
+      },
+
+      data: {
+        lastRunAt:
+          now,
+
+        lastSuccessAt:
+          now,
+
+        lastStatus:
+          "SUCCESS",
+
+        lastErrorMessage:
+          null,
+
+        lastContentHash:
+          contentHash,
+
+        lastContentHashAt:
+          now,
+
+        nextRunAt:
+          calculateNextRunAt(
+            runtime.frequency,
+            now
+          ),
+      },
+    });
+
+    return {
+      feedImportId:
+        feedImport.id,
+
+      feedKey,
+
+      status:
+        "SUCCESS",
+
+      ...createEmptyImportStats(0),
+    };
+  }
 
   if (
     runtime.format !== "CSV" &&
@@ -262,7 +395,12 @@ export async function syncFeedContent({
         feedSourceId:
           runtime.feedSourceId,
 
+		siteId:
+          runtime.siteId,
+
         trigger,
+		mode,
+        contentHash,
 
         platform:
           runtime
@@ -744,6 +882,16 @@ await Promise.all([
 
           lastErrorMessage:
             null,
+
+          lastContentHash:
+            status === "SUCCESS"
+              ? contentHash
+              : runtime.lastContentHash,
+
+          lastContentHashAt:
+            status === "SUCCESS"
+              ? finishedAt
+              : runtime.lastContentHashAt,
 
           nextRunAt:
             calculateNextRunAt(
@@ -1457,6 +1605,14 @@ export function calculateNextRunAt(
     default:
       return null;
   }
+}
+
+function hashFeedContent(
+  content: string
+): string {
+  return createHash("sha256")
+    .update(content, "utf8")
+    .digest("hex");
 }
 
 function decodeFeedContent(

@@ -79,6 +79,8 @@ export type FeedRuntime = {
     | "WEEKLY";
 
   timezone: string;
+  lastContentHash?: string | null;
+  lastContentHashAt?: Date | null;
 
   affiliateProgramId: number;
 
@@ -239,6 +241,9 @@ export async function loadFeedRuntime(
 
     frequency: feedSource.frequency,
     timezone: feedSource.timezone,
+
+    lastContentHash: feedSource.lastContentHash,
+    lastContentHashAt: feedSource.lastContentHashAt,
 
     affiliateProgramId:
       feedSource.affiliateProgramId,
