@@ -13,9 +13,9 @@ import {
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
-export const maxDuration = 900;
+export const maxDuration = 300;
 
-const MAX_FEEDS_PER_RUN = 1;
+const MAX_FEEDS_PER_RUN = 3;
 
 export async function GET(
   req: NextRequest
@@ -106,6 +106,10 @@ export async function GET(
                 active: true,
                 autoImport: true,
 
+			    frequency: {
+			   	not: "MANUAL_ONLY",
+			    },
+  
                 OR: [
                   {
                     nextRunAt: null,
@@ -163,14 +167,16 @@ export async function GET(
     for (const feedSource of feedSources) {
       try {
         const result =
-          await syncFeedSourceById({
-            prisma,
+		  await syncFeedSourceById({
+			prisma,
 
-            feedSourceId:
-              feedSource.id,
+			feedSourceId:
+			  feedSource.id,
 
-            trigger: "CRON",
-          });
+			trigger: "CRON",
+
+			mode: "DELTA",
+		  });
 
         results.push({
           feedSourceId:
