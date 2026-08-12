@@ -1,0 +1,122 @@
+{
+  "version": 1,
+  "siteId": "meilleur-ski",
+  "library": "category-enrichment-rules-ski-junior-cleanup",
+  "rules": [
+    {
+      "name": "Skis junior — termes explicites",
+      "sourceCategorySlug": "skis",
+      "targetCategorySlug": "skis-junior",
+      "includeTerms": [
+        "junior",
+        "jr",
+        "kids",
+        "kid",
+        "enfant",
+        "garcon",
+        "fille",
+        "shorty",
+        "junius",
+        "junius birdie",
+        "slap jr",
+        "mantra jr",
+        "qst blank team"
+      ],
+      "excludeTerms": [
+        "adult",
+        "adulte",
+        "homme",
+        "femme",
+        "men",
+        "women"
+      ],
+      "matchMode": "ANY",
+      "searchTitle": true,
+      "searchDescription": false,
+      "searchCategoryPath": false,
+      "searchBrand": false,
+      "makePrimary": true,
+      "priority": 120,
+      "active": true
+    },
+    {
+      "name": "Packs skis junior — termes explicites",
+      "sourceCategorySlug": "packs-skis",
+      "targetCategorySlug": "packs-skis-junior",
+      "includeTerms": [
+        "junior",
+        "jr",
+        "kids",
+        "kid",
+        "enfant",
+        "garcon",
+        "fille",
+        "shorty",
+        "junius",
+        "junius birdie",
+        "slap jr",
+        "mantra jr",
+        "qst blank team",
+        "enforcer 80s"
+      ],
+      "excludeTerms": [
+        "adult",
+        "adulte",
+        "homme",
+        "femme",
+        "men",
+        "women"
+      ],
+      "matchMode": "ANY",
+      "searchTitle": true,
+      "searchDescription": false,
+      "searchCategoryPath": false,
+      "searchBrand": false,
+      "makePrimary": true,
+      "priority": 120,
+      "active": true
+    },
+    {
+      "name": "Chaussures ski junior — termes enfant",
+      "sourceCategorySlug": "chaussures-ski",
+      "targetCategorySlug": "chaussures-ski-junior",
+      "includeTerms": [
+        "junior",
+        "jr",
+        "kid",
+        "kids",
+        "enfant",
+        "children",
+        "child",
+        "j1",
+        "j2",
+        "j3",
+        "j4",
+        "j60",
+        "j70",
+        "hero jr",
+        "redster jr",
+        "fun girl",
+        "fun girl j",
+        "speedmachine j",
+        "sportmachine j"
+      ],
+      "excludeTerms": [
+        "adulte",
+        "adult",
+        "men",
+        "women",
+        "homme",
+        "femme"
+      ],
+      "matchMode": "ANY",
+      "searchTitle": true,
+      "searchDescription": false,
+      "searchCategoryPath": false,
+      "searchBrand": false,
+      "makePrimary": true,
+      "priority": 260,
+      "active": true
+    }
+  ]
+}
