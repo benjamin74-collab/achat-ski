@@ -2,8 +2,6 @@ name: Catalog Sync
 
 on:
   schedule:
-    # Toutes les 30 minutes, à des minutes non rondes.
-    # Le script ne traite qu'un flux dû à la fois.
     - cron: "7,37 * * * *"
 
   workflow_dispatch:
@@ -41,7 +39,6 @@ jobs:
     env:
       DATABASE_URL: ${{ secrets.DATABASE_URL }}
       DIRECT_URL: ${{ secrets.DIRECT_URL }}
-      NODE_ENV: production
 
     steps:
       - name: Checkout repository
@@ -54,19 +51,25 @@ jobs:
           cache: "npm"
 
       - name: Install dependencies
-        run: npm ci
+        run: npm ci --include=dev
 
       - name: Generate Prisma client
         run: npx prisma generate
 
       - name: Run scheduled delta sync
         if: github.event_name == 'schedule'
+        env:
+          NODE_ENV: production
         run: npm run catalog:sync:due-feeds -- --maxFeeds=1
 
       - name: Run manual selected feed
         if: github.event_name == 'workflow_dispatch' && inputs.feedSourceId != ''
+        env:
+          NODE_ENV: production
         run: npm run catalog:sync:feed -- --feedSourceId=${{ inputs.feedSourceId }} --mode=${{ inputs.mode }} --trigger=MANUAL
 
       - name: Run manual due feeds
         if: github.event_name == 'workflow_dispatch' && inputs.feedSourceId == ''
+        env:
+          NODE_ENV: production
         run: npm run catalog:sync:due-feeds -- --maxFeeds=${{ inputs.maxFeeds }}
