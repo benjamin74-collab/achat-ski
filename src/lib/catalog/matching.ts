@@ -15,6 +15,7 @@ import {
   normalizeGtin,
   normalizeIdentifierValue,
   normalizeProductName,
+  normalizeText,
 } from "./normalize";
 
 export async function matchFeedItem(
@@ -30,6 +31,52 @@ export async function matchFeedItem(
   const brandKey = normalizeBrandKey(
     brandName || item.brand
   );
+  
+  const incomingProductKind =
+  resolveGuardedProductKind(
+    aggregated
+  );
+
+const sourceGroupKeys = uniqueIdentifiers([
+  ...aggregated.sourceGroupKeys,
+  aggregated.groupKey,
+]);
+
+if (sourceGroupKeys.length > 0) {
+  const productFromSourceGroup =
+    await findCompatibleProductByIdentifier(
+      prisma,
+      siteId,
+      ProductIdentifierType.SOURCE_GROUP_KEY,
+      sourceGroupKeys,
+      "",
+      item.merchantSlug,
+      aggregated
+    );
+
+  if (productFromSourceGroup) {
+    return {
+      productId:
+        productFromSourceGroup.productId,
+      confidence: 100,
+      reason: "MERCHANT_PARENT_EXTERNAL_ID",
+    };
+  }
+}
+
+/*
+ * Les packs snowboard sont des produits composites.
+ * Ils ne doivent jamais matcher une planche nue via GTIN,
+ * référence fabricant, style code ou nom normalisé.
+ */
+if (
+  incomingProductKind === "SNOWBOARD_PACK"
+) {
+  return {
+    confidence: 0,
+    reason: "NEW_PRODUCT",
+  };
+}
 
   const gtins = uniqueIdentifiers(
     [
@@ -340,4 +387,252 @@ function uniqueIdentifiers(
         .filter((value): value is string => Boolean(value))
     )
   );
+}
+
+type GuardedProductKind =
+  | "SNOWBOARD_PACK"
+  | "SNOWBOARD_BOARD"
+  | "SNOWBOARD_SPLITBOARD"
+  | "SNOWBOARD_BOOT"
+  | "SNOWBOARD_BINDING"
+  | "SNOWBOARD_BAG";
+
+async function findCompatibleProductByIdentifier(
+  prisma: PrismaClient,
+  siteId: string,
+  type: ProductIdentifierType,
+  values: string[],
+  brandKey: string,
+  merchantSlug: string,
+  aggregated: AggregatedFeedItem
+): Promise<{ productId: number } | null> {
+  const candidate =
+    await findProductByIdentifier(
+      prisma,
+      siteId,
+      type,
+      values,
+      brandKey,
+      merchantSlug
+    );
+
+  if (!candidate) {
+    return null;
+  }
+
+  const compatible =
+    await isCompatibleExistingProduct(
+      prisma,
+      candidate.productId,
+      aggregated
+    );
+
+  if (!compatible) {
+    return null;
+  }
+
+  return candidate;
+}
+
+async function isCompatibleExistingProduct(
+  prisma: PrismaClient,
+  productId: number,
+  aggregated: AggregatedFeedItem
+): Promise<boolean> {
+  const incomingKind =
+    resolveGuardedProductKind(
+      aggregated
+    );
+
+  if (!incomingKind) {
+    return true;
+  }
+
+  const product =
+    await prisma.product.findUnique({
+      where: {
+        id: productId,
+      },
+      select: {
+        categoryId: true,
+        attributes: true,
+      },
+    });
+
+  if (!product) {
+    return false;
+  }
+
+  const category =
+    product.categoryId
+      ? await prisma.category.findUnique({
+          where: {
+            id: product.categoryId,
+          },
+          select: {
+            slug: true,
+          },
+        })
+      : null;
+
+  const existingPath =
+    readJsonStringAttribute(
+      product.attributes,
+      "sourceCategoryPath"
+    );
+
+  const existingKind =
+    resolveProductKindFromSlug(
+      category?.slug
+    ) ||
+    resolveProductKindFromPath(
+      existingPath
+    );
+
+  if (!existingKind) {
+    return true;
+  }
+
+  return existingKind === incomingKind;
+}
+
+function resolveGuardedProductKind(
+  aggregated: AggregatedFeedItem
+): GuardedProductKind | null {
+  return (
+    resolveProductKindFromPath(
+      aggregated.item.categoryPath
+    ) ||
+    resolveProductKindFromSlug(
+      aggregated.primaryCategory.slug
+    )
+  );
+}
+
+function resolveProductKindFromSlug(
+  slug: string | null | undefined
+): GuardedProductKind | null {
+  switch (slug) {
+    case "packs-snowboard":
+      return "SNOWBOARD_PACK";
+
+    case "planches-snowboard":
+    case "snowboard-freestyle":
+    case "snowboard-all-mountain":
+    case "snowboard-freeride":
+      return "SNOWBOARD_BOARD";
+
+    case "splitboard":
+      return "SNOWBOARD_SPLITBOARD";
+
+    case "boots-snowboard":
+    case "boots-snowboard-freestyle":
+    case "boots-snowboard-freeride":
+      return "SNOWBOARD_BOOT";
+
+    case "fixations-snowboard":
+    case "fixations-snowboard-straps":
+    case "fixations-snowboard-rear-entry":
+    case "fixations-splitboard":
+      return "SNOWBOARD_BINDING";
+
+    case "housses-snowboard":
+      return "SNOWBOARD_BAG";
+
+    default:
+      return null;
+  }
+}
+
+function resolveProductKindFromPath(
+  value: string | null | undefined
+): GuardedProductKind | null {
+  const path =
+    normalizeCategoryPath(value);
+
+  if (!path.includes("snowboard")) {
+    return null;
+  }
+
+  if (
+    path.includes("pack snowboard") ||
+    path.includes("snowboard > packs")
+  ) {
+    return "SNOWBOARD_PACK";
+  }
+
+  if (
+    path.includes("planche de snowboard") ||
+    path.includes("snowboard > planches")
+  ) {
+    return "SNOWBOARD_BOARD";
+  }
+
+  if (
+    path.includes("splitboard")
+  ) {
+    return "SNOWBOARD_SPLITBOARD";
+  }
+
+  if (
+    path.includes("boots snowboard") ||
+    path.includes("snowboard > boots")
+  ) {
+    return "SNOWBOARD_BOOT";
+  }
+
+  if (
+    path.includes("fixation snowboard") ||
+    path.includes("fixations snowboard") ||
+    path.includes("snowboard > fixations")
+  ) {
+    return "SNOWBOARD_BINDING";
+  }
+
+  if (
+    path.includes("housse snowboard") ||
+    path.includes("bagagerie snowboard")
+  ) {
+    return "SNOWBOARD_BAG";
+  }
+
+  return null;
+}
+
+function readJsonStringAttribute(
+  attributes: Prisma.JsonValue | null | undefined,
+  key: string
+): string {
+  if (
+    !attributes ||
+    typeof attributes !== "object" ||
+    Array.isArray(attributes)
+  ) {
+    return "";
+  }
+
+  const value =
+    (
+      attributes as Record<
+        string,
+        unknown
+      >
+    )[key];
+
+  return typeof value === "string"
+    ? value
+    : "";
+}
+
+function normalizeCategoryPath(
+  value: string | null | undefined
+): string {
+  return normalizeText(value)
+    .toLowerCase()
+    .replace(
+      /\s*(>|\/|\||»|→)\s*/g,
+      " > "
+    )
+    .replace(/\s+/g, " ")
+    .trim();
 }

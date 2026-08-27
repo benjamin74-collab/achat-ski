@@ -121,34 +121,26 @@ function buildSnowboardCategoryPlan(
     };
   }
 
-  if (
-    path.includes(
-      "ekosport > nos univers > snowboard > materiel snowboard > planche de snowboard"
-    ) ||
-    path.includes("snowboard > planches")
-  ) {
-    const allowedSubCategories = [
-      "snowboard-freestyle",
-      "snowboard-all-mountain",
-      "snowboard-freeride",
-    ];
+if (
+  path.includes(
+    "ekosport > nos univers > snowboard > materiel snowboard > planche de snowboard"
+  ) ||
+  path.includes("snowboard > planches")
+) {
+  const primarySlug =
+    inferSnowboardBoardPrimarySlug(
+      aggregated
+    );
 
-    const primarySlug =
-      allowedSubCategories.includes(
-        currentPrimarySlug
-      )
-        ? currentPrimarySlug
-        : "planches-snowboard";
-
-    return {
+  return {
+    primarySlug,
+    allowedSlugs: [
+      "planches-snowboard",
       primarySlug,
-      allowedSlugs: [
-        "planches-snowboard",
-        primarySlug,
-      ],
-      cleanupSlugs: SNOWBOARD_EXCLUSIVE_SLUGS,
-    };
-  }
+    ],
+    cleanupSlugs: SNOWBOARD_EXCLUSIVE_SLUGS,
+  };
+}
 
   if (
     path.includes(
@@ -237,6 +229,80 @@ function buildSnowboardCategoryPlan(
   }
 
   return null;
+}
+
+function inferSnowboardBoardPrimarySlug(
+  aggregated: AggregatedFeedItem
+): string {
+  const currentPrimarySlug =
+    aggregated.primaryCategory.slug;
+
+  const allowedSubCategories = [
+    "snowboard-freestyle",
+    "snowboard-all-mountain",
+    "snowboard-freeride",
+  ];
+
+  if (
+    allowedSubCategories.includes(
+      currentPrimarySlug
+    )
+  ) {
+    return currentPrimarySlug;
+  }
+
+  const text = normalizeCategoryPath(
+    [
+      aggregated.item.title,
+      aggregated.item.cleanName,
+      aggregated.item.categoryPath,
+      aggregated.groupKey,
+    ]
+      .filter(Boolean)
+      .join(" ")
+  );
+
+  if (
+    text.includes("freestyle") ||
+    text.includes("park") ||
+    text.includes("jib") ||
+    text.includes("jibsaw") ||
+    text.includes("retox") ||
+    text.includes("sleepwalker") ||
+    text.includes("cheap thrills") ||
+    text.includes("kickback") ||
+    text.includes("twin") ||
+    text.includes("process") ||
+    text.includes("scan") ||
+    text.includes("grom") ||
+    text.includes("mini") ||
+    text.includes("kids") ||
+    text.includes("youth")
+  ) {
+    return "snowboard-freestyle";
+  }
+
+  if (
+    text.includes("freeride") ||
+    text.includes("flagship") ||
+    text.includes("hovercraft") ||
+    text.includes("mind expander") ||
+    text.includes("mtn pig") ||
+    text.includes("mountain pig") ||
+    text.includes("alchemist") ||
+    text.includes("passport") ||
+    text.includes("deep fake") ||
+    text.includes("peace seeker") ||
+    text.includes("squash") ||
+    text.includes("ravine") ||
+    text.includes("storm") ||
+    text.includes("surfer") ||
+    text.includes("freecarver")
+  ) {
+    return "snowboard-freeride";
+  }
+
+  return "snowboard-all-mountain";
 }
 
 function resolveCategoriesWithAncestors(
