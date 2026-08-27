@@ -54,6 +54,10 @@ import {
   createHash,
 } from "node:crypto";
 
+import {
+  applyCategoryGuardToAggregatedItems,
+} from "./category-guard";
+
 const IMPORT_CONCURRENCY = 6;
 const BULK_CHUNK_SIZE = 500;
 
@@ -515,10 +519,16 @@ export async function syncFeedContent({
     stats.acceptedRows =
       accepted.length;
 
-    const grouped =
-      aggregateFeedItems(
-        accepted
-      );
+	let grouped =
+	  aggregateFeedItems(
+		accepted
+	  );
+
+	grouped =
+	  applyCategoryGuardToAggregatedItems(
+		grouped,
+		categorySource
+	  );
 
     stats.groupedProducts =
       grouped.length;

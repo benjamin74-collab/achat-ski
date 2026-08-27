@@ -84,6 +84,7 @@ export interface AggregatedFeedItem {
 
   primaryCategory: MappedCategory;
   categories: MappedCategory[];
+  categoryCleanupIds?: number[];
 
   sourceItemCount: number;
   availableSizes: string[];

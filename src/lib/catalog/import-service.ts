@@ -119,12 +119,13 @@ const product = match.productId
       stats
     );
 
-  await syncProductCategories(
-    prisma,
-    product.id,
-    primaryCategory.id,
-    categories.map((category) => category.id)
-  );
+	await syncProductCategories(
+	  prisma,
+	  product.id,
+	  primaryCategory.id,
+	  categories.map((category) => category.id),
+	  aggregated.categoryCleanupIds ?? []
+	);
 
   await syncProductIdentifiers(
     prisma,
@@ -515,18 +516,22 @@ async function createProduct(
   return product;
 }
 
-/**
- * Enregistre la catégorie principale ainsi que toutes
- * les catégories secondaires du produit.
+/*
+ * Enregistre la catégorie principale ainsi que les catégories secondaires.
  *
- * Les anciennes relations ne sont pas supprimées brutalement :
- * un même produit peut être enrichi par plusieurs marchands.
+ * Par défaut, les anciennes relations sont conservées pour permettre
+ * l'enrichissement multi-marchands.
+ *
+ * Lorsqu'un category guard fournit une liste de nettoyage, seules les
+ * catégories incompatibles de la même famille sont supprimées.
  */
+ 
 async function syncProductCategories(
   prisma: PrismaClient,
   productId: number,
   primaryCategoryId: number,
-  categoryIds: number[]
+  categoryIds: number[],
+  cleanupCategoryIds: number[] = []
 ) {
   const uniqueCategoryIds = Array.from(
     new Set([
@@ -535,6 +540,24 @@ async function syncProductCategories(
     ])
   );
 
+	const staleCleanupCategoryIds =
+	  Array.from(
+		new Set(cleanupCategoryIds)
+	  ).filter(
+		(categoryId) =>
+		  !uniqueCategoryIds.includes(categoryId)
+	  );
+
+	if (staleCleanupCategoryIds.length > 0) {
+	  await prisma.productCategory.deleteMany({
+		where: {
+		  productId,
+		  categoryId: {
+			in: staleCleanupCategoryIds,
+		  },
+		},
+	  });
+	}
   /*
    * Une seule relation doit porter isPrimary=true.
    */
