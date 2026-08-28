@@ -70,7 +70,8 @@ if (sourceGroupKeys.length > 0) {
  * référence fabricant, style code ou nom normalisé.
  */
 if (
-  incomingProductKind === "SNOWBOARD_PACK"
+  incomingProductKind === "SNOWBOARD_PACK" ||
+  incomingProductKind === "NORDIC_PACK"
 ) {
   return {
     confidence: 0,
@@ -395,7 +396,13 @@ type GuardedProductKind =
   | "SNOWBOARD_SPLITBOARD"
   | "SNOWBOARD_BOOT"
   | "SNOWBOARD_BINDING"
-  | "SNOWBOARD_BAG";
+  | "SNOWBOARD_BAG"
+  | "NORDIC_PACK"
+  | "NORDIC_SKI"
+  | "NORDIC_BOOT"
+  | "NORDIC_BINDING"
+  | "NORDIC_MAINTENANCE"
+  | "NORDIC_POLE";
 
 async function findCompatibleProductByIdentifier(
   prisma: PrismaClient,
@@ -538,6 +545,31 @@ function resolveProductKindFromSlug(
 
     case "housses-snowboard":
       return "SNOWBOARD_BAG";
+	  
+	case "packs-skating":
+	case "packs-ski-classique":
+	  return "NORDIC_PACK";
+
+	case "ski-skating":
+	case "ski-classique":
+	  return "NORDIC_SKI";
+
+	case "chaussures-skating":
+	case "chaussures-classique":
+	  return "NORDIC_BOOT";
+
+	case "fixations-skating":
+	case "fixations-classique":
+	  return "NORDIC_BINDING";
+
+	case "entretien-ski-nordique":
+	case "fart-glisse":
+	case "fart-retenue":
+	case "outils-fartage":
+	  return "NORDIC_MAINTENANCE";
+
+	case "ski-nordique":
+	  return "NORDIC_POLE";
 
     default:
       return null;
@@ -550,50 +582,91 @@ function resolveProductKindFromPath(
   const path =
     normalizeCategoryPath(value);
 
-  if (!path.includes("snowboard")) {
-    return null;
+  if (path.includes("snowboard")) {
+    if (
+      path.includes("pack snowboard") ||
+      path.includes("snowboard > packs")
+    ) {
+      return "SNOWBOARD_PACK";
+    }
+
+    if (
+      path.includes("planche de snowboard") ||
+      path.includes("snowboard > planches")
+    ) {
+      return "SNOWBOARD_BOARD";
+    }
+
+    if (
+      path.includes("splitboard")
+    ) {
+      return "SNOWBOARD_SPLITBOARD";
+    }
+
+    if (
+      path.includes("boots snowboard") ||
+      path.includes("snowboard > boots")
+    ) {
+      return "SNOWBOARD_BOOT";
+    }
+
+    if (
+      path.includes("fixation snowboard") ||
+      path.includes("fixations snowboard") ||
+      path.includes("snowboard > fixations")
+    ) {
+      return "SNOWBOARD_BINDING";
+    }
+
+    if (
+      path.includes("housse snowboard") ||
+      path.includes("bagagerie snowboard")
+    ) {
+      return "SNOWBOARD_BAG";
+    }
   }
 
   if (
-    path.includes("pack snowboard") ||
-    path.includes("snowboard > packs")
+    path.includes("ski de fond")
   ) {
-    return "SNOWBOARD_PACK";
-  }
+    if (
+      path.includes("pack ski de fond")
+    ) {
+      return "NORDIC_PACK";
+    }
 
-  if (
-    path.includes("planche de snowboard") ||
-    path.includes("snowboard > planches")
-  ) {
-    return "SNOWBOARD_BOARD";
-  }
+    if (
+      path.includes("chaussure ski de fond")
+    ) {
+      return "NORDIC_BOOT";
+    }
 
-  if (
-    path.includes("splitboard")
-  ) {
-    return "SNOWBOARD_SPLITBOARD";
-  }
+    if (
+      path.includes("fixation ski de fond")
+    ) {
+      return "NORDIC_BINDING";
+    }
 
-  if (
-    path.includes("boots snowboard") ||
-    path.includes("snowboard > boots")
-  ) {
-    return "SNOWBOARD_BOOT";
-  }
+    if (
+      path.includes("ski de fond > materiel ski de fond > ski de fond") ||
+      path.includes("materiel ski de fond > ski de fond")
+    ) {
+      return "NORDIC_SKI";
+    }
 
-  if (
-    path.includes("fixation snowboard") ||
-    path.includes("fixations snowboard") ||
-    path.includes("snowboard > fixations")
-  ) {
-    return "SNOWBOARD_BINDING";
-  }
+    if (
+      path.includes("fart ski de fond") ||
+      path.includes("brosse a farter") ||
+      path.includes("outil de fartage")
+    ) {
+      return "NORDIC_MAINTENANCE";
+    }
 
-  if (
-    path.includes("housse snowboard") ||
-    path.includes("bagagerie snowboard")
-  ) {
-    return "SNOWBOARD_BAG";
+    if (
+      path.includes("baton ski de fond")
+    ) {
+      return "NORDIC_POLE";
+    }
   }
 
   return null;

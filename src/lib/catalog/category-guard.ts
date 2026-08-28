@@ -42,6 +42,27 @@ const SNOWBOARD_EXCLUSIVE_SLUGS = [
   "accessoires-snowboard",
 ];
 
+const NORDIC_EXCLUSIVE_SLUGS = [
+  "ski-nordique",
+
+  "ski-skating",
+  "ski-classique",
+
+  "packs-skating",
+  "packs-ski-classique",
+
+  "chaussures-skating",
+  "chaussures-classique",
+
+  "fixations-skating",
+  "fixations-classique",
+
+  "entretien-ski-nordique",
+  "fart-glisse",
+  "fart-retenue",
+  "outils-fartage",
+];
+
 export function applyCategoryGuardToAggregatedItems(
   items: AggregatedFeedItem[],
   source: FeedCategoryMappings
@@ -55,31 +76,32 @@ function applyCategoryGuard(
   aggregated: AggregatedFeedItem,
   source: FeedCategoryMappings
 ): AggregatedFeedItem {
-  const snowboardPlan =
-    buildSnowboardCategoryPlan(aggregated);
+const guardedPlan =
+  buildSnowboardCategoryPlan(aggregated) ??
+  buildNordicCategoryPlan(aggregated);
 
-  if (!snowboardPlan) {
-    return aggregated;
-  }
+if (!guardedPlan) {
+  return aggregated;
+}
 
-  const primaryCategory =
-    findCategoryBySlug(
-      source,
-      snowboardPlan.primarySlug
-    );
+const primaryCategory =
+  findCategoryBySlug(
+    source,
+    guardedPlan.primarySlug
+  );
 
-  if (!primaryCategory) {
-    return aggregated;
-  }
+if (!primaryCategory) {
+  return aggregated;
+}
 
-  const categories =
-    resolveCategoriesWithAncestors(
-      source,
-      snowboardPlan.allowedSlugs
-    );
+const categories =
+  resolveCategoriesWithAncestors(
+    source,
+    guardedPlan.allowedSlugs
+  );
 
-  const cleanupIds =
-    snowboardPlan.cleanupSlugs
+const cleanupIds =
+  guardedPlan.cleanupSlugs
       .map((slug) =>
         findCategoryBySlug(source, slug)?.id
       )
@@ -231,6 +253,155 @@ if (
   return null;
 }
 
+function buildNordicCategoryPlan(
+  aggregated: AggregatedFeedItem
+): GuardedCategoryPlan | null {
+  const path = normalizeCategoryPath(
+    aggregated.item.categoryPath
+  );
+
+  if (!path.includes("ski de fond")) {
+    return null;
+  }
+
+  /*
+   * Les vêtements ski de fond doivent rester dans les familles textile.
+   * On ne les force pas dans ski-nordique.
+   */
+  if (
+    path.includes("vetement ski de fond") ||
+    path.includes("veste ski de fond")
+  ) {
+    return null;
+  }
+
+  if (
+    path.includes(
+      "ekosport > nos univers > ski de fond > materiel ski de fond > pack ski de fond"
+    )
+  ) {
+    const primarySlug =
+      inferNordicStyle(aggregated) === "classic"
+        ? "packs-ski-classique"
+        : "packs-skating";
+
+    return {
+      primarySlug,
+      allowedSlugs: [
+        primarySlug,
+      ],
+      cleanupSlugs: NORDIC_EXCLUSIVE_SLUGS,
+    };
+  }
+
+  if (
+    path.includes(
+      "ekosport > nos univers > ski de fond > materiel ski de fond > ski de fond"
+    )
+  ) {
+    const primarySlug =
+      inferNordicStyle(aggregated) === "classic"
+        ? "ski-classique"
+        : "ski-skating";
+
+    return {
+      primarySlug,
+      allowedSlugs: [
+        primarySlug,
+      ],
+      cleanupSlugs: NORDIC_EXCLUSIVE_SLUGS,
+    };
+  }
+
+  if (
+    path.includes(
+      "ekosport > nos univers > ski de fond > materiel ski de fond > chaussure ski de fond"
+    )
+  ) {
+    const primarySlug =
+      inferNordicStyle(aggregated) === "classic"
+        ? "chaussures-classique"
+        : "chaussures-skating";
+
+    return {
+      primarySlug,
+      allowedSlugs: [
+        primarySlug,
+      ],
+      cleanupSlugs: NORDIC_EXCLUSIVE_SLUGS,
+    };
+  }
+
+  if (
+    path.includes(
+      "ekosport > nos univers > ski de fond > materiel ski de fond > fixation ski de fond"
+    )
+  ) {
+    const primarySlug =
+      inferNordicStyle(aggregated) === "classic"
+        ? "fixations-classique"
+        : "fixations-skating";
+
+    return {
+      primarySlug,
+      allowedSlugs: [
+        primarySlug,
+      ],
+      cleanupSlugs: NORDIC_EXCLUSIVE_SLUGS,
+    };
+  }
+
+  /*
+   * Pas de sous-catégorie dédiée aux bâtons nordiques pour l'instant.
+   */
+  if (
+    path.includes(
+      "ekosport > nos univers > ski de fond > materiel ski de fond > baton ski de fond"
+    )
+  ) {
+    return {
+      primarySlug: "ski-nordique",
+      allowedSlugs: [
+        "ski-nordique",
+      ],
+      cleanupSlugs: NORDIC_EXCLUSIVE_SLUGS,
+    };
+  }
+
+  if (
+    path.includes(
+      "ekosport > nos univers > ski de fond > accessoire ski de fond > brosse a farter"
+    )
+  ) {
+    return {
+      primarySlug: "outils-fartage",
+      allowedSlugs: [
+        "outils-fartage",
+      ],
+      cleanupSlugs: NORDIC_EXCLUSIVE_SLUGS,
+    };
+  }
+
+  if (
+    path.includes(
+      "ekosport > nos univers > ski de fond > accessoire ski de fond > fart ski de fond"
+    )
+  ) {
+    const primarySlug =
+      inferNordicFartSlug(aggregated);
+
+    return {
+      primarySlug,
+      allowedSlugs: [
+        primarySlug,
+      ],
+      cleanupSlugs: NORDIC_EXCLUSIVE_SLUGS,
+    };
+  }
+
+  return null;
+}
+
 function inferSnowboardBoardPrimarySlug(
   aggregated: AggregatedFeedItem
 ): string {
@@ -303,6 +474,141 @@ function inferSnowboardBoardPrimarySlug(
   }
 
   return "snowboard-all-mountain";
+}
+
+function inferNordicStyle(
+  aggregated: AggregatedFeedItem
+): "classic" | "skating" {
+  const text =
+    buildGuardSearchText(aggregated);
+
+  /*
+   * On teste d'abord le classique, car certains produits
+   * classiques contiennent "skin", "skintec" ou "e-skin",
+   * qui pourraient sinon être confondus avec "sk".
+   */
+  if (
+    text.includes("classic") ||
+    text.includes("classique") ||
+    text.includes("prolink classic") ||
+    text.includes("shift classic") ||
+    text.includes("race cl") ||
+    text.includes("shift race cl") ||
+    text.includes("pro c1") ||
+    text.includes("redster c") ||
+    text.includes("rc classic") ||
+    text.includes("rc3 classic") ||
+    text.includes("rc5 classic") ||
+    text.includes("rcs classic") ||
+    text.includes("x ium classic") ||
+    text.includes("x ium junior cl") ||
+    text.includes("x ium r skin") ||
+    text.includes("r skin") ||
+    text.includes("e skin") ||
+    text.includes("eskin") ||
+    text.includes("skintec") ||
+    text.includes("skin") ||
+    text.includes("twin skin") ||
+    text.includes("crown") ||
+    text.includes("grip") ||
+    text.includes("positrack") ||
+    text.includes("waxless") ||
+    text.includes("bc ") ||
+    text.includes("bcx") ||
+    text.includes("outback") ||
+    text.includes("outside") ||
+    text.includes("panorama") ||
+    text.includes("transnordic") ||
+    text.includes("fjelltech") ||
+    text.includes("escape snow") ||
+    text.includes("escape outpath") ||
+    text.includes("escape outrack") ||
+    text.includes("xp ")
+  ) {
+    return "classic";
+  }
+
+  if (
+    text.includes("skate") ||
+    text.includes("skating") ||
+    text.includes("carbon skate") ||
+    text.includes("carbonlite skate") ||
+    text.includes("race pro skate") ||
+    text.includes("race speed skate") ||
+    text.includes("redline skate") ||
+    text.includes("redster s5") ||
+    text.includes("redster s7") ||
+    text.includes("redster s9") ||
+    text.includes("rs 8") ||
+    text.includes("rs 10") ||
+    text.includes("s race skate") ||
+    text.includes("s max skate") ||
+    text.includes("s lab skate") ||
+    text.includes("speedmax 80 skate") ||
+    text.includes("speedmax 90 skate") ||
+    text.includes("speedmax 100") ||
+    text.includes("x ium skating") ||
+    text.includes("aerolite skate") ||
+    text.includes("aeroguide skate") ||
+    text.includes("delta comp skating") ||
+    text.includes("delta course skating") ||
+    text.includes("skiathlon") ||
+    text.includes("combi")
+  ) {
+    return "skating";
+  }
+
+  /*
+   * Par défaut : classique.
+   * C'est le choix le moins risqué pour les skis nordiques BC,
+   * peaux, écailles, junior loisir, randonnée nordique.
+   */
+  return "classic";
+}
+
+function inferNordicFartSlug(
+  aggregated: AggregatedFeedItem
+): string {
+  const text =
+    buildGuardSearchText(aggregated);
+
+  if (
+    text.includes("retenue") ||
+    text.includes("grip wax") ||
+    text.includes("kick wax") ||
+    text.includes("klister") ||
+    text.includes("base binder")
+  ) {
+    return "fart-retenue";
+  }
+
+  return "fart-glisse";
+}
+
+function buildGuardSearchText(
+  aggregated: AggregatedFeedItem
+): string {
+  return normalizeGuardSearchText(
+    [
+      aggregated.item.title,
+      aggregated.item.cleanName,
+      aggregated.item.categoryPath,
+      aggregated.groupKey,
+    ]
+      .filter(Boolean)
+      .join(" ")
+  );
+}
+
+function normalizeGuardSearchText(
+  value: string
+): string {
+  return normalizeText(value)
+    .toLowerCase()
+    .replace(/[’']/g, " ")
+    .replace(/[^a-z0-9]+/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
 }
 
 function resolveCategoriesWithAncestors(
