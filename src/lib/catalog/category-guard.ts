@@ -66,6 +66,40 @@ const NORDIC_EXCLUSIVE_SLUGS = [
   "outils-fartage",
 ];
 
+const ALPINE_SKI_EXCLUSIVE_SLUGS = [
+  "ski",
+
+  "skis",
+  "skis-piste",
+  "skis-all-mountain",
+  "skis-freeride",
+  "skis-freestyle",
+  "skis-junior",
+
+  "packs-skis",
+  "packs-skis-piste",
+  "packs-skis-all-mountain",
+  "packs-skis-freeride",
+  "packs-skis-freestyle",
+  "packs-skis-junior",
+
+  "chaussures-ski",
+  "chaussures-ski-piste",
+  "chaussures-ski-freeride",
+  "chaussures-ski-performance",
+  "chaussures-ski-junior",
+
+  "fixations-ski",
+  "fixations-ski-piste",
+  "fixations-ski-all-mountain",
+  "fixations-ski-freeride",
+
+  "batons-ski",
+  "batons-ski-piste",
+  "batons-ski-freeride",
+  "batons-ski-junior",
+];
+
 export function applyCategoryGuardToAggregatedItems(
   items: AggregatedFeedItem[],
   source: FeedCategoryMappings
@@ -81,7 +115,8 @@ function applyCategoryGuard(
 ): AggregatedFeedItem {
 const guardedPlan =
   buildSnowboardCategoryPlan(aggregated) ??
-  buildNordicCategoryPlan(aggregated);
+  buildNordicCategoryPlan(aggregated) ??
+  buildAlpineSkiCategoryPlan(aggregated);
 
 if (!guardedPlan) {
   return aggregated;
@@ -405,6 +440,105 @@ function buildNordicCategoryPlan(
   return null;
 }
 
+function buildAlpineSkiCategoryPlan(
+  aggregated: AggregatedFeedItem
+): GuardedCategoryPlan | null {
+  const path = normalizeCategoryPath(
+    aggregated.item.categoryPath
+  );
+
+  if (!path.includes("ski alpin")) {
+    return null;
+  }
+
+  if (
+    path.includes(
+      "ekosport > nos univers > ski alpin > materiel ski > ski"
+    )
+  ) {
+    const primarySlug =
+      inferAlpineSkiSlug(aggregated);
+
+    return {
+      primarySlug,
+      allowedSlugs: [
+        primarySlug,
+      ],
+      cleanupSlugs: ALPINE_SKI_EXCLUSIVE_SLUGS,
+    };
+  }
+
+  if (
+    path.includes(
+      "ekosport > nos univers > ski alpin > materiel ski > pack ski"
+    )
+  ) {
+    const primarySlug =
+      inferAlpinePackSlug(aggregated);
+
+    return {
+      primarySlug,
+      allowedSlugs: [
+        primarySlug,
+      ],
+      cleanupSlugs: ALPINE_SKI_EXCLUSIVE_SLUGS,
+    };
+  }
+
+  if (
+    path.includes(
+      "ekosport > nos univers > ski alpin > materiel ski > chaussure de ski"
+    )
+  ) {
+    const primarySlug =
+      inferAlpineBootSlug(aggregated);
+
+    return {
+      primarySlug,
+      allowedSlugs: [
+        primarySlug,
+      ],
+      cleanupSlugs: ALPINE_SKI_EXCLUSIVE_SLUGS,
+    };
+  }
+
+  if (
+    path.includes(
+      "ekosport > nos univers > ski alpin > materiel ski > fixation ski"
+    )
+  ) {
+    const primarySlug =
+      inferAlpineBindingSlug(aggregated);
+
+    return {
+      primarySlug,
+      allowedSlugs: [
+        primarySlug,
+      ],
+      cleanupSlugs: ALPINE_SKI_EXCLUSIVE_SLUGS,
+    };
+  }
+
+  if (
+    path.includes(
+      "ekosport > nos univers > ski alpin > materiel ski > baton de ski"
+    )
+  ) {
+    const primarySlug =
+      inferAlpinePoleSlug(aggregated);
+
+    return {
+      primarySlug,
+      allowedSlugs: [
+        primarySlug,
+      ],
+      cleanupSlugs: ALPINE_SKI_EXCLUSIVE_SLUGS,
+    };
+  }
+
+  return null;
+}
+
 function inferSnowboardBoardPrimarySlug(
   aggregated: AggregatedFeedItem
 ): string {
@@ -567,6 +701,262 @@ function inferNordicStyle(
    * peaux, écailles, junior loisir, randonnée nordique.
    */
   return "classic";
+}
+
+function inferAlpineSkiSlug(
+  aggregated: AggregatedFeedItem
+): string {
+  const currentPrimarySlug =
+    aggregated.primaryCategory.slug;
+
+  const allowedSlugs = [
+    "skis-piste",
+    "skis-all-mountain",
+    "skis-freeride",
+    "skis-freestyle",
+    "skis-junior",
+  ];
+
+  if (allowedSlugs.includes(currentPrimarySlug)) {
+    return currentPrimarySlug;
+  }
+
+  const text =
+    buildGuardSearchText(aggregated);
+
+  if (
+    text.includes("junior") ||
+    text.includes("jr") ||
+    text.includes("kid") ||
+    text.includes("kids") ||
+    text.includes("bent chetler mini") ||
+    text.includes("bacon shorty")
+  ) {
+    return "skis-junior";
+  }
+
+  if (
+    text.includes("freestyle") ||
+    text.includes("park") ||
+    text.includes("twintip") ||
+    text.includes("twin tip") ||
+    text.includes("omen") ||
+    text.includes("bent") ||
+    text.includes("depart") ||
+    text.includes("m menace")
+  ) {
+    return "skis-freestyle";
+  }
+
+  if (
+    text.includes("freeride") ||
+    text.includes("powder") ||
+    text.includes("blackops") ||
+    text.includes("sender") ||
+    text.includes("optic") ||
+    text.includes("m free") ||
+    text.includes("m-free")
+  ) {
+    return "skis-freeride";
+  }
+
+  if (
+    text.includes("piste") ||
+    text.includes("race") ||
+    text.includes("carver") ||
+    text.includes("worldcup") ||
+    text.includes("slalom") ||
+    text.includes("gs ") ||
+    text.includes("hero") ||
+    text.includes("forza") ||
+    text.includes("redster")
+  ) {
+    return "skis-piste";
+  }
+
+  return "skis-all-mountain";
+}
+
+function inferAlpinePackSlug(
+  aggregated: AggregatedFeedItem
+): string {
+  const currentPrimarySlug =
+    aggregated.primaryCategory.slug;
+
+  const allowedSlugs = [
+    "packs-skis-piste",
+    "packs-skis-all-mountain",
+    "packs-skis-freeride",
+    "packs-skis-freestyle",
+    "packs-skis-junior",
+  ];
+
+  if (allowedSlugs.includes(currentPrimarySlug)) {
+    return currentPrimarySlug;
+  }
+
+  const skiSlug =
+    inferAlpineSkiSlug(aggregated);
+
+  switch (skiSlug) {
+    case "skis-piste":
+      return "packs-skis-piste";
+
+    case "skis-freeride":
+      return "packs-skis-freeride";
+
+    case "skis-freestyle":
+      return "packs-skis-freestyle";
+
+    case "skis-junior":
+      return "packs-skis-junior";
+
+    case "skis-all-mountain":
+    default:
+      return "packs-skis-all-mountain";
+  }
+}
+
+function inferAlpineBootSlug(
+  aggregated: AggregatedFeedItem
+): string {
+  const currentPrimarySlug =
+    aggregated.primaryCategory.slug;
+
+  const allowedSlugs = [
+    "chaussures-ski-piste",
+    "chaussures-ski-freeride",
+    "chaussures-ski-performance",
+    "chaussures-ski-junior",
+  ];
+
+  if (allowedSlugs.includes(currentPrimarySlug)) {
+    return currentPrimarySlug;
+  }
+
+  const text =
+    buildGuardSearchText(aggregated);
+
+  if (
+    text.includes("junior") ||
+    text.includes("jr") ||
+    text.includes("team") ||
+    text.includes("kids") ||
+    text.includes("child")
+  ) {
+    return "chaussures-ski-junior";
+  }
+
+  if (
+    text.includes("freeride") ||
+    text.includes("free") ||
+    text.includes("xtd") ||
+    text.includes("shift") ||
+    text.includes("cochise") ||
+    text.includes("alltrack")
+  ) {
+    return "chaussures-ski-freeride";
+  }
+
+  if (
+    text.includes("performance") ||
+    text.includes("race") ||
+    text.includes("redster") ||
+    text.includes("s race") ||
+    text.includes("rs ") ||
+    text.includes("pro machine") ||
+    text.includes("promachine") ||
+    text.includes("mach1")
+  ) {
+    return "chaussures-ski-performance";
+  }
+
+  return "chaussures-ski-piste";
+}
+
+function inferAlpineBindingSlug(
+  aggregated: AggregatedFeedItem
+): string {
+  const currentPrimarySlug =
+    aggregated.primaryCategory.slug;
+
+  const allowedSlugs = [
+    "fixations-ski-piste",
+    "fixations-ski-all-mountain",
+    "fixations-ski-freeride",
+  ];
+
+  if (allowedSlugs.includes(currentPrimarySlug)) {
+    return currentPrimarySlug;
+  }
+
+  const text =
+    buildGuardSearchText(aggregated);
+
+  if (
+    text.includes("freeride") ||
+    text.includes("jester") ||
+    text.includes("griffon") ||
+    text.includes("pivot") ||
+    text.includes("strive 14 mn") ||
+    text.includes("strive 16 mn")
+  ) {
+    return "fixations-ski-freeride";
+  }
+
+  if (
+    text.includes("piste") ||
+    text.includes("race") ||
+    text.includes("xcell") ||
+    text.includes("freeflex") ||
+    text.includes("look nx") ||
+    text.includes("nx 7") ||
+    text.includes("team 4")
+  ) {
+    return "fixations-ski-piste";
+  }
+
+  return "fixations-ski-all-mountain";
+}
+
+function inferAlpinePoleSlug(
+  aggregated: AggregatedFeedItem
+): string {
+  const currentPrimarySlug =
+    aggregated.primaryCategory.slug;
+
+  const allowedSlugs = [
+    "batons-ski-piste",
+    "batons-ski-freeride",
+    "batons-ski-junior",
+  ];
+
+  if (allowedSlugs.includes(currentPrimarySlug)) {
+    return currentPrimarySlug;
+  }
+
+  const text =
+    buildGuardSearchText(aggregated);
+
+  if (
+    text.includes("junior") ||
+    text.includes("jr") ||
+    text.includes("lite gs") ||
+    text.includes("lite sl")
+  ) {
+    return "batons-ski-junior";
+  }
+
+  if (
+    text.includes("freeride") ||
+    text.includes("safety") ||
+    text.includes("slash") ||
+    text.includes("vertical")
+  ) {
+    return "batons-ski-freeride";
+  }
+
+  return "batons-ski-piste";
 }
 
 function inferNordicFartSlug(

@@ -71,7 +71,8 @@ if (sourceGroupKeys.length > 0) {
  */
 if (
   incomingProductKind === "SNOWBOARD_PACK" ||
-  incomingProductKind === "NORDIC_PACK"
+  incomingProductKind === "NORDIC_PACK" ||
+  incomingProductKind === "ALPINE_SKI_PACK"
 ) {
   return {
     confidence: 0,
@@ -402,8 +403,13 @@ type GuardedProductKind =
   | "NORDIC_BOOT"
   | "NORDIC_BINDING"
   | "NORDIC_MAINTENANCE"
-  | "NORDIC_POLE";
-
+  | "NORDIC_POLE"
+  | "ALPINE_SKI_PACK"
+  | "ALPINE_SKI"
+  | "ALPINE_BOOT"
+  | "ALPINE_BINDING"
+  | "ALPINE_POLE";
+  
 async function findCompatibleProductByIdentifier(
   prisma: PrismaClient,
   siteId: string,
@@ -568,6 +574,41 @@ function resolveProductKindFromSlug(
 	case "outils-fartage":
 	  return "NORDIC_MAINTENANCE";
 
+	case "packs-skis":
+	case "packs-skis-piste":
+	case "packs-skis-all-mountain":
+	case "packs-skis-freeride":
+	case "packs-skis-freestyle":
+	case "packs-skis-junior":
+	  return "ALPINE_SKI_PACK";
+
+	case "skis":
+	case "skis-piste":
+	case "skis-all-mountain":
+	case "skis-freeride":
+	case "skis-freestyle":
+	case "skis-junior":
+	  return "ALPINE_SKI";
+
+	case "chaussures-ski":
+	case "chaussures-ski-piste":
+	case "chaussures-ski-freeride":
+	case "chaussures-ski-performance":
+	case "chaussures-ski-junior":
+	  return "ALPINE_BOOT";
+
+	case "fixations-ski":
+	case "fixations-ski-piste":
+	case "fixations-ski-all-mountain":
+	case "fixations-ski-freeride":
+	  return "ALPINE_BINDING";
+
+	case "batons-ski":
+	case "batons-ski-piste":
+	case "batons-ski-freeride":
+	case "batons-ski-junior":
+	  return "ALPINE_POLE";
+
     default:
       return null;
   }
@@ -665,6 +706,40 @@ function resolveProductKindFromPath(
       return "NORDIC_POLE";
     }
   }
+  
+  if (
+  path.includes("ski alpin")
+) {
+  if (
+    path.includes("pack ski")
+  ) {
+    return "ALPINE_SKI_PACK";
+  }
+
+  if (
+    path.includes("chaussure de ski")
+  ) {
+    return "ALPINE_BOOT";
+  }
+
+  if (
+    path.includes("fixation ski")
+  ) {
+    return "ALPINE_BINDING";
+  }
+
+  if (
+    path.includes("baton de ski")
+  ) {
+    return "ALPINE_POLE";
+  }
+
+  if (
+    path.includes("materiel ski > ski")
+  ) {
+    return "ALPINE_SKI";
+  }
+}
 
   return null;
 }
