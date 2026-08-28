@@ -550,8 +550,8 @@ function resolveProductKindFromSlug(
 	case "packs-ski-classique":
 	  return "NORDIC_PACK";
 
-	case "ski-skating":
-	case "ski-classique":
+	case "skis-skating":
+	case "skis-classique":
 	  return "NORDIC_SKI";
 
 	case "chaussures-skating":
@@ -567,9 +567,6 @@ function resolveProductKindFromSlug(
 	case "fart-retenue":
 	case "outils-fartage":
 	  return "NORDIC_MAINTENANCE";
-
-	case "ski-nordique":
-	  return "NORDIC_POLE";
 
     default:
       return null;

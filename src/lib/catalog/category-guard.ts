@@ -47,6 +47,9 @@ const NORDIC_EXCLUSIVE_SLUGS = [
 
   "ski-skating",
   "ski-classique",
+  
+  "skis-skating",
+  "skis-classique",
 
   "packs-skating",
   "packs-ski-classique",
@@ -301,8 +304,8 @@ function buildNordicCategoryPlan(
   ) {
     const primarySlug =
       inferNordicStyle(aggregated) === "classic"
-        ? "ski-classique"
-        : "ski-skating";
+        ? "skis-classique"
+        : "skis-skating";
 
     return {
       primarySlug,
