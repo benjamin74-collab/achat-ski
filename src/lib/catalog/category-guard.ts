@@ -100,6 +100,41 @@ const ALPINE_SKI_EXCLUSIVE_SLUGS = [
   "batons-ski-junior",
 ];
 
+const RANDO_EXCLUSIVE_SLUGS = [
+  "ski-randonnee",
+
+  "skis-randonnee",
+  "skis-randonnee-legers",
+  "skis-freerando",
+
+  "packs-ski-randonnee",
+  "packs-ski-freerando",
+
+  "chaussures-ski-randonnee",
+  "chaussures-ski-rando-legeres",
+  "chaussures-freerando",
+
+  "fixations-ski-randonnee",
+  "fixations-inserts",
+  "fixations-hybrides",
+  "fixations-chassis",
+
+  "peaux-phoque",
+  "peaux-avec-colle",
+  "peaux-sans-colle",
+  "peaux-predecoupees",
+
+  "couteaux-ski-rando",
+  "freins-leash-ski-rando",
+  "batons-ski-randonnee",
+
+  "securite-avalanche",
+  "dva-arva",
+  "pelles-avalanche",
+  "sondes-avalanche",
+  "sacs-airbag",
+];
+
 export function applyCategoryGuardToAggregatedItems(
   items: AggregatedFeedItem[],
   source: FeedCategoryMappings
@@ -116,7 +151,8 @@ function applyCategoryGuard(
 const guardedPlan =
   buildSnowboardCategoryPlan(aggregated) ??
   buildNordicCategoryPlan(aggregated) ??
-  buildAlpineSkiCategoryPlan(aggregated);
+  buildAlpineSkiCategoryPlan(aggregated) ??
+  buildRandoCategoryPlan(aggregated);
 
 if (!guardedPlan) {
   return aggregated;
@@ -613,6 +649,143 @@ function inferSnowboardBoardPrimarySlug(
   return "snowboard-all-mountain";
 }
 
+function buildRandoCategoryPlan(
+  aggregated: AggregatedFeedItem
+): GuardedCategoryPlan | null {
+  const path = normalizeCategoryPath(
+    aggregated.item.categoryPath
+  );
+
+  if (!path.includes("ski de randonnee")) {
+    return null;
+  }
+
+  if (path.includes("vetement ski de randonnee")) {
+    return null;
+  }
+
+  if (
+    path.includes(
+      "ekosport > nos univers > ski de randonnee > materiel ski de randonnee > pack ski de randonnee"
+    )
+  ) {
+    return {
+      primarySlug: "packs-ski-randonnee",
+      allowedSlugs: ["packs-ski-randonnee"],
+      cleanupSlugs: RANDO_EXCLUSIVE_SLUGS,
+    };
+  }
+
+  if (
+    path.includes(
+      "ekosport > nos univers > ski de randonnee > materiel ski de randonnee > ski de randonnee"
+    )
+  ) {
+    return {
+      primarySlug: "skis-randonnee",
+      allowedSlugs: ["skis-randonnee"],
+      cleanupSlugs: RANDO_EXCLUSIVE_SLUGS,
+    };
+  }
+
+  if (
+    path.includes(
+      "ekosport > nos univers > ski de randonnee > materiel ski de randonnee > chaussure ski de randonnee"
+    )
+  ) {
+    return {
+      primarySlug: "chaussures-ski-randonnee",
+      allowedSlugs: ["chaussures-ski-randonnee"],
+      cleanupSlugs: RANDO_EXCLUSIVE_SLUGS,
+    };
+  }
+
+  if (
+    path.includes(
+      "ekosport > nos univers > ski de randonnee > materiel ski de randonnee > fixation ski de randonnee"
+    )
+  ) {
+    const primarySlug =
+      inferRandoBindingSlug(aggregated);
+
+    return {
+      primarySlug,
+      allowedSlugs: [primarySlug],
+      cleanupSlugs: RANDO_EXCLUSIVE_SLUGS,
+    };
+  }
+
+  if (
+    path.includes(
+      "ekosport > nos univers > ski de randonnee > materiel ski de randonnee > baton ski de randonnee"
+    )
+  ) {
+    return {
+      primarySlug: "batons-ski-randonnee",
+      allowedSlugs: ["batons-ski-randonnee"],
+      cleanupSlugs: RANDO_EXCLUSIVE_SLUGS,
+    };
+  }
+
+  if (
+    path.includes(
+      "ekosport > nos univers > ski de randonnee > accessoire ski de randonnee > peau de phoque"
+    )
+  ) {
+    return {
+      primarySlug: "peaux-phoque",
+      allowedSlugs: ["peaux-phoque"],
+      cleanupSlugs: RANDO_EXCLUSIVE_SLUGS,
+    };
+  }
+
+  if (
+    path.includes(
+      "ekosport > nos univers > ski de randonnee > accessoire ski de randonnee > couteaux ski de rando"
+    )
+  ) {
+    return {
+      primarySlug: "couteaux-ski-rando",
+      allowedSlugs: ["couteaux-ski-rando"],
+      cleanupSlugs: RANDO_EXCLUSIVE_SLUGS,
+    };
+  }
+
+  if (path.includes("securite avalanche > dva")) {
+    return {
+      primarySlug: "dva-arva",
+      allowedSlugs: ["dva-arva"],
+      cleanupSlugs: RANDO_EXCLUSIVE_SLUGS,
+    };
+  }
+
+  if (path.includes("securite avalanche > pelle avalanche")) {
+    return {
+      primarySlug: "pelles-avalanche",
+      allowedSlugs: ["pelles-avalanche"],
+      cleanupSlugs: RANDO_EXCLUSIVE_SLUGS,
+    };
+  }
+
+  if (path.includes("securite avalanche > sonde avalanche")) {
+    return {
+      primarySlug: "sondes-avalanche",
+      allowedSlugs: ["sondes-avalanche"],
+      cleanupSlugs: RANDO_EXCLUSIVE_SLUGS,
+    };
+  }
+
+  if (path.includes("securite avalanche")) {
+    return {
+      primarySlug: "securite-avalanche",
+      allowedSlugs: ["securite-avalanche"],
+      cleanupSlugs: RANDO_EXCLUSIVE_SLUGS,
+    };
+  }
+
+  return null;
+}
+
 function inferNordicStyle(
   aggregated: AggregatedFeedItem
 ): "classic" | "skating" {
@@ -815,6 +988,54 @@ function inferAlpinePackSlug(
     default:
       return "packs-skis-all-mountain";
   }
+}
+
+function inferRandoBindingSlug(
+  aggregated: AggregatedFeedItem
+): string {
+  const currentPrimarySlug =
+    aggregated.primaryCategory.slug;
+
+  const allowedSlugs = [
+    "fixations-inserts",
+    "fixations-hybrides",
+  ];
+
+  if (allowedSlugs.includes(currentPrimarySlug)) {
+    return currentPrimarySlug;
+  }
+
+  const text =
+    buildGuardSearchText(aggregated);
+
+  if (
+    text.includes("duke") ||
+    text.includes("shift") ||
+    text.includes("tecton") ||
+    text.includes("vipec") ||
+    text.includes("kingpin")
+  ) {
+    return "fixations-hybrides";
+  }
+
+  if (
+    text.includes("atk") ||
+    text.includes("plum") ||
+    text.includes("raider") ||
+    text.includes("crest") ||
+    text.includes("alpinist") ||
+    text.includes("xenic") ||
+    text.includes("backland") ||
+    text.includes("summit") ||
+    text.includes("speed turn") ||
+    text.includes("low tech") ||
+    text.includes("guide 12") ||
+    text.includes("guide 7")
+  ) {
+    return "fixations-inserts";
+  }
+
+  return "fixations-ski-randonnee";
 }
 
 function inferAlpineBootSlug(

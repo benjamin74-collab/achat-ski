@@ -72,7 +72,8 @@ if (sourceGroupKeys.length > 0) {
 if (
   incomingProductKind === "SNOWBOARD_PACK" ||
   incomingProductKind === "NORDIC_PACK" ||
-  incomingProductKind === "ALPINE_SKI_PACK"
+  incomingProductKind === "ALPINE_SKI_PACK" ||
+  incomingProductKind === "RANDO_PACK"
 ) {
   return {
     confidence: 0,
@@ -408,7 +409,15 @@ type GuardedProductKind =
   | "ALPINE_SKI"
   | "ALPINE_BOOT"
   | "ALPINE_BINDING"
-  | "ALPINE_POLE";
+  | "ALPINE_POLE"
+  | "RANDO_PACK"
+  | "RANDO_SKI"
+  | "RANDO_BOOT"
+  | "RANDO_BINDING"
+  | "RANDO_POLE"
+  | "RANDO_SKIN"
+  | "RANDO_CRAMPON"
+  | "RANDO_AVALANCHE";
   
 async function findCompatibleProductByIdentifier(
   prisma: PrismaClient,
@@ -608,6 +617,46 @@ function resolveProductKindFromSlug(
 	case "batons-ski-freeride":
 	case "batons-ski-junior":
 	  return "ALPINE_POLE";
+	  
+	case "packs-ski-randonnee":
+	case "packs-ski-freerando":
+	  return "RANDO_PACK";
+
+	case "skis-randonnee":
+	case "skis-randonnee-legers":
+	case "skis-freerando":
+	  return "RANDO_SKI";
+
+	case "chaussures-ski-randonnee":
+	case "chaussures-ski-rando-legeres":
+	case "chaussures-freerando":
+	  return "RANDO_BOOT";
+
+	case "fixations-ski-randonnee":
+	case "fixations-inserts":
+	case "fixations-hybrides":
+	case "fixations-chassis":
+	  return "RANDO_BINDING";
+
+	case "batons-ski-randonnee":
+	  return "RANDO_POLE";
+
+	case "peaux-phoque":
+	case "peaux-avec-colle":
+	case "peaux-sans-colle":
+	case "peaux-predecoupees":
+	  return "RANDO_SKIN";
+
+	case "couteaux-ski-rando":
+	case "freins-leash-ski-rando":
+	  return "RANDO_CRAMPON";
+
+	case "securite-avalanche":
+	case "dva-arva":
+	case "pelles-avalanche":
+	case "sondes-avalanche":
+	case "sacs-airbag":
+	  return "RANDO_AVALANCHE";
 
     default:
       return null;
@@ -738,6 +787,42 @@ function resolveProductKindFromPath(
     path.includes("materiel ski > ski")
   ) {
     return "ALPINE_SKI";
+  }
+}
+
+  if (path.includes("ski de randonnee")) {
+  if (path.includes("pack ski de randonnee")) {
+    return "RANDO_PACK";
+  }
+
+  if (path.includes("chaussure ski de randonnee")) {
+    return "RANDO_BOOT";
+  }
+
+  if (path.includes("fixation ski de randonnee")) {
+    return "RANDO_BINDING";
+  }
+
+  if (path.includes("baton ski de randonnee")) {
+    return "RANDO_POLE";
+  }
+
+  if (path.includes("peau de phoque")) {
+    return "RANDO_SKIN";
+  }
+
+  if (path.includes("couteaux ski de rando")) {
+    return "RANDO_CRAMPON";
+  }
+
+  if (path.includes("securite avalanche")) {
+    return "RANDO_AVALANCHE";
+  }
+
+  if (
+    path.includes("materiel ski de randonnee > ski de randonnee")
+  ) {
+    return "RANDO_SKI";
   }
 }
 
