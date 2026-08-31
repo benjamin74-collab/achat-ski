@@ -540,20 +540,17 @@ async function syncProductCategories(
     ])
   );
 
-	const staleCleanupCategoryIds =
+	const uniqueCleanupCategoryIds =
 	  Array.from(
 		new Set(cleanupCategoryIds)
-	  ).filter(
-		(categoryId) =>
-		  !uniqueCategoryIds.includes(categoryId)
 	  );
 
-	if (staleCleanupCategoryIds.length > 0) {
+	if (uniqueCleanupCategoryIds.length > 0) {
 	  await prisma.productCategory.deleteMany({
 		where: {
 		  productId,
 		  categoryId: {
-			in: staleCleanupCategoryIds,
+			in: uniqueCleanupCategoryIds,
 		  },
 		},
 	  });
