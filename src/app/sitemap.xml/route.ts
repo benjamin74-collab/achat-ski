@@ -1,4 +1,5 @@
 // src/app/sitemap.xml/route.ts
+
 import { prisma } from "@/lib/prisma";
 import { getSiteConfig } from "@/config/site";
 
@@ -27,33 +28,136 @@ export async function GET(req: Request) {
     process.env.NEXT_PUBLIC_SITE_URL?.replace(/\/+$/, "") ||
     origin;
 
+  /**
+   * ID du site courant.
+   *
+   * On accepte siteId ou id pour rester compatible avec
+   * la structure actuelle/future de getSiteConfig().
+   *
+   * Si aucun identifiant de site n'est disponible,
+   * le sitemap continuera à fonctionner avec les critères
+   * globaux Product + Offer.
+   */
+  const siteId =
+    (siteConfig as { siteId?: string; id?: string }).siteId ||
+    (siteConfig as { siteId?: string; id?: string }).id ||
+    process.env.SITE_ID ||
+    process.env.NEXT_PUBLIC_SITE_ID;
+
   const [pages, categories, brands, products] = await Promise.all([
+    /**
+     * Pages éditoriales publiées
+     */
     prisma.page.findMany({
-      where: { published: true },
-      select: { slug: true, updatedAt: true },
-      orderBy: { updatedAt: "desc" },
+      where: {
+        published: true,
+      },
+      select: {
+        slug: true,
+        updatedAt: true,
+      },
+      orderBy: {
+        updatedAt: "desc",
+      },
     }),
 
+    /**
+     * Catégories publiées
+     */
     prisma.category.findMany({
-      where: { published: true },
-      select: { slug: true, updatedAt: true },
-      orderBy: [{ parentId: "asc" }, { order: "asc" }, { name: "asc" }],
+      where: {
+        published: true,
+      },
+      select: {
+        slug: true,
+        updatedAt: true,
+      },
+      orderBy: [
+        { parentId: "asc" },
+        { order: "asc" },
+        { name: "asc" },
+      ],
     }),
 
+    /**
+     * Marques actives
+     */
     prisma.brand.findMany({
-      where: { active: true },
-      select: { slug: true, updatedAt: true },
-      orderBy: { name: "asc" },
+      where: {
+        active: true,
+      },
+      select: {
+        slug: true,
+        updatedAt: true,
+      },
+      orderBy: {
+        name: "asc",
+      },
     }),
 
+    /**
+     * Produits indexables
+     *
+     * Un produit doit :
+     * - être publié
+     * - être actif
+     * - avoir au moins une offre active et non archivée
+     *
+     * Si le siteId est disponible :
+     * - le produit doit également être publié et actif
+     *   pour le site courant via SiteProduct
+     * - l'offre doit appartenir à un programme d'affiliation
+     *   du site courant lorsqu'un programme est associé
+     */
     prisma.product.findMany({
-      select: { slug: true, createdAt: true },
-      orderBy: { createdAt: "desc" },
+      where: {
+        published: true,
+        active: true,
+
+        ...(siteId
+          ? {
+              sites: {
+                some: {
+                  siteId,
+                  published: true,
+                  active: true,
+                  archivedAt: null,
+                },
+              },
+            }
+          : {}),
+
+        offers: {
+          some: {
+            active: true,
+            archivedAt: null,
+
+            ...(siteId
+              ? {
+                  affiliateProgram: {
+                    is: {
+                      siteId,
+                      active: true,
+                    },
+                  },
+                }
+              : {}),
+          },
+        },
+      },
+
+      select: {
+        slug: true,
+        updatedAt: true,
+      },
+
+      orderBy: {
+        updatedAt: "desc",
+      },
+
       take: 50000,
     }),
   ]);
-
-  const now = new Date();
 
   const urls: Array<{
     loc: string;
@@ -61,13 +165,26 @@ export async function GET(req: Request) {
     changefreq?: string;
     priority?: string;
   }> = [
-    { loc: `${base}/`, lastmod: toIso(now), changefreq: "daily", priority: "1.0" },
-    { loc: `${base}/search`, lastmod: toIso(now), changefreq: "daily", priority: "0.7" },
-    { loc: `${base}/marques`, lastmod: toIso(now), changefreq: "weekly", priority: "0.6" },
-    { loc: `${base}/pages`, lastmod: toIso(now), changefreq: "weekly", priority: "0.6" },
+    {
+      loc: `${base}/`,
+      changefreq: "daily",
+      priority: "1.0",
+    },
+    {
+      loc: `${base}/marques`,
+      changefreq: "weekly",
+      priority: "0.6",
+    },
+    {
+      loc: `${base}/pages`,
+      changefreq: "weekly",
+      priority: "0.6",
+    },
   ];
 
-  // Pages éditoriales
+  /**
+   * Pages éditoriales
+   */
   for (const p of pages) {
     urls.push({
       loc: `${base}/pages/${encodeURIComponent(p.slug)}`,
@@ -77,7 +194,9 @@ export async function GET(req: Request) {
     });
   }
 
-  // Catégories
+  /**
+   * Catégories
+   */
   for (const c of categories) {
     urls.push({
       loc: `${base}/${encodeURIComponent(c.slug)}`,
@@ -87,7 +206,9 @@ export async function GET(req: Request) {
     });
   }
 
-  // Marques
+  /**
+   * Marques
+   */
   for (const b of brands) {
     urls.push({
       loc: `${base}/marques/${encodeURIComponent(b.slug)}`,
@@ -97,24 +218,39 @@ export async function GET(req: Request) {
     });
   }
 
-  // Produits
+  /**
+   * Produits
+   */
   for (const p of products) {
     urls.push({
       loc: `${base}/p/${encodeURIComponent(p.slug)}`,
-      lastmod: toIso(p.createdAt),
+      lastmod: toIso(p.updatedAt),
       changefreq: "weekly",
       priority: "0.5",
     });
   }
 
+  /**
+   * Génération du XML
+   */
   const xml = `<?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
 ${urls
   .map((u) => {
     const loc = `<loc>${escXml(u.loc)}</loc>`;
-    const lastmod = u.lastmod ? `<lastmod>${escXml(u.lastmod)}</lastmod>` : "";
-    const changefreq = u.changefreq ? `<changefreq>${u.changefreq}</changefreq>` : "";
-    const priority = u.priority ? `<priority>${u.priority}</priority>` : "";
+
+    const lastmod = u.lastmod
+      ? `<lastmod>${escXml(u.lastmod)}</lastmod>`
+      : "";
+
+    const changefreq = u.changefreq
+      ? `<changefreq>${u.changefreq}</changefreq>`
+      : "";
+
+    const priority = u.priority
+      ? `<priority>${u.priority}</priority>`
+      : "";
+
     return `  <url>${loc}${lastmod}${changefreq}${priority}</url>`;
   })
   .join("\n")}
