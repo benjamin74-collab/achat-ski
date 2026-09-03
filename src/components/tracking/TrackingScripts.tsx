@@ -8,6 +8,7 @@ type Props = {
   googleAdsId?: string | null;
   googleAdsConversionLabel?: string | null;
   gtmContainerId?: string | null;
+  adsenseClient?: string | null;
   enabledAnalytics?: boolean;
   enabledAds?: boolean;
   enabledGtm?: boolean;
@@ -20,13 +21,24 @@ declare global {
   }
 }
 
-function loadScriptOnce(src: string, key: string) {
+function loadScriptOnce(
+  src: string,
+  key: string,
+  options?: {
+    crossOrigin?: string;
+  }
+) {
   if (document.querySelector(`script[data-track-key="${key}"]`)) return;
 
   const s = document.createElement("script");
   s.async = true;
   s.src = src;
   s.dataset.trackKey = key;
+
+  if (options?.crossOrigin) {
+    s.crossOrigin = options.crossOrigin;
+  }
+
   document.head.appendChild(s);
 }
 
@@ -46,6 +58,7 @@ function applyTracking(consent: Consent | null, props: Props) {
     ga4MeasurementId,
     googleAdsId,
     gtmContainerId,
+	adsenseClient,
     enabledAnalytics,
     enabledAds,
     enabledGtm,
@@ -74,6 +87,18 @@ function applyTracking(consent: Consent | null, props: Props) {
       }
     }
   }
+  
+  if (adsenseClient) {
+  loadScriptOnce(
+    `https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=${encodeURIComponent(
+      adsenseClient
+    )}`,
+    `adsense-${adsenseClient}`,
+    {
+      crossOrigin: "anonymous",
+    }
+  );
+}
 }
 
 export default function TrackingScripts(props: Props) {
@@ -92,6 +117,7 @@ export default function TrackingScripts(props: Props) {
     props.googleAdsId,
     props.googleAdsConversionLabel,
     props.gtmContainerId,
+	props.adsenseClient,
     props.enabledAnalytics,
     props.enabledAds,
     props.enabledGtm,
