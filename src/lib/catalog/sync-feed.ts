@@ -1,4 +1,4 @@
-﻿import {
+import {
   PrismaClient,
 } from "@prisma/client";
 
@@ -1004,8 +1004,20 @@ async function reconcileMissingOffers({
   stats,
 }: ReconcileOptions): Promise<void> {
   /*
-   * 1. RÃ©cupÃ¨re en une requÃªte toutes les offres du flux
-   *    qui n'ont pas Ã©tÃ© vues pendant cet import.
+   * Sécurité SEO :
+   *
+   * Un flux marchand peut indiquer qu'une offre n'est plus présente.
+   * Dans ce cas, on désactive uniquement l'offre concernée.
+   *
+   * En revanche, un import automatique ne doit jamais :
+   * - supprimer un Product ;
+   * - désactiver un Product ;
+   * - dépublier un Product ;
+   * - archiver un SiteProduct.
+   *
+   * Une fiche produit doit rester accessible durablement,
+   * même si aucune offre active n'est disponible pendant plusieurs semaines
+   * ou plusieurs mois.
    */
   const missingOffers =
     await prisma.offer.findMany({
@@ -1035,9 +1047,6 @@ async function reconcileMissingOffers({
       select: {
         id:
           true,
-
-        productId:
-          true,
       },
     });
 
@@ -1048,8 +1057,10 @@ async function reconcileMissingOffers({
   }
 
   /*
-   * 2. DÃ©sactive toutes les offres manquantes en une seule
-   *    opÃ©ration au lieu de les traiter individuellement.
+   * On désactive seulement les offres absentes du flux.
+   *
+   * Les produits restent publiés et actifs.
+   * Les associations SiteProduct restent également actives.
    */
   await prisma.offer.updateMany({
     where: {
@@ -1074,326 +1085,11 @@ async function reconcileMissingOffers({
   stats.deactivatedOffers +=
     missingOffers.length;
 
-  const productIds =
-    Array.from(
-      new Set(
-        missingOffers.map(
-          (offer) =>
-            offer.productId
-        )
-      )
-    );
-
-  if (
-    productIds.length === 0
-  ) {
-    return;
-  }
-
   /*
-   * 3. Cherche en une seule requÃªte les produits qui ont
-   *    encore au moins une offre active.
-   *
-   * L'ancienne version faisait un offer.count() par produit.
+   * Important :
+   * volontairement aucune modification de Product ou SiteProduct ici.
    */
-  const productsWithActiveOffers =
-    await prisma.offer.findMany({
-      where: {
-        productId: {
-          in:
-            productIds,
-        },
-
-        active:
-          true,
-      },
-
-      select: {
-        productId:
-          true,
-      },
-
-      distinct: [
-        "productId",
-      ],
-    });
-
-  const activeOfferProductIds =
-    new Set(
-      productsWithActiveOffers.map(
-        (offer) =>
-          offer.productId
-      )
-    );
-
-  const orphanProductIds =
-    productIds.filter(
-      (productId) =>
-        !activeOfferProductIds.has(
-          productId
-        )
-    );
-
-  if (
-    orphanProductIds.length === 0
-  ) {
-    return;
-  }
-
-  /*
-   * 4. Archive les SiteProduct du site courant en une seule
-   *    requÃªte pour tous les produits devenus sans offre.
-   */
-  await prisma.siteProduct.updateMany({
-    where: {
-      siteId:
-        runtime.siteId,
-
-      productId: {
-        in:
-          orphanProductIds,
-      },
-
-      active:
-        true,
-    },
-
-    data: {
-      active:
-        false,
-
-      published:
-        false,
-
-      archivedAt:
-        new Date(),
-    },
-  });
-
-  /*
-   * 5. Toutes les vÃ©rifications qui Ã©taient auparavant
-   *    rÃ©alisÃ©es produit par produit sont chargÃ©es en parallÃ¨le
-   *    et sous forme d'ensembles de productId.
-   *
-   * Ancienne mÃ©canique :
-   *   jusqu'Ã  5 requÃªtes supplÃ©mentaires par produit.
-   *
-   * Nouvelle mÃ©canique :
-   *   4 requÃªtes au total, quel que soit le nombre de produits.
-   */
-  const [
-    productsWithTests,
-    productsWithReviews,
-    productsWithClicks,
-    productsWithActiveSites,
-  ] =
-    await Promise.all([
-      prisma.editorialTest.findMany({
-        where: {
-          productId: {
-            in:
-              orphanProductIds,
-          },
-        },
-
-        select: {
-          productId:
-            true,
-        },
-
-        distinct: [
-          "productId",
-        ],
-      }),
-
-      prisma.review.findMany({
-        where: {
-          productId: {
-            in:
-              orphanProductIds,
-          },
-        },
-
-        select: {
-          productId:
-            true,
-        },
-
-        distinct: [
-          "productId",
-        ],
-      }),
-
-      prisma.click.findMany({
-        where: {
-          productId: {
-            in:
-              orphanProductIds,
-          },
-        },
-
-        select: {
-          productId:
-            true,
-        },
-
-        distinct: [
-          "productId",
-        ],
-      }),
-
-      prisma.siteProduct.findMany({
-        where: {
-          productId: {
-            in:
-              orphanProductIds,
-          },
-
-          active:
-            true,
-        },
-
-        select: {
-          productId:
-            true,
-        },
-
-        distinct: [
-          "productId",
-        ],
-      }),
-    ]);
-
-  const protectedProductIds =
-    new Set<number>();
-
-  for (
-    const row of
-    productsWithTests
-  ) {
-    protectedProductIds.add(
-      row.productId
-    );
-  }
-
-  for (
-    const row of
-    productsWithReviews
-  ) {
-    protectedProductIds.add(
-      row.productId
-    );
-  }
-
-  for (
-    const row of
-    productsWithClicks
-  ) {
-    protectedProductIds.add(
-      row.productId
-    );
-  }
-
-  const activeSiteProductIds =
-    new Set(
-      productsWithActiveSites.map(
-        (row) =>
-          row.productId
-      )
-    );
-
-  /*
-   * Un produit peut Ãªtre supprimÃ© uniquement s'il :
-   * - n'a plus aucune offre active ;
-   * - n'est actif sur aucun site ;
-   * - n'a ni test, ni avis, ni clic.
-   *
-   * Cette logique est identique Ã  l'ancienne version,
-   * mais les contrÃ´les sont dÃ©sormais groupÃ©s.
-   */
-  const deletableProductIds =
-    orphanProductIds.filter(
-      (productId) =>
-        !activeSiteProductIds.has(
-          productId
-        ) &&
-        !protectedProductIds.has(
-          productId
-        )
-    );
-
-  for (
-    const chunk of
-    chunkArray(
-      deletableProductIds,
-      BULK_CHUNK_SIZE
-    )
-  ) {
-    const result =
-      await prisma.product.deleteMany({
-        where: {
-          id: {
-            in:
-              chunk,
-          },
-        },
-      });
-
-    stats.deletedProducts +=
-      result.count;
-  }
-
-  const deletableSet =
-    new Set(
-      deletableProductIds
-    );
-
-  /*
-   * Les produits protÃ©gÃ©s par du contenu Ã©ditorial ou de
-   * l'historique restent en base mais sont dÃ©sactivÃ©s lorsqu'ils
-   * ne sont plus actifs sur aucun site.
-   */
-  const deactivatableProductIds =
-    orphanProductIds.filter(
-      (productId) =>
-        !activeSiteProductIds.has(
-          productId
-        ) &&
-        !deletableSet.has(
-          productId
-        )
-    );
-
-  for (
-    const chunk of
-    chunkArray(
-      deactivatableProductIds,
-      BULK_CHUNK_SIZE
-    )
-  ) {
-    const result =
-      await prisma.product.updateMany({
-        where: {
-          id: {
-            in:
-              chunk,
-          },
-        },
-
-        data: {
-          active:
-            false,
-
-          published:
-            false,
-        },
-      });
-
-    stats.deactivatedProducts +=
-      result.count;
-  }
 }
-
 async function buildBrandCache(
   prisma:
     PrismaClient
