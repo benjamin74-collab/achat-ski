@@ -61,7 +61,6 @@ function sendGa4PageView(ga4MeasurementId: string) {
     page_title: document.title,
     page_location: pageLocation,
     page_path: pagePath,
-    debug_mode: true,
   });
 
   lastPageViewKey = pageViewKey;
