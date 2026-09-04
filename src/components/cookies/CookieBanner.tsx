@@ -14,8 +14,8 @@ export default function CookieBanner({ disabled = false }: { disabled?: boolean 
       return;
     }
 
-    const consent = getConsentClient();
-    setOpen(consent == null);
+    const c = getConsentClient();
+    setOpen(c == null);
   }, [disabled]);
 
   useEffect(() => {
@@ -31,8 +31,8 @@ export default function CookieBanner({ disabled = false }: { disabled?: boolean 
     };
   }, [open]);
 
-  function choose(value: Consent) {
-    setConsentClient(value);
+  function choose(v: Consent) {
+    setConsentClient(v);
     setOpen(false);
 
     void fetch(`/api/consent?path=${encodeURIComponent(window.location.pathname)}`, {
@@ -41,82 +41,56 @@ export default function CookieBanner({ disabled = false }: { disabled?: boolean 
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        choice: value,
+        choice: v,
       }),
       keepalive: true,
     }).catch(() => {
-      // Le consentement local reste prioritaire.
-      // L'échec du log serveur ne doit pas bloquer l'utilisateur.
+      // Le choix local reste prioritaire.
+      // Si le log serveur échoue, on ne bloque pas l'utilisateur.
     });
   }
 
-  if (disabled || !open) {
-    return null;
-  }
+  if (disabled || !open) return null;
 
   return (
-    <div
-      role="presentation"
-      className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-950/60 px-4 py-6 backdrop-blur-sm"
-    >
+    <>
       <div
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby="cookie-banner-title"
-        aria-describedby="cookie-banner-description"
-        className="w-full max-w-lg rounded-3xl border border-slate-200 bg-white p-5 shadow-2xl sm:p-6"
-      >
-        <div className="flex items-start gap-4">
-          <div className="hidden h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-brand-50 text-xl sm:flex">
-            🍪
+        className="fixed inset-0 z-[50] bg-slate-950/50"
+        aria-hidden="true"
+      />
+
+      <div className="fixed bottom-4 left-4 z-[60] w-[min(420px,calc(100vw-2rem))]">
+        <div className="rounded-2xl border border-ring bg-white shadow-card p-4">
+          <div className="text-sm font-semibold text-ink">Gestion des cookies</div>
+
+          <p className="mt-2 text-sm text-slate-600 leading-relaxed">
+            Nous utilisons des cookies essentiels au bon fonctionnement du site. Avec votre accord, nous
+            pouvons aussi utiliser des cookies de mesure d’audience et de personnalisation afin d’améliorer
+            votre expérience.
+          </p>
+
+          <p className="mt-2 text-xs text-slate-500">
+            En savoir plus :{" "}
+            <Link href="/politique-cookies" className="underline hover:text-slate-700">
+              politique cookies
+            </Link>
+          </p>
+
+          <div className="mt-4 flex flex-col sm:flex-row gap-2">
+            <button type="button" className="btn-outline w-full justify-center" onClick={() => choose("essential")}>
+              Essentiels uniquement
+            </button>
+
+            <button type="button" className="btn w-full justify-center" onClick={() => choose("all")}>
+              Tout accepter
+            </button>
           </div>
 
-          <div>
-            <h2
-              id="cookie-banner-title"
-              className="text-lg font-black tracking-tight text-slate-950"
-            >
-              Gestion des cookies
-            </h2>
-
-            <p
-              id="cookie-banner-description"
-              className="mt-2 text-sm leading-6 text-slate-600"
-            >
-              Nous utilisons des cookies essentiels au bon fonctionnement du site. Avec votre
-              accord, nous pouvons aussi utiliser des cookies de mesure d’audience et de
-              personnalisation afin d’améliorer votre expérience.
-            </p>
-
-            <p className="mt-3 text-xs leading-5 text-slate-500">
-              Vous pouvez accepter ou refuser les cookies non essentiels. Votre choix pourra être
-              modifié à tout moment depuis la{" "}
-              <Link href="/politique-cookies" className="font-semibold underline hover:text-slate-700">
-                politique cookies
-              </Link>
-              .
-            </p>
+          <div className="mt-2 text-[11px] text-slate-400">
+            Vous pourrez modifier votre choix à tout moment depuis la politique cookies.
           </div>
-        </div>
-
-        <div className="mt-6 grid gap-3 sm:grid-cols-2">
-          <button
-            type="button"
-            className="inline-flex min-h-12 items-center justify-center rounded-2xl border border-slate-300 bg-white px-4 py-3 text-sm font-bold text-slate-800 shadow-sm transition hover:bg-slate-50"
-            onClick={() => choose("essential")}
-          >
-            Refuser
-          </button>
-
-          <button
-            type="button"
-            className="inline-flex min-h-12 items-center justify-center rounded-2xl bg-slate-950 px-4 py-3 text-sm font-bold text-white shadow-sm transition hover:bg-brand-700"
-            onClick={() => choose("all")}
-          >
-            Tout accepter
-          </button>
         </div>
       </div>
-    </div>
+    </>
   );
 }
