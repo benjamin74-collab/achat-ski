@@ -34,9 +34,11 @@ function cleanValue(value?: string | null): string | null {
 function ensureGtag() {
   window.dataLayer = window.dataLayer || [];
 
-  window.gtag = function gtag() {
-    window.dataLayer.push(arguments);
-  } as (...args: unknown[]) => void;
+window.gtag =
+  window.gtag ||
+  ((...args: unknown[]) => {
+    window.dataLayer.push(args);
+  });
 
   if (!gtagInitialized) {
     window.gtag("js", new Date());
