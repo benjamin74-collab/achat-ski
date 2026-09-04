@@ -165,10 +165,12 @@ export function formatBrandDisplayName(
   );
 }
 
-export function normalizeAvailability(
-  value: string | null | undefined
-): boolean {
-  const normalized = normalizeText(value).toLowerCase();
+export function normalizeAvailability(value: string | null | undefined): boolean {
+  const normalized = normalizeText(value)
+    .toLowerCase()
+    .replace(/[_-]+/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
 
   if (!normalized) return false;
 
@@ -1040,7 +1042,18 @@ export function safeString(value: unknown): string | undefined {
 export function safeNumber(value: unknown): number | undefined {
   if (value === null || value === undefined || value === "") return undefined;
 
-  const parsed = Number(String(value).replace(",", ".").trim());
+  const raw = String(value)
+    .replace(/\u00a0/g, " ")
+    .trim();
+
+  const match = raw.match(/-?\d+(?:[.,]\d+)?/);
+
+  if (!match) {
+    return undefined;
+  }
+
+  const parsed = Number(match[0].replace(",", "."));
+
   return Number.isFinite(parsed) ? parsed : undefined;
 }
 
