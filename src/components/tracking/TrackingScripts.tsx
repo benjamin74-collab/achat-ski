@@ -1,7 +1,8 @@
 "use client";
 
-import { useEffect } from "react";
-import { usePathname, useSearchParams } from "next/navigation";
+import Script from "next/script";
+import { useEffect, useState } from "react";
+import { usePathname } from "next/navigation";
 import { getConsentClient, type Consent } from "@/lib/consent";
 
 type Props = {
@@ -22,251 +23,197 @@ declare global {
   }
 }
 
-const scriptPromises = new Map<string, Promise<void>>();
-const configuredAnalyticsIds = new Set<string>();
-const configuredAdsIds = new Set<string>();
-
-let gtagJsInitialized = false;
+let gtagInitialized = false;
 let lastPageViewKey: string | null = null;
 
-function loadScriptOnce(
-  src: string,
-  key: string,
-  options?: {
-    crossOrigin?: string;
-  }
-): Promise<void> {
-  const existing = document.querySelector<HTMLScriptElement>(
-    `script[data-track-key="${key}"]`
-  );
-
-  if (existing?.dataset.loaded === "true") {
-    return Promise.resolve();
-  }
-
-  const existingPromise = scriptPromises.get(key);
-
-  if (existingPromise) {
-    return existingPromise;
-  }
-
-  const promise = new Promise<void>((resolve, reject) => {
-    if (existing) {
-      existing.addEventListener(
-        "load",
-        () => resolve(),
-        { once: true }
-      );
-
-      existing.addEventListener(
-        "error",
-        () => reject(new Error(`Script loading failed: ${src}`)),
-        { once: true }
-      );
-
-      return;
-    }
-
-    const script = document.createElement("script");
-    script.async = true;
-    script.src = src;
-    script.dataset.trackKey = key;
-
-    if (options?.crossOrigin) {
-      script.crossOrigin = options.crossOrigin;
-    }
-
-    script.addEventListener(
-      "load",
-      () => {
-        script.dataset.loaded = "true";
-        resolve();
-      },
-      { once: true }
-    );
-
-    script.addEventListener(
-      "error",
-      () => reject(new Error(`Script loading failed: ${src}`)),
-      { once: true }
-    );
-
-    document.head.appendChild(script);
-  });
-
-  scriptPromises.set(key, promise);
-
-  return promise;
+function cleanValue(value?: string | null): string | null {
+  const cleaned = value?.trim();
+  return cleaned ? cleaned : null;
 }
 
-function initGtag() {
+function ensureGtag() {
   window.dataLayer = window.dataLayer || [];
 
-  window.gtag =
-    window.gtag ||
-    function gtag(...args: unknown[]) {
-      window.dataLayer.push(args);
-    };
-}
+  window.gtag = function gtag() {
+    window.dataLayer.push(arguments);
+  } as (...args: unknown[]) => void;
 
-function initGtagJsOnce() {
-  if (gtagJsInitialized) {
-    return;
+  if (!gtagInitialized) {
+    window.gtag("js", new Date());
+    gtagInitialized = true;
   }
-
-  window.gtag?.("js", new Date());
-  gtagJsInitialized = true;
 }
 
-function sendPageView(
-  ga4MeasurementId: string,
-  pathname: string,
-  search: string
-) {
-  const pagePath = search ? `${pathname}?${search}` : pathname;
-  const pageLocation = `${window.location.origin}${pagePath}`;
+function sendGa4PageView(ga4MeasurementId: string) {
+  ensureGtag();
+
+  const pagePath = `${window.location.pathname}${window.location.search}`;
+  const pageLocation = window.location.href;
   const pageViewKey = `${ga4MeasurementId}:${pageLocation}`;
 
   if (lastPageViewKey === pageViewKey) {
     return;
   }
 
-  window.gtag?.("event", "page_view", {
+  window.gtag?.("config", ga4MeasurementId, {
     page_title: document.title,
     page_location: pageLocation,
     page_path: pagePath,
+    debug_mode: true,
   });
 
   lastPageViewKey = pageViewKey;
 }
 
-async function applyTracking(
-  consent: Consent | null,
-  props: Props,
-  pathname: string,
-  search: string
-) {
-  if (consent !== "all") {
-    return;
-  }
-
-  const {
-    ga4MeasurementId,
-    googleAdsId,
-    gtmContainerId,
-    adsenseClient,
-    enabledAnalytics,
-    enabledAds,
-    enabledGtm,
-  } = props;
-
-  if (enabledGtm && gtmContainerId) {
-    void loadScriptOnce(
-      `https://www.googletagmanager.com/gtm.js?id=${encodeURIComponent(
-        gtmContainerId
-      )}`,
-      `gtm-${gtmContainerId}`
-    );
-  }
-
-  const needsGtag =
-    (enabledAnalytics && ga4MeasurementId) ||
-    (enabledAds && googleAdsId);
-
-  if (needsGtag) {
-    const gtagId = ga4MeasurementId || googleAdsId;
-
-    if (gtagId) {
-      initGtag();
-
-      await loadScriptOnce(
-        `https://www.googletagmanager.com/gtag/js?id=${encodeURIComponent(
-          gtagId
-        )}`,
-        `gtag-${gtagId}`
-      );
-
-      initGtagJsOnce();
-
-      if (enabledAnalytics && ga4MeasurementId) {
-        if (!configuredAnalyticsIds.has(ga4MeasurementId)) {
-          window.gtag?.("config", ga4MeasurementId, {
-            send_page_view: false,
-          });
-
-          configuredAnalyticsIds.add(ga4MeasurementId);
-        }
-
-        sendPageView(
-          ga4MeasurementId,
-          pathname,
-          search
-        );
-      }
-
-      if (enabledAds && googleAdsId) {
-        if (!configuredAdsIds.has(googleAdsId)) {
-          window.gtag?.("config", googleAdsId);
-          configuredAdsIds.add(googleAdsId);
-        }
-      }
-    }
-  }
-
-  if (adsenseClient) {
-    void loadScriptOnce(
-      `https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=${encodeURIComponent(
-        adsenseClient
-      )}`,
-      `adsense-${adsenseClient}`,
-      {
-        crossOrigin: "anonymous",
-      }
-    );
-  }
-}
-
 export default function TrackingScripts(props: Props) {
   const pathname = usePathname();
-  const searchParams = useSearchParams();
-  const search = searchParams.toString();
+  const [consent, setConsent] = useState<Consent | null>(null);
+
+  const ga4MeasurementId =
+    props.enabledAnalytics
+      ? cleanValue(props.ga4MeasurementId)
+      : null;
+
+  const googleAdsId =
+    props.enabledAds
+      ? cleanValue(props.googleAdsId)
+      : null;
+
+  const gtmContainerId =
+    props.enabledGtm
+      ? cleanValue(props.gtmContainerId)
+      : null;
+
+  const adsenseClient =
+    cleanValue(props.adsenseClient);
+
+  const hasConsent =
+    consent === "all";
+
+  const gtagId =
+    ga4MeasurementId ??
+    googleAdsId;
 
   useEffect(() => {
-    void applyTracking(
-      getConsentClient(),
-      props,
-      pathname,
-      search
-    );
+    setConsent(getConsentClient());
 
     const onConsent = (event: Event) => {
-      const customEvent = event as CustomEvent<Consent>;
+      const customEvent =
+        event as CustomEvent<Consent>;
 
-      void applyTracking(
-        customEvent.detail ?? getConsentClient(),
-        props,
-        pathname,
-        search
+      setConsent(
+        customEvent.detail ??
+          getConsentClient()
       );
     };
 
-    window.addEventListener("ms:consent", onConsent);
+    window.addEventListener(
+      "ms:consent",
+      onConsent
+    );
 
     return () => {
-      window.removeEventListener("ms:consent", onConsent);
+      window.removeEventListener(
+        "ms:consent",
+        onConsent
+      );
     };
+  }, []);
+
+  useEffect(() => {
+    if (
+      !hasConsent ||
+      !ga4MeasurementId
+    ) {
+      return;
+    }
+
+    sendGa4PageView(
+      ga4MeasurementId
+    );
   }, [
-    props.ga4MeasurementId,
-    props.googleAdsId,
-    props.googleAdsConversionLabel,
-    props.gtmContainerId,
-    props.adsenseClient,
-    props.enabledAnalytics,
-    props.enabledAds,
-    props.enabledGtm,
+    hasConsent,
+    ga4MeasurementId,
     pathname,
-    search,
   ]);
 
-  return null;
+  useEffect(() => {
+    if (
+      !hasConsent ||
+      !googleAdsId
+    ) {
+      return;
+    }
+
+    ensureGtag();
+
+    window.gtag?.(
+      "config",
+      googleAdsId
+    );
+  }, [
+    hasConsent,
+    googleAdsId,
+  ]);
+
+  if (!hasConsent) {
+    return null;
+  }
+
+  return (
+    <>
+      {gtmContainerId ? (
+        <Script
+          id="gtm-script"
+          src={`https://www.googletagmanager.com/gtm.js?id=${encodeURIComponent(
+            gtmContainerId
+          )}`}
+          strategy="afterInteractive"
+        />
+      ) : null}
+
+      {gtagId ? (
+        <>
+          <Script
+            id="gtag-init"
+            strategy="afterInteractive"
+            dangerouslySetInnerHTML={{
+              __html: `
+                window.dataLayer = window.dataLayer || [];
+                window.gtag = window.gtag || function(){ window.dataLayer.push(arguments); };
+                window.gtag('js', new Date());
+              `,
+            }}
+          />
+
+          <Script
+            id="gtag-loader"
+            src={`https://www.googletagmanager.com/gtag/js?id=${encodeURIComponent(
+              gtagId
+            )}`}
+            strategy="afterInteractive"
+            onReady={() => {
+              if (ga4MeasurementId) {
+                sendGa4PageView(
+                  ga4MeasurementId
+                );
+              }
+            }}
+          />
+        </>
+      ) : null}
+
+      {adsenseClient ? (
+        <Script
+          id="adsense-script"
+          async
+          src={`https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=${encodeURIComponent(
+            adsenseClient
+          )}`}
+          crossOrigin="anonymous"
+          strategy="afterInteractive"
+        />
+      ) : null}
+    </>
+  );
 }
