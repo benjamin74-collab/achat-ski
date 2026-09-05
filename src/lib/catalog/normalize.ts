@@ -1057,12 +1057,103 @@ export function safeNumber(value: unknown): number | undefined {
   return Number.isFinite(parsed) ? parsed : undefined;
 }
 
-export function decodeHtml(
-  value: string | null | undefined
-): string | undefined {
-  const normalized = normalizeText(value);
-  return normalized || undefined;
+export function decodeHtml(value: unknown): string | undefined {
+  if (value === null || value === undefined) {
+    return undefined;
+  }
+
+  const decoded = decodeHtmlEntities(String(value))
+    .replace(/\u00a0/g, " ")
+    .replace(/&nbsp;/gi, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+
+  return decoded || undefined;
 }
+
+function decodeHtmlEntities(value: string): string {
+  return value
+    .replace(/&#(\d+);/g, (_match, code: string) => {
+      const parsed = Number(code);
+      return Number.isFinite(parsed) ? String.fromCodePoint(parsed) : _match;
+    })
+    .replace(/&#x([0-9a-f]+);/gi, (_match, code: string) => {
+      const parsed = Number.parseInt(code, 16);
+      return Number.isFinite(parsed) ? String.fromCodePoint(parsed) : _match;
+    })
+    .replace(/&([a-zA-Z][a-zA-Z0-9]+);/g, (match, entity: string) => {
+      return HTML_ENTITIES[entity] ?? HTML_ENTITIES[entity.toLowerCase()] ?? match;
+    });
+}
+
+const HTML_ENTITIES: Record<string, string> = {
+  amp: "&",
+  quot: "\"",
+  apos: "'",
+  nbsp: " ",
+  lt: "<",
+  gt: ">",
+
+  agrave: "à",
+  aacute: "á",
+  acirc: "â",
+  auml: "ä",
+  aring: "å",
+  aelig: "æ",
+  ccedil: "ç",
+  egrave: "è",
+  eacute: "é",
+  ecirc: "ê",
+  euml: "ë",
+  igrave: "ì",
+  iacute: "í",
+  icirc: "î",
+  iuml: "ï",
+  ntilde: "ñ",
+  ograve: "ò",
+  oacute: "ó",
+  ocirc: "ô",
+  ouml: "ö",
+  oelig: "œ",
+  ugrave: "ù",
+  uacute: "ú",
+  ucirc: "û",
+  uuml: "ü",
+  yuml: "ÿ",
+
+  Agrave: "À",
+  Aacute: "Á",
+  Acirc: "Â",
+  Auml: "Ä",
+  Ccedil: "Ç",
+  Egrave: "È",
+  Eacute: "É",
+  Ecirc: "Ê",
+  Euml: "Ë",
+  Icirc: "Î",
+  Iuml: "Ï",
+  Ograve: "Ò",
+  Oacute: "Ó",
+  Ocirc: "Ô",
+  Ouml: "Ö",
+  OElig: "Œ",
+  Ugrave: "Ù",
+  Uacute: "Ú",
+  Ucirc: "Û",
+  Uuml: "Ü",
+
+  rsquo: "’",
+  lsquo: "‘",
+  rdquo: "”",
+  ldquo: "“",
+  ndash: "–",
+  mdash: "—",
+  hellip: "…",
+  deg: "°",
+  euro: "€",
+  copy: "©",
+  reg: "®",
+};
 
 function escapeRegExp(value: string): string {
   return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");

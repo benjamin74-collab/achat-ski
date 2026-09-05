@@ -92,7 +92,7 @@ export default async function CategoryPage({
     );
   }
 
-  const pageSize = 12;
+  const pageSize = 24;
   const skip = (page - 1) * pageSize;
 
   /*
@@ -161,26 +161,37 @@ export default async function CategoryPage({
   }
 
   const [total, productsRaw] = await Promise.all([
-    prisma.product.count({ where }),
-    prisma.product.findMany({
-      where,
-      orderBy: sort === "newest" ? { id: "desc" } : undefined,
-      skip,
-      take: pageSize,
-      include: {
-		  category: {
-			select: {
-			  name: true,
-			  slug: true,
-			},
-		  },
-		  offers: {
-		    where: {
-		      active: true,
-		    },
+	prisma.product.findMany({
+	  where,
+	  orderBy:
+		sort === "newest"
+		  ? [
+			  {
+				offers: {
+				  _count: "desc",
+				},
+			  },
+			  {
+				id: "desc",
+			  },
+			]
+		  : undefined,
+	  skip,
+	  take: pageSize,
+	  include: {
+		category: {
+		  select: {
+			name: true,
+			slug: true,
 		  },
 		},
-    }),
+		offers: {
+		  where: {
+			active: true,
+		  },
+		},
+	  },
+	}),
   ]);
 
   const products = productsRaw.map((p) => {

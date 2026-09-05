@@ -235,11 +235,9 @@ export function normalizeGenericFeedRow(
     cleanName,
 	brand,
 
-    description: decodeHtml(
-      toOptionalString(
-        mappedValues.description
-      )
-    ),
+	description: decodeHtml(
+	  mappedValues.description
+	),
 
     categoryPath:
       toOptionalString(
@@ -486,10 +484,8 @@ function applyColumnTransform(
         safeString(value)
       );
 
-    case "HTML":
-      return decodeHtml(
-        safeString(value)
-      );
+	case "HTML":
+	return decodeHtml(value);
 
     case "BOOLEAN":
       return parseBoolean(value);
