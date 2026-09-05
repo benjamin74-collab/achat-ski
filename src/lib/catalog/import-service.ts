@@ -68,6 +68,8 @@ export async function importAggregatedFeedItem(
   prisma: PrismaClient,
   aggregated: AggregatedFeedItem,
   merchant: Merchant,
+  affiliateProgramId: number,
+  feedSourceId: number,
   feedKey: string,
   siteId: string,
   seenAt: Date,
@@ -136,15 +138,17 @@ const product = match.productId
     aggregated
   );
 
-  const offer = await upsertOffer(
-    prisma,
-    aggregated,
-    merchant.id,
-    product.id,
-    feedKey,
-    seenAt,
-    stats
-  );
+const offer = await upsertOffer(
+  prisma,
+  aggregated,
+  merchant.id,
+  product.id,
+  affiliateProgramId,
+  feedSourceId,
+  feedKey,
+  seenAt,
+  stats
+);
 
   return {
     product,
@@ -597,6 +601,8 @@ async function upsertOffer(
   aggregated: AggregatedFeedItem,
   merchantId: number,
   productId: number,
+  affiliateProgramId: number,
+  feedSourceId: number,
   feedKey: string,
   seenAt: Date,
   stats: ImportStats
@@ -668,6 +674,9 @@ async function upsertOffer(
 
     merchantProductUrl:
       item.merchantProductUrl ?? null,
+
+	affiliateProgramId,
+	feedSourceId,
 
     active:
       true,

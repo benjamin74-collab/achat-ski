@@ -647,16 +647,18 @@ export async function syncFeedContent({
 
         try {
           const imported =
-            await importAggregatedFeedItem(
-              prisma,
-              aggregated,
-              merchant,
-              feedKey,
-			  runtime.siteId,
-              startedAt,
-              stats,
-              brandCache
-            );
+			  await importAggregatedFeedItem(
+				prisma,
+				aggregated,
+				merchant,
+				runtime.affiliateProgramId,
+				runtime.feedSourceId,
+				feedKey,
+				runtime.siteId,
+				startedAt,
+				stats,
+				brandCache
+			  );
 
           const duration =
             Date.now() - started;
