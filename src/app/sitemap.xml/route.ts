@@ -128,22 +128,11 @@ export async function GET(req: Request) {
           : {}),
 
         offers: {
-          some: {
-            active: true,
-            archivedAt: null,
-
-            ...(siteId
-              ? {
-                  affiliateProgram: {
-                    is: {
-                      siteId,
-                      active: true,
-                    },
-                  },
-                }
-              : {}),
-          },
-        },
+		  some: {
+			active: true,
+			archivedAt: null,
+		  },
+		},
       },
 
       select: {
