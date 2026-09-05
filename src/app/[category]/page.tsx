@@ -160,39 +160,40 @@ export default async function CategoryPage({
     where.season = season;
   }
 
-  const [total, productsRaw] = await Promise.all([
-	prisma.product.findMany({
-	  where,
-	  orderBy:
-		sort === "newest"
-		  ? [
-			  {
-				offers: {
-				  _count: "desc",
+	const [total, productsRaw] = await Promise.all([
+	  prisma.product.count({ where }),
+	  prisma.product.findMany({
+		where,
+		orderBy:
+		  sort === "newest"
+			? [
+				{
+				  offers: {
+					_count: "desc",
+				  },
 				},
-			  },
-			  {
-				id: "desc",
-			  },
-			]
-		  : undefined,
-	  skip,
-	  take: pageSize,
-	  include: {
-		category: {
-		  select: {
-			name: true,
-			slug: true,
+				{
+				  id: "desc",
+				},
+			  ]
+			: undefined,
+		skip,
+		take: pageSize,
+		include: {
+		  category: {
+			select: {
+			  name: true,
+			  slug: true,
+			},
+		  },
+		  offers: {
+			where: {
+			  active: true,
+			},
 		  },
 		},
-		offers: {
-		  where: {
-			active: true,
-		  },
-		},
-	  },
-	}),
-  ]);
+	  }),
+	]);
 
   const products = productsRaw.map((p) => {
     const allOffers = p.offers;
