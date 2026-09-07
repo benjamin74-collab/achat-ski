@@ -8,11 +8,16 @@ export function GET(req: Request) {
 
   const origin = new URL(req.url).origin;
   const base =
-    (siteConfig.domain?.replace(/\/+$/, "") ||
-      process.env.NEXT_PUBLIC_SITE_URL?.replace(/\/+$/, "") ||
-      origin);
+    siteConfig.domain?.replace(/\/+$/, "") ||
+    process.env.NEXT_PUBLIC_SITE_URL?.replace(/\/+$/, "") ||
+    origin;
 
   const body = `
+User-agent: PerplexityBot
+Allow: /
+Disallow: /admin/
+Crawl-delay: 10
+
 User-agent: *
 Allow: /
 Disallow: /admin/
