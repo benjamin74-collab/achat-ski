@@ -31,14 +31,27 @@ function cleanValue(value?: string | null): string | null {
   return cleaned ? cleaned : null;
 }
 
+function isTrackingExcludedPath(pathname: string | null): boolean {
+  if (!pathname) {
+    return false;
+  }
+
+  return (
+    pathname === "/admin" ||
+    pathname.startsWith("/admin/") ||
+    pathname === "/auth" ||
+    pathname.startsWith("/auth/")
+  );
+}
+
 function ensureGtag() {
   window.dataLayer = window.dataLayer || [];
 
-window.gtag =
-  window.gtag ||
-  ((...args: unknown[]) => {
-    window.dataLayer.push(args);
-  });
+  window.gtag =
+    window.gtag ||
+    ((...args: unknown[]) => {
+      window.dataLayer.push(args);
+    });
 
   if (!gtagInitialized) {
     window.gtag("js", new Date());
@@ -70,26 +83,29 @@ export default function TrackingScripts(props: Props) {
   const pathname = usePathname();
   const [consent, setConsent] = useState<Consent | null>(null);
 
+  const trackingExcluded = isTrackingExcludedPath(pathname);
+
   const ga4MeasurementId =
-    props.enabledAnalytics
+    !trackingExcluded && props.enabledAnalytics
       ? cleanValue(props.ga4MeasurementId)
       : null;
 
   const googleAdsId =
-    props.enabledAds
+    !trackingExcluded && props.enabledAds
       ? cleanValue(props.googleAdsId)
       : null;
 
   const gtmContainerId =
-    props.enabledGtm
+    !trackingExcluded && props.enabledGtm
       ? cleanValue(props.gtmContainerId)
       : null;
 
   const adsenseClient =
-    cleanValue(props.adsenseClient);
+    !trackingExcluded
+      ? cleanValue(props.adsenseClient)
+      : null;
 
-  const hasConsent =
-    consent === "all";
+  const hasConsent = consent === "all";
 
   const gtagId =
     ga4MeasurementId ??
@@ -99,8 +115,7 @@ export default function TrackingScripts(props: Props) {
     setConsent(getConsentClient());
 
     const onConsent = (event: Event) => {
-      const customEvent =
-        event as CustomEvent<Consent>;
+      const customEvent = event as CustomEvent<Consent>;
 
       setConsent(
         customEvent.detail ??
@@ -123,6 +138,7 @@ export default function TrackingScripts(props: Props) {
 
   useEffect(() => {
     if (
+      trackingExcluded ||
       !hasConsent ||
       !ga4MeasurementId
     ) {
@@ -133,6 +149,7 @@ export default function TrackingScripts(props: Props) {
       ga4MeasurementId
     );
   }, [
+    trackingExcluded,
     hasConsent,
     ga4MeasurementId,
     pathname,
@@ -140,6 +157,7 @@ export default function TrackingScripts(props: Props) {
 
   useEffect(() => {
     if (
+      trackingExcluded ||
       !hasConsent ||
       !googleAdsId
     ) {
@@ -153,11 +171,15 @@ export default function TrackingScripts(props: Props) {
       googleAdsId
     );
   }, [
+    trackingExcluded,
     hasConsent,
     googleAdsId,
   ]);
 
-  if (!hasConsent) {
+  if (
+    trackingExcluded ||
+    !hasConsent
+  ) {
     return null;
   }
 
@@ -194,7 +216,10 @@ export default function TrackingScripts(props: Props) {
             )}`}
             strategy="afterInteractive"
             onReady={() => {
-              if (ga4MeasurementId) {
+              if (
+                !trackingExcluded &&
+                ga4MeasurementId
+              ) {
                 sendGa4PageView(
                   ga4MeasurementId
                 );
