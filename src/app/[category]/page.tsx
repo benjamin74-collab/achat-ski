@@ -277,35 +277,24 @@ export default async function CategoryPage({
           ? "http://schema.org/ItemListOrderDescending"
           : "http://schema.org/ItemListUnordered",
     numberOfItems: sorted.length,
-    itemListElement: sorted.map((p, idx) => {
-      const title = [p.brand, p.model, p.season].filter(Boolean).join(" ");
-      const url = `${site}/p/${p.slug}`;
-      const lowPrice = typeof p.minTotal === "number" ? (p.minTotal / 100).toFixed(2) : undefined;
-      const highPrice = typeof p.maxTotal === "number" ? (p.maxTotal / 100).toFixed(2) : undefined;
+	itemListElement: sorted.map((p, idx) => {
+	  const title = [p.brand, p.model, p.season]
+		.filter(Boolean)
+		.join(" ");
 
-      return {
-        "@type": "ListItem",
-        position: idx + 1,
-        url,
-        item: {
-          "@type": "Product",
-          name: title,
-          url,
-          category: cat.name,
-          ...(lowPrice
-            ? {
-                offers: {
-                  "@type": "AggregateOffer",
-                  priceCurrency: "EUR",
-                  lowPrice,
-                  ...(highPrice ? { highPrice } : {}),
-                  offerCount: p.offerCount,
-                },
-              }
-            : {}),
-        },
-      };
-    }),
+	  const url = `${site}/p/${p.slug}`;
+
+	  return {
+		"@type": "ListItem",
+		position: idx + 1,
+		item: {
+		  "@type": "WebPage",
+		  "@id": url,
+		  url,
+		  name: title,
+		},
+	  };
+	}),
   };
 
   const webPageJsonLd = {
