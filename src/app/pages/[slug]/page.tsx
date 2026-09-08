@@ -11,6 +11,8 @@ import RelatedArticles from "@/components/RelatedArticles";
 import AdSlot from "@/components/ads/AdSlot";
 import { injectInlineAdMarker, splitHtmlByMarker } from "@/lib/ads";
 import MobileToc from "@/components/MobileToc";
+import ArticleProductCard from "@/components/ArticleProductCard";
+import type React from "react";
 
 export const revalidate = 300;
 
@@ -74,6 +76,137 @@ function readingTime(html: string) {
   return Math.max(1, Math.ceil(words / 220));
 }
 
+type ArticlePageProduct = {
+  position: number;
+  label: string | null;
+  featured: boolean;
+
+  product: {
+    slug: string;
+    name: string | null;
+    model: string;
+    brand: string | null;
+    imageUrl: string | null;
+
+    Brand: {
+      name: string;
+    } | null;
+
+    offers: {
+      priceCents: number;
+      merchantId: number;
+    }[];
+  };
+};
+
+function renderProductShortcodes(
+  html: string,
+  products: ArticlePageProduct[]
+) {
+  /*
+   * Deux syntaxes sont reconnues :
+   *
+   * [[product:1]]
+   *
+   * ou lorsque l'éditeur HTML l'entoure
+   * automatiquement d'un paragraphe :
+   *
+   * <p>[[product:1]]</p>
+   */
+  const regex =
+    /<p>\s*\[\[product:(\d+)\]\]\s*<\/p>|\[\[product:(\d+)\]\]/gi;
+
+  const result: React.ReactNode[] = [];
+
+  let cursor = 0;
+  let match: RegExpExecArray | null;
+  let key = 0;
+
+  while ((match = regex.exec(html)) !== null) {
+    const before = html.slice(
+      cursor,
+      match.index
+    );
+
+    if (before) {
+      result.push(
+        <div
+          key={`html-${key++}`}
+          dangerouslySetInnerHTML={{
+            __html: before,
+          }}
+        />
+      );
+    }
+
+    const requestedPosition = Number(
+      match[1] ?? match[2]
+    );
+
+    /*
+     * [[product:1]] correspond au premier
+     * produit de l'onglet Produits associés.
+     */
+    const associatedProduct =
+      products[requestedPosition - 1];
+
+    if (associatedProduct) {
+      result.push(
+        <ArticleProductCard
+          key={`product-${requestedPosition}-${key++}`}
+          product={{
+            slug:
+              associatedProduct.product.slug,
+
+            name:
+              associatedProduct.product.name,
+
+            model:
+              associatedProduct.product.model,
+
+            brand:
+              associatedProduct.product.brand,
+
+            brandRelationName:
+              associatedProduct.product.Brand
+                ?.name ?? null,
+
+            imageUrl:
+              associatedProduct.product
+                .imageUrl,
+          }}
+          label={associatedProduct.label}
+          featured={
+            associatedProduct.featured
+          }
+          offers={
+            associatedProduct.product.offers
+          }
+        />
+      );
+    }
+
+    cursor =
+      match.index + match[0].length;
+  }
+
+  const remaining =
+    html.slice(cursor);
+
+  if (remaining) {
+    result.push(
+      <div
+        key={`html-${key++}`}
+        dangerouslySetInnerHTML={{
+          __html: remaining,
+        }}
+      />
+    );
+  }
+
+  return result;
+}
+
 export async function generateMetadata({ params }: { params: Params }): Promise<Metadata> {
   const p = await prisma.page.findFirst({
     where: { slug: params.slug, published: true },
@@ -123,15 +256,92 @@ export default async function PageDetail({ params }: { params: Params }) {
   const site = await getCurrentSiteUrl();
 
 	const page = await prisma.page.findFirst({
-      where: { slug: params.slug, published: true },
-      include: {
-        author: { select: { id: true, name: true } },
-        banner: { select: { publicUrl: true, width: true, height: true } },
-        thumbnail: { select: { publicUrl: true, width: true, height: true } },
-        category: { select: { id: true, name: true } },
-        guideCategory: { select: { id: true, name: true, slug: true } },
-      },
-    });
+	  where: {
+		slug: params.slug,
+		published: true,
+	  },
+
+	  include: {
+		author: {
+		  select: {
+			id: true,
+			name: true,
+		  },
+		},
+
+		banner: {
+		  select: {
+			publicUrl: true,
+			width: true,
+			height: true,
+		  },
+		},
+
+		thumbnail: {
+		  select: {
+			publicUrl: true,
+			width: true,
+			height: true,
+		  },
+		},
+
+		category: {
+		  select: {
+			id: true,
+			name: true,
+		  },
+		},
+
+		guideCategory: {
+		  select: {
+			id: true,
+			name: true,
+			slug: true,
+		  },
+		},
+
+		products: {
+		  orderBy: {
+			position: "asc",
+		  },
+
+		  select: {
+			position: true,
+			label: true,
+			featured: true,
+
+			product: {
+			  select: {
+				slug: true,
+				name: true,
+				model: true,
+				brand: true,
+				imageUrl: true,
+
+				Brand: {
+				  select: {
+					name: true,
+				  },
+				},
+
+				offers: {
+				  where: {
+					active: true,
+					inStock: true,
+					archivedAt: null,
+				  },
+
+				  select: {
+					priceCents: true,
+					merchantId: true,
+				  },
+				},
+			  },
+			},
+		  },
+		},
+	  },
+	});
 
   if (!page) return notFound();
 
@@ -361,16 +571,24 @@ export default async function PageDetail({ params }: { params: Params }) {
             <div className="bg-white md:overflow-hidden md:rounded-[2rem] md:border md:border-slate-200 md:shadow-sm">
               <div className="px-4 py-6 md:p-8 lg:p-10">
                 <div className="prose max-w-none prose-headings:scroll-mt-28">
-                  <div dangerouslySetInnerHTML={{ __html: htmlBeforeAd }} />
+				  {renderProductShortcodes(
+					htmlBeforeAd,
+					page.products
+				  )}
 
-                  {hasMarker ? (
-					  <div className="not-prose my-8">
-						<AdSlot slotKey="pageInline" />
-					  </div>
-					) : null}
+				  {hasMarker ? (
+					<div className="not-prose my-8">
+					  <AdSlot slotKey="pageInline" />
+					</div>
+				  ) : null}
 
-                  {htmlAfterAd ? <div dangerouslySetInnerHTML={{ __html: htmlAfterAd }} /> : null}
-                </div>
+				  {htmlAfterAd
+					? renderProductShortcodes(
+						htmlAfterAd,
+						page.products
+					  )
+					: null}
+				</div>
               </div>
             </div>
 
