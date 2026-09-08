@@ -185,6 +185,8 @@ model Page {
   featuredInCategories CategoryFeaturedLink[]
   comments             PageComment[]
 
+  products PageProduct[]
+
   @@index([kind, published])
   @@index([guideCategoryId])
 }
@@ -207,6 +209,30 @@ model PageComment {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
   published Boolean  @default(true)
+}
+
+model PageProduct {
+  id Int @id @default(autoincrement())
+
+  pageId Int
+  page   Page @relation(fields: [pageId], references: [id], onDelete: Cascade)
+
+  productId Int
+  product   Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  position Int @default(0)
+
+  label String?
+
+  featured Boolean @default(false)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([pageId, productId])
+  @@index([pageId, position])
+  @@index([productId])
+  @@index([pageId, featured])
 }
 
 /**
@@ -253,6 +279,7 @@ model Product {
   tests       EditorialTest[]
   sites       SiteProduct[]
   identifiers ProductIdentifier[]
+  pages       PageProduct[]
 
   @@index([brandId])
   @@index([categoryId])
@@ -400,13 +427,13 @@ model Offer {
   active     Boolean   @default(true)
   archivedAt DateTime?
 
-  lastSeen        DateTime? @default(now())
-  feedKey         String?
-  sourceItemCount Int       @default(1)
-  sourceGroupKey    String? @db.VarChar(512)
-  sourceProductHash String? @db.VarChar(64)
-  sourceOfferHash   String? @db.VarChar(64)
-  sourceHashVersion Int     @default(1)
+  lastSeen          DateTime? @default(now())
+  feedKey           String?
+  sourceItemCount   Int       @default(1)
+  sourceGroupKey    String?   @db.VarChar(512)
+  sourceProductHash String?   @db.VarChar(64)
+  sourceOfferHash   String?   @db.VarChar(64)
+  sourceHashVersion Int       @default(1)
 
   clicks       Click[]
   priceHistory PriceHistory[]
@@ -677,19 +704,19 @@ model FeedSource {
   frequency FeedFrequency @default(MANUAL_ONLY)
   timezone  String        @default("Europe/Paris")
 
-  lastRunAt        DateTime?
-  nextRunAt        DateTime?
-  lastSuccessAt    DateTime?
-  lastFailureAt    DateTime?
-  lastStatus       FeedImportStatus?
-  lastErrorMessage String?           @db.Text
-  lastContentHash   String?   @db.VarChar(64)
+  lastRunAt         DateTime?
+  nextRunAt         DateTime?
+  lastSuccessAt     DateTime?
+  lastFailureAt     DateTime?
+  lastStatus        FeedImportStatus?
+  lastErrorMessage  String?                   @db.Text
+  lastContentHash   String?                   @db.VarChar(64)
   lastContentHashAt DateTime?
-  columnMappings   FeedColumnMapping[]
-  categoryMappings CategoryExternalMapping[]
-  enrichmentRules  CategoryEnrichmentRule[]
-  imports          FeedImport[]
-  offers           Offer[]
+  columnMappings    FeedColumnMapping[]
+  categoryMappings  CategoryExternalMapping[]
+  enrichmentRules   CategoryEnrichmentRule[]
+  imports           FeedImport[]
+  offers            Offer[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -818,11 +845,11 @@ model FeedImport {
   feedSourceId Int?
   feedSource   FeedSource? @relation(fields: [feedSourceId], references: [id], onDelete: SetNull)
 
-  siteId  String?
-  trigger FeedImportTrigger @default(MANUAL)
-  mode        FeedImportMode @default(FULL)
-  contentHash String?        @db.VarChar(64)
-  
+  siteId      String?
+  trigger     FeedImportTrigger @default(MANUAL)
+  mode        FeedImportMode    @default(FULL)
+  contentHash String?           @db.VarChar(64)
+
   platform     String?
   filename     String?
   feedKey      String?
