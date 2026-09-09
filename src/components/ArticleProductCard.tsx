@@ -96,11 +96,11 @@ export default function ArticleProductCard({
           <div>
             {label ? (
               <div
-				  className={`mb-3 inline-flex rounded-full px-3 py-1.5 text-xs font-extrabold uppercase tracking-wide ${
-					featured
-					  ? "bg-brand-50 text-brand-700 ring-1 ring-brand-200"
-					  : "bg-slate-100 text-slate-700 ring-1 ring-slate-200"
-				  }`}
+                className={`mb-3 inline-flex rounded-full px-3 py-1.5 text-xs font-extrabold uppercase tracking-wide ${
+                  featured
+                    ? "bg-brand-50 text-brand-700 ring-1 ring-brand-200"
+                    : "bg-slate-100 text-slate-700 ring-1 ring-slate-200"
+                }`}
               >
                 {label}
               </div>
@@ -114,7 +114,7 @@ export default function ArticleProductCard({
 
             <Link
               href={`/p/${product.slug}`}
-				className="mt-2 block text-2xl font-black leading-tight tracking-tight text-slate-950 transition hover:text-brand-700 md:text-3xl"
+              className="mt-2 block text-xl font-black leading-tight tracking-tight text-slate-950 no-underline transition hover:text-brand-700 hover:no-underline md:text-2xl"
             >
               {productName}
             </Link>
@@ -148,14 +148,15 @@ export default function ArticleProductCard({
 
             <Link
               href={`/p/${product.slug}`}
-				className="inline-flex items-center justify-center rounded-full bg-brand-600 px-5 py-3 text-sm font-bold text-white no-underline shadow-sm transition hover:bg-brand-700 hover:text-white hover:no-underline focus:no-underline"
+              className="inline-flex items-center justify-center rounded-full bg-brand-600 px-5 py-3 text-sm font-bold !text-white !no-underline shadow-sm transition hover:bg-brand-700 hover:!text-white hover:!no-underline focus:!text-white focus:!no-underline"
             >
               {bestPrice !== null
                 ? "Comparer les prix"
                 : "Voir le produit"}
+
               <span
                 aria-hidden="true"
-                className="ml-2 text-white"
+                className="ml-2 !text-white"
               >
                 →
               </span>
