@@ -76,12 +76,8 @@ export async function POST(req: Request) {
 
     ...(categoryId ? { category: { connect: { id: categoryId } } } : {}),
 
-    ...(kind === "GUIDE" && guideCategoryId
+    ...(kind === "GUIDE" || kind === "COMPARATIF") && guideCategoryId
       ? { guideCategory: { connect: { id: guideCategoryId } } }
-      : {}),
-
-    ...(session.user?.id
-      ? { author: { connect: { id: String(session.user.id) } } }
       : {}),
 
     ...(bannerAssetId

@@ -7,6 +7,9 @@ export const meilleurRobot: SiteConfig = {
   name: "Meilleur Robot",
   domain: "https://www.meilleur-robot.com",
   tagline: "Comparer & gagner",
+  editorial: {
+  defaultAuthorName: "Équipe Meilleur-Robot",
+},
 
   brand: {
     logoSrc: "",

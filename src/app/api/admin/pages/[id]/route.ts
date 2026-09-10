@@ -335,7 +335,7 @@ export async function PUT(
      * Une catégorie de guide n'est conservée
      * que pour les pages de type GUIDE.
      */
-    ...(kind === "GUIDE"
+    ...(kind === "GUIDE" || kind === "COMPARATIF"
       ? guideCategoryId
         ? {
             guideCategory: {

@@ -5,7 +5,12 @@ import Link from "next/link";
 import type { PageKind } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { sanitizeHtml } from "@/lib/sanitize";
-import { getCurrentSiteUrl } from "@/lib/currentSite";
+import {
+  getCurrentSiteId,
+  getCurrentSiteUrl,
+} from "@/lib/currentSite";
+
+import { getSiteConfig } from "@/config/site";
 import ShareButtons from "@/components/ShareButtons";
 import RelatedArticles from "@/components/RelatedArticles";
 import AdSlot from "@/components/ads/AdSlot";
@@ -253,7 +258,12 @@ export async function generateMetadata({ params }: { params: Params }): Promise<
 }
 
 export default async function PageDetail({ params }: { params: Params }) {
-  const site = await getCurrentSiteUrl();
+  const [siteId, site] = await Promise.all([
+  getCurrentSiteId(),
+  getCurrentSiteUrl(),
+]);
+
+const siteConfig = getSiteConfig(siteId);
 
 	const page = await prisma.page.findFirst({
 	  where: {
@@ -344,6 +354,13 @@ export default async function PageDetail({ params }: { params: Params }) {
 	});
 
   if (!page) return notFound();
+  const hasPersonAuthor = Boolean(
+    page.author?.name?.trim()
+  );
+
+  const authorName =
+    page.author?.name?.trim() ||
+    siteConfig.editorial.defaultAuthorName;
 
   const canonicalUrl = `${site}/pages/${page.slug}`;
 
@@ -439,12 +456,17 @@ export default async function PageDetail({ params }: { params: Params }) {
     image: imagesForLd.length ? imagesForLd : undefined,
     datePublished: page.createdAt.toISOString(),
     dateModified: page.updatedAt.toISOString(),
-    author: page.author?.name ? { "@type": "Person", name: page.author.name } : undefined,
+    author: {
+    "@type": hasPersonAuthor
+      ? "Person"
+      : "Organization",
+    name: authorName,
+  },
     publisher: {
-      "@type": "Organization",
-      name: "Meilleur-ski",
-      url: site,
-    },
+	  "@type": "Organization",
+	  name: siteConfig.name,
+	  url: site,
+	},
   };
 
   return (
@@ -514,14 +536,15 @@ export default async function PageDetail({ params }: { params: Params }) {
                 </span>
                 <span className="hidden text-slate-300 sm:inline">·</span>
                 <span>{estimatedReadingTime} min de lecture</span>
-                {page.author?.name ? (
-                  <>
-                    <span className="hidden text-slate-300 sm:inline">·</span>
-                    <span>
-                      par <span className="font-semibold text-slate-800">{page.author.name}</span>
-                    </span>
-                  </>
-                ) : null}
+                <>
+			    <span className="hidden text-slate-300 sm:inline">·</span>
+			    <span>
+				  par{" "}
+				  <span className="font-semibold text-slate-800">
+				    {authorName}
+			      </span>
+			    </span>
+			  </>
               </div>
 
               <div className="mt-6 flex flex-wrap items-center gap-3">
@@ -550,7 +573,7 @@ export default async function PageDetail({ params }: { params: Params }) {
                     <p className="text-xs font-semibold uppercase tracking-[0.18em] text-brand-600">
                       Guide expert
                     </p>
-                    <p className="mt-2 text-lg font-black text-slate-900">Meilleur Ski</p>
+                    <p className="mt-2 text-lg font-black text-slate-900">{siteConfig.name}</p>
                   </div>
                 </div>
               )}

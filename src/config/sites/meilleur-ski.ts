@@ -7,6 +7,9 @@ export const meilleurSki: SiteConfig = {
   name: "Meilleur Ski",
   domain: "https://www.meilleur-ski.com",
   tagline: "Comparer & gagner",
+  editorial: {
+  defaultAuthorName: "Équipe Meilleur-Ski",
+},
 
   brand: {
     logoSrc: "",
