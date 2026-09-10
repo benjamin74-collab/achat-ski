@@ -461,16 +461,23 @@ export default function Header() {
                     </Link>
 
                     <div className="mt-4 grid gap-2">
-                      {guideItems.map((g) => (
-                        <Link
-                          key={g.id}
-                          href={`/pages#${g.slug}`}
-                          className="rounded-2xl border border-slate-200 bg-white p-3 text-sm font-semibold text-slate-900 hover:border-brand-200 hover:bg-brand-50 hover:text-brand-700"
-                        >
-                          {g.name}
-                        </Link>
-                      ))}
-                    </div>
+					  {guideItems.map((g) => (
+						<Link
+						  key={g.id}
+						  href={`/pages#${g.slug}`}
+						  className="rounded-2xl border border-slate-200 bg-white p-3 text-sm font-semibold text-slate-900 hover:border-brand-200 hover:bg-brand-50 hover:text-brand-700"
+						>
+						  {g.name}
+						</Link>
+					  ))}
+
+					  <Link
+						href="/pages#comparatifs"
+						className="rounded-2xl border border-sky-200 bg-sky-50 p-3 text-sm font-semibold text-sky-800 hover:border-sky-300 hover:bg-sky-100"
+					  >
+						Comparatifs
+					  </Link>
+					</div>
                   </div>
                 </div>
               </div>
@@ -558,6 +565,14 @@ export default function Header() {
                         </li>
                         {guideItems.map((g) => (
                           <li key={g.id}>
+						  <li>
+							  <Link
+								href="/pages#comparatifs"
+								className="block py-1 text-sm font-semibold text-sky-700"
+							  >
+								Comparatifs
+							  </Link>
+							</li>
                             <Link href={`/pages#${g.slug}`} className="block py-1 text-sm text-slate-600">
                               {g.name}
                             </Link>

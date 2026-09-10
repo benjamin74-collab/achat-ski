@@ -112,13 +112,24 @@ export default async function PagesIndex() {
     guideCategories.filter(
       (cat) => cat.pages.length > 0
     );
+	
+	const ungroupedComparatifs =
+	  latestUngrouped.filter(
+		(page) => page.kind === "COMPARATIF"
+	  );
 
-  const allPages = [
-    ...visibleCategories.flatMap(
-      (cat) => cat.pages
-    ),
-    ...latestUngrouped,
-  ];
+	const ungroupedGuides =
+	  latestUngrouped.filter(
+		(page) => page.kind === "GUIDE"
+	  );
+
+	const allPages = [
+	  ...visibleCategories.flatMap(
+		(cat) => cat.pages
+	  ),
+	  ...ungroupedComparatifs,
+	  ...ungroupedGuides,
+	];
 
   const totalGuides =
     allPages.filter(
@@ -264,15 +275,23 @@ export default async function PagesIndex() {
             )
           )}
 
-          {latestUngrouped.length >
-          0 ? (
-            <a
-              href="#autres-contenus"
-              className="rounded-full border bg-white px-4 py-2 text-sm font-medium transition hover:shadow-card"
-            >
-              Autres contenus
-            </a>
-          ) : null}
+          {ungroupedComparatifs.length > 0 ? (
+			  <a
+				href="#comparatifs"
+				className="rounded-full border bg-white px-4 py-2 text-sm font-medium transition hover:shadow-card"
+			  >
+				Comparatifs
+			  </a>
+			) : null}
+
+			{ungroupedGuides.length > 0 ? (
+			  <a
+				href="#autres-guides"
+				className="rounded-full border bg-white px-4 py-2 text-sm font-medium transition hover:shadow-card"
+			  >
+				Autres guides
+			  </a>
+			) : null}
         </nav>
       ) : null}
 
@@ -376,102 +395,149 @@ export default async function PagesIndex() {
           )
         )}
 
-        {latestUngrouped.length >
-        0 ? (
-          <section
-            id="autres-contenus"
-            className="scroll-mt-28"
-          >
-            <div className="mb-4">
-              <h2 className="text-2xl font-bold">
-                Autres contenus
-              </h2>
+        {ungroupedComparatifs.length > 0 ? (
+		  <section
+			id="comparatifs"
+			className="scroll-mt-28"
+		  >
+			<div className="mb-4">
+			  <h2 className="text-2xl font-bold">
+				Comparatifs
+			  </h2>
 
-              <p className="mt-2 max-w-3xl text-slate-600">
-                Guides et comparatifs
-                publiés sans catégorie
-                éditoriale spécifique.
-              </p>
-            </div>
+			  <p className="mt-2 max-w-3xl text-slate-600">
+				Nos sélections et comparatifs pour identifier
+				les produits les plus adaptés à votre pratique.
+			  </p>
+			</div>
 
-            <ul className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-              {latestUngrouped.map(
-                (p) => {
-                  const thumb =
-                    p.thumbnail
-                      ?.publicUrl ||
-                    p.thumbnailUrl ||
-                    null;
+			<ul className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+			  {ungroupedComparatifs.map((p) => {
+				const thumb =
+				  p.thumbnail?.publicUrl ||
+				  p.thumbnailUrl ||
+				  null;
 
-                  const isComparatif =
-                    p.kind ===
-                    "COMPARATIF";
+				return (
+				  <li
+					key={p.id}
+					className="overflow-hidden rounded-2xl border border-ring bg-white transition hover:-translate-y-0.5 hover:shadow-card"
+				  >
+					<Link
+					  href={`/pages/${p.slug}`}
+					  className="block"
+					>
+					  <div className="relative aspect-[16/9] w-full overflow-hidden bg-muted">
+						{thumb ? (
+						  <img
+							src={thumb}
+							alt={p.thumbnail?.alt ?? p.title}
+							className="h-full w-full object-cover"
+							loading="lazy"
+							decoding="async"
+						  />
+						) : (
+						  <div className="h-full w-full bg-gradient-to-br from-muted to-white" />
+						)}
 
-                  return (
-                    <li
-                      key={p.id}
-                      className="overflow-hidden rounded-2xl border border-ring bg-white transition hover:-translate-y-0.5 hover:shadow-card"
-                    >
-                      <Link
-                        href={`/pages/${p.slug}`}
-                        className="block"
-                      >
-                        <div className="relative aspect-[16/9] w-full overflow-hidden bg-muted">
-                          {thumb ? (
-                            <img
-                              src={thumb}
-                              alt={
-                                p.thumbnail
-                                  ?.alt ??
-                                p.title
-                              }
-                              className="h-full w-full object-cover"
-                              loading="lazy"
-                              decoding="async"
-                            />
-                          ) : (
-                            <div className="h-full w-full bg-gradient-to-br from-muted to-white" />
-                          )}
+						<span className="absolute left-3 top-3 rounded-full bg-sky-600 px-3 py-1 text-xs font-bold text-white shadow-sm">
+						  Comparatif
+						</span>
+					  </div>
 
-                          <span
-                            className={`absolute left-3 top-3 rounded-full px-3 py-1 text-xs font-bold shadow-sm ${
-                              isComparatif
-                                ? "bg-sky-600 text-white"
-                                : "bg-white text-brand-700"
-                            }`}
-                          >
-                            {isComparatif
-                              ? "Comparatif"
-                              : "Guide"}
-                          </span>
-                        </div>
+					  <div className="p-4">
+						<h3 className="text-base font-semibold text-slate-950">
+						  {p.title}
+						</h3>
 
-                        <div className="p-4">
-                          <h3 className="text-base font-semibold text-slate-950">
-                            {p.title}
-                          </h3>
+						{p.intro ? (
+						  <p className="mt-1 line-clamp-2 text-sm text-slate-600">
+							{p.intro}
+						  </p>
+						) : null}
 
-                          {p.intro ? (
-                            <p className="mt-1 line-clamp-2 text-sm text-slate-600">
-                              {p.intro}
-                            </p>
-                          ) : null}
+						<div className="mt-3 text-xs text-slate-500">
+						  Publié le {formatDateISO(p.createdAt)}
+						</div>
+					  </div>
+					</Link>
+				  </li>
+				);
+			  })}
+			</ul>
+		  </section>
+		) : null}
+		{ungroupedGuides.length > 0 ? (
+		  <section
+			id="autres-guides"
+			className="scroll-mt-28"
+		  >
+			<div className="mb-4">
+			  <h2 className="text-2xl font-bold">
+				Autres guides
+			  </h2>
 
-                          <div className="mt-3 text-xs text-slate-500">
-                            Publié le{" "}
-                            {formatDateISO(
-                              p.createdAt
-                            )}
-                          </div>
-                        </div>
-                      </Link>
-                    </li>
-                  );
-                }
-              )}
-            </ul>
-          </section>
-        ) : null}
+			  <p className="mt-2 max-w-3xl text-slate-600">
+				Guides publiés sans catégorie éditoriale spécifique.
+			  </p>
+			</div>
+
+			<ul className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+			  {ungroupedGuides.map((p) => {
+				const thumb =
+				  p.thumbnail?.publicUrl ||
+				  p.thumbnailUrl ||
+				  null;
+
+				return (
+				  <li
+					key={p.id}
+					className="overflow-hidden rounded-2xl border border-ring bg-white transition hover:-translate-y-0.5 hover:shadow-card"
+				  >
+					<Link
+					  href={`/pages/${p.slug}`}
+					  className="block"
+					>
+					  <div className="relative aspect-[16/9] w-full overflow-hidden bg-muted">
+						{thumb ? (
+						  <img
+							src={thumb}
+							alt={p.thumbnail?.alt ?? p.title}
+							className="h-full w-full object-cover"
+							loading="lazy"
+							decoding="async"
+						  />
+						) : (
+						  <div className="h-full w-full bg-gradient-to-br from-muted to-white" />
+						)}
+
+						<span className="absolute left-3 top-3 rounded-full bg-white px-3 py-1 text-xs font-bold text-brand-700 shadow-sm">
+						  Guide
+						</span>
+					  </div>
+
+					  <div className="p-4">
+						<h3 className="text-base font-semibold text-slate-950">
+						  {p.title}
+						</h3>
+
+						{p.intro ? (
+						  <p className="mt-1 line-clamp-2 text-sm text-slate-600">
+							{p.intro}
+						  </p>
+						) : null}
+
+						<div className="mt-3 text-xs text-slate-500">
+						  Publié le {formatDateISO(p.createdAt)}
+						</div>
+					  </div>
+					</Link>
+				  </li>
+				);
+			  })}
+			</ul>
+		  </section>
+		) : null}
       </div>
     </main>
   );
