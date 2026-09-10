@@ -82,11 +82,12 @@ async function main() {
       (canonicalName !== brand.name
         ? ` → ${canonicalName}`
         : "")
-	  );
-	}
-  }
+  );
+}
 
-  console.log(`\nImport terminé : ${brands.length} marques depuis ${filePath}`);
+console.log(
+  `\nImport terminé : ${brands.length} marques depuis ${filePath}`
+);
 }
 
 main()
