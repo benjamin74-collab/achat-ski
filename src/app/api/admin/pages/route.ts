@@ -76,7 +76,7 @@ export async function POST(req: Request) {
 
     ...(categoryId ? { category: { connect: { id: categoryId } } } : {}),
 
-    ...(kind === "GUIDE" || kind === "COMPARATIF") && guideCategoryId
+    ...((kind === "GUIDE" || kind === "COMPARATIF") && guideCategoryId
       ? { guideCategory: { connect: { id: guideCategoryId } } }
       : {}),
 
