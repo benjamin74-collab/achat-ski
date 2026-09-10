@@ -1,6 +1,7 @@
 import { PrismaClient } from "@prisma/client";
 import fs from "fs";
 import path from "path";
+import { normalizeBrand } from "../src/lib/brand-normalization";
 
 const prisma = new PrismaClient();
 
@@ -24,29 +25,65 @@ async function main() {
   const brands = JSON.parse(fs.readFileSync(filePath, "utf8"));
 
   for (const brand of brands) {
-    await prisma.brand.upsert({
-      where: { slug: brand.slug },
-      update: {
-        name: brand.name,
-        websiteUrl: brand.websiteUrl,
-        metaTitle: brand.metaTitle,
-        metaDescription: brand.metaDescription,
-        description: brand.description,
-        active: true,
-      },
-      create: {
-        name: brand.name,
-        slug: brand.slug,
-        websiteUrl: brand.websiteUrl,
-        metaTitle: brand.metaTitle,
-        metaDescription: brand.metaDescription,
-        description: brand.description,
-        active: true,
-        showOnHomepage: false,
-      },
-    });
+  const normalizedBrand = normalizeBrand(
+    brand.name
+  );
 
-    console.log(`✅ Marque importée/mise à jour : ${brand.name}`);
+  const canonicalName =
+    normalizedBrand?.name ?? brand.name;
+
+  const canonicalSlug =
+    normalizedBrand?.slug ?? brand.slug;
+
+  await prisma.brand.upsert({
+    where: {
+      slug: canonicalSlug,
+    },
+
+    update: {
+	  name: canonicalName,
+
+	  ...(brand.websiteUrl?.trim()
+		? { websiteUrl: brand.websiteUrl }
+		: {}),
+
+	  ...(brand.metaTitle?.trim()
+		? { metaTitle: brand.metaTitle }
+		: {}),
+
+	  ...(brand.metaDescription?.trim()
+		? {
+			metaDescription:
+			  brand.metaDescription,
+		  }
+		: {}),
+
+	  ...(brand.description?.trim()
+		? { description: brand.description }
+		: {}),
+
+	  active: true,
+	},
+
+    create: {
+      name: canonicalName,
+      slug: canonicalSlug,
+      websiteUrl: brand.websiteUrl,
+      metaTitle: brand.metaTitle,
+      metaDescription: brand.metaDescription,
+      description: brand.description,
+      active: true,
+      showOnHomepage: false,
+    },
+  });
+
+  console.log(
+    `✅ Marque importée/mise à jour : ${brand.name}` +
+      (canonicalName !== brand.name
+        ? ` → ${canonicalName}`
+        : "")
+	  );
+	}
   }
 
   console.log(`\nImport terminé : ${brands.length} marques depuis ${filePath}`);
