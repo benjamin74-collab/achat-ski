@@ -565,19 +565,20 @@ export default function Header() {
                         </li>
                         {guideItems.map((g) => (
                           <li key={g.id}>
-						  <li>
-							  <Link
-								href="/pages#comparatifs"
-								className="block py-1 text-sm font-semibold text-sky-700"
-							  >
-								Comparatifs
-							  </Link>
-							</li>
                             <Link href={`/pages#${g.slug}`} className="block py-1 text-sm text-slate-600">
                               {g.name}
                             </Link>
                           </li>
                         ))}
+
+                        <li>
+                          <Link
+                            href="/pages#comparatifs"
+                            className="block py-1 text-sm font-semibold text-sky-700"
+                          >
+                            Comparatifs
+                          </Link>
+                        </li>
                       </ul>
                     </div>
                   ) : null}
