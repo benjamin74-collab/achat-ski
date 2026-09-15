@@ -325,12 +325,19 @@ async function updateMatchedProduct(
     primaryCategory,
   } = aggregated;
 
+  const currentProduct =
+    await prisma.product.findUniqueOrThrow({
+      where: {
+        id: productId,
+      },
+    });
+
   const name =
     item.cleanName || item.title;
 
   const normalizedName =
     normalizeProductName(name);
-	
+
   const gtin = normalizeGtin(
     item.gtin
   );
@@ -342,48 +349,101 @@ async function updateMatchedProduct(
       gtin
     );
 
-  const product = await prisma.product.update({
-    where: {
-      id: productId,
-    },
-    data: {
-      name,
-      model: name,
-	  brand:
-	    brandName ||
-	    formatBrandDisplayName(
-		  item.brand
-	    ),
-	  brandId,
-	  gtin: writableLegacyGtin,
+  const resolvedBrand =
+    brandName ||
+    formatBrandDisplayName(
+      item.brand
+    );
 
-      categoryId: primaryCategory.id,
+  const nextAttributes =
+    buildProductAttributes(
+      aggregated
+    );
 
-      description:
-        item.description || undefined,
+  /*
+   * Les valeurs absentes du flux ne doivent pas effacer
+   * des données produit déjà enregistrées.
+   */
+  const nextProduct = {
+    name,
+    model: name,
+    brand:
+      resolvedBrand ??
+      currentProduct.brand,
+    brandId:
+      brandId ??
+      currentProduct.brandId,
+    gtin:
+      writableLegacyGtin ??
+      currentProduct.gtin,
+    categoryId:
+      primaryCategory.id,
+    description:
+      item.description ||
+      currentProduct.description,
+    normalizedName,
+    manufacturerReference:
+      item.manufacturerReference ||
+      currentProduct.manufacturerReference,
+    imageUrl:
+      item.imageUrl ||
+      currentProduct.imageUrl,
+    active: true,
+    published: true,
+    attributes:
+      nextAttributes,
+  };
 
-      normalizedName,
+  /*
+   * Sécurité SEO :
+   * ne jamais exécuter prisma.product.update() si les données
+   * produit sont strictement identiques. Product.updatedAt est
+   * utilisé comme lastmod du sitemap : une simple actualisation
+   * d'offre/prix/stock ne doit donc pas le modifier.
+   */
+  const hasProductChanged =
+    currentProduct.name !==
+      nextProduct.name ||
+    currentProduct.model !==
+      nextProduct.model ||
+    currentProduct.brand !==
+      nextProduct.brand ||
+    currentProduct.brandId !==
+      nextProduct.brandId ||
+    currentProduct.gtin !==
+      nextProduct.gtin ||
+    currentProduct.categoryId !==
+      nextProduct.categoryId ||
+    currentProduct.description !==
+      nextProduct.description ||
+    currentProduct.normalizedName !==
+      nextProduct.normalizedName ||
+    currentProduct.manufacturerReference !==
+      nextProduct.manufacturerReference ||
+    currentProduct.imageUrl !==
+      nextProduct.imageUrl ||
+    currentProduct.active !==
+      nextProduct.active ||
+    currentProduct.published !==
+      nextProduct.published ||
+    stableJsonStringify(
+      currentProduct.attributes
+    ) !==
+      stableJsonStringify(
+        nextProduct.attributes
+      );
 
-      manufacturerReference:
-        item.manufacturerReference ||
-        undefined,
+  if (!hasProductChanged) {
+    return currentProduct;
+  }
 
-      /*
-       * Une URL vide ou absente ne doit pas effacer
-       * une image déjà enregistrée.
-       */
-      imageUrl:
-        item.imageUrl || undefined,
-
-      active: true,
-      published: true,
-
-      attributes:
-        buildProductAttributes(
-          aggregated
-        ),
-    },
-  });
+  const product =
+    await prisma.product.update({
+      where: {
+        id: productId,
+      },
+      data: nextProduct,
+    });
 
   stats.updatedProducts += 1;
 
@@ -425,10 +485,26 @@ async function createProduct(
       },
     });
 
+  /*
+   * Un slug déjà présent correspond à une fiche existante.
+   * On repasse par la mise à jour conditionnelle afin de ne pas
+   * toucher updatedAt lorsque les données n'ont pas changé.
+   */
+  if (existingProduct) {
+    return updateMatchedProduct(
+      prisma,
+      aggregated,
+      existingProduct.id,
+      brandId,
+      brandName,
+      stats
+    );
+  }
+
   const writableLegacyGtin =
     await resolveWritableLegacyGtin(
       prisma,
-      existingProduct?.id,
+      undefined,
       gtin
     );
 
@@ -472,55 +548,53 @@ async function createProduct(
   };
 
   /*
-   * On utilise upsert(slug) au lieu de create() + catch P2002.
-   *
-   * Avantage :
-   * - pas d'erreur Prisma affichée en rouge ;
-   * - reprise propre après import partiellement réussi ;
-   * - meilleure résistance aux créations concurrentes.
+   * L'upsert protège contre une création concurrente du même slug.
+   * Le bloc update reste volontairement vide : une éventuelle ligne
+   * créée entre le findUnique() et l'upsert() ne doit pas recevoir
+   * une fausse date de mise à jour. Le prochain import pourra
+   * l'enrichir via updateMatchedProduct().
    */
   const product =
     await prisma.product.upsert({
       where: {
         slug,
       },
-
-      update: {
-        ...productData,
-
-        /*
-         * Une URL vide ou absente ne doit pas effacer
-         * une image déjà enregistrée.
-         */
-        imageUrl:
-          item.imageUrl || undefined,
-
-        description:
-          item.description || undefined,
-
-        manufacturerReference:
-          item.manufacturerReference ||
-          undefined,
-      },
-
+      update: {},
       create: {
         ...productData,
         slug,
       },
     });
 
-  if (
-    existingProduct
-  ) {
-    stats.updatedProducts += 1;
-  } else {
-    stats.createdProducts += 1;
-  }
+  stats.createdProducts += 1;
 
   return product;
 }
 
-/*
+function stableJsonStringify(
+  value: unknown
+): string {
+  const normalize = (input: unknown): unknown => {
+    if (Array.isArray(input)) {
+      return input.map(normalize);
+    }
+
+    if (input !== null && typeof input === "object") {
+      return Object.fromEntries(
+        Object.entries(input as Record<string, unknown>)
+          .sort(([a], [b]) => a.localeCompare(b))
+          .map(([key, nestedValue]) => [key, normalize(nestedValue)])
+      );
+    }
+
+    return input;
+  };
+
+  return JSON.stringify(normalize(value));
+}
+
+
+/**
  * Enregistre la catégorie principale ainsi que les catégories secondaires.
  *
  * Par défaut, les anciennes relations sont conservées pour permettre
