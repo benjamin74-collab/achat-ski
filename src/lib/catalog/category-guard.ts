@@ -203,9 +203,7 @@ function buildSnowboardCategoryPlan(
     aggregated.primaryCategory.slug;
 
   if (
-    path.includes(
-      "ekosport > nos univers > snowboard > materiel snowboard > pack snowboard"
-    ) ||
+    categoryPathEndsWith(path, "pack snowboard") ||
     path.includes("snowboard > packs")
   ) {
     return {
@@ -218,9 +216,7 @@ function buildSnowboardCategoryPlan(
   }
 
 if (
-  path.includes(
-    "ekosport > nos univers > snowboard > materiel snowboard > planche de snowboard"
-  ) ||
+  categoryPathEndsWith(path, "planche de snowboard") ||
   path.includes("snowboard > planches")
 ) {
   const primarySlug =
@@ -350,9 +346,7 @@ function buildNordicCategoryPlan(
   }
 
   if (
-    path.includes(
-      "ekosport > nos univers > ski de fond > materiel ski de fond > pack ski de fond"
-    )
+    categoryPathEndsWith(path, "pack ski de fond")
   ) {
     const primarySlug =
       inferNordicStyle(aggregated) === "classic"
@@ -369,9 +363,7 @@ function buildNordicCategoryPlan(
   }
 
   if (
-    path.includes(
-      "ekosport > nos univers > ski de fond > materiel ski de fond > ski de fond"
-    )
+    categoryPathEndsWith(path, "ski de fond")
   ) {
     const primarySlug =
       inferNordicStyle(aggregated) === "classic"
@@ -487,87 +479,62 @@ function buildAlpineSkiCategoryPlan(
     return null;
   }
 
-  if (
-    path.includes(
-      "ekosport > nos univers > ski alpin > materiel ski > ski"
-    )
-  ) {
-    const primarySlug =
-      inferAlpineSkiSlug(aggregated);
-
-    return {
-      primarySlug,
-      allowedSlugs: [
-        primarySlug,
-      ],
-      cleanupSlugs: ALPINE_SKI_EXCLUSIVE_SLUGS,
-    };
-  }
-
-  if (
-    path.includes(
-      "ekosport > nos univers > ski alpin > materiel ski > pack ski"
-    )
-  ) {
+  /*
+   * La nature du produit est prioritaire sur sa pratique :
+   * un pack ne doit jamais être classé comme ski nu, et inversement.
+   * On teste donc la feuille exacte du chemin source marchand.
+   */
+  if (categoryPathEndsWith(path, "pack ski")) {
     const primarySlug =
       inferAlpinePackSlug(aggregated);
 
     return {
       primarySlug,
-      allowedSlugs: [
-        primarySlug,
-      ],
+      allowedSlugs: [primarySlug],
       cleanupSlugs: ALPINE_SKI_EXCLUSIVE_SLUGS,
     };
   }
 
-  if (
-    path.includes(
-      "ekosport > nos univers > ski alpin > materiel ski > chaussure de ski"
-    )
-  ) {
+  if (categoryPathEndsWith(path, "ski")) {
+    const primarySlug =
+      inferAlpineSkiSlug(aggregated);
+
+    return {
+      primarySlug,
+      allowedSlugs: [primarySlug],
+      cleanupSlugs: ALPINE_SKI_EXCLUSIVE_SLUGS,
+    };
+  }
+
+  if (categoryPathEndsWith(path, "chaussure de ski")) {
     const primarySlug =
       inferAlpineBootSlug(aggregated);
 
     return {
       primarySlug,
-      allowedSlugs: [
-        primarySlug,
-      ],
+      allowedSlugs: [primarySlug],
       cleanupSlugs: ALPINE_SKI_EXCLUSIVE_SLUGS,
     };
   }
 
-  if (
-    path.includes(
-      "ekosport > nos univers > ski alpin > materiel ski > fixation ski"
-    )
-  ) {
+  if (categoryPathEndsWith(path, "fixation ski")) {
     const primarySlug =
       inferAlpineBindingSlug(aggregated);
 
     return {
       primarySlug,
-      allowedSlugs: [
-        primarySlug,
-      ],
+      allowedSlugs: [primarySlug],
       cleanupSlugs: ALPINE_SKI_EXCLUSIVE_SLUGS,
     };
   }
 
-  if (
-    path.includes(
-      "ekosport > nos univers > ski alpin > materiel ski > baton de ski"
-    )
-  ) {
+  if (categoryPathEndsWith(path, "baton de ski")) {
     const primarySlug =
       inferAlpinePoleSlug(aggregated);
 
     return {
       primarySlug,
-      allowedSlugs: [
-        primarySlug,
-      ],
+      allowedSlugs: [primarySlug],
       cleanupSlugs: ALPINE_SKI_EXCLUSIVE_SLUGS,
     };
   }
@@ -665,9 +632,7 @@ function buildRandoCategoryPlan(
   }
 
   if (
-    path.includes(
-      "ekosport > nos univers > ski de randonnee > materiel ski de randonnee > pack ski de randonnee"
-    )
+    categoryPathEndsWith(path, "pack ski de randonnee")
   ) {
     return {
       primarySlug: "packs-ski-randonnee",
@@ -677,9 +642,7 @@ function buildRandoCategoryPlan(
   }
 
   if (
-    path.includes(
-      "ekosport > nos univers > ski de randonnee > materiel ski de randonnee > ski de randonnee"
-    )
+    categoryPathEndsWith(path, "ski de randonnee")
   ) {
     return {
       primarySlug: "skis-randonnee",
@@ -1300,6 +1263,18 @@ function findCategoryBySlug(
   }
 
   return null;
+}
+
+function categoryPathEndsWith(
+  normalizedPath: string,
+  leaf: string
+): boolean {
+  const normalizedLeaf = normalizeCategoryPath(leaf);
+
+  return (
+    normalizedPath === normalizedLeaf ||
+    normalizedPath.endsWith(` > ${normalizedLeaf}`)
+  );
 }
 
 function normalizeCategoryPath(

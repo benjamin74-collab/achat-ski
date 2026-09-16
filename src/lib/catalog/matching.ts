@@ -65,21 +65,10 @@ if (sourceGroupKeys.length > 0) {
 }
 
 /*
- * Les packs snowboard sont des produits composites.
- * Ils ne doivent jamais matcher une planche nue via GTIN,
- * référence fabricant, style code ou nom normalisé.
+ * Tous les types gardés (pack, ski nu, snowboard, nordique, rando, etc.)
+ * peuvent être rapprochés uniquement avec un produit existant du même type.
+ * La compatibilité est contrôlée pour chaque stratégie de matching ci-dessous.
  */
-if (
-  incomingProductKind === "SNOWBOARD_PACK" ||
-  incomingProductKind === "NORDIC_PACK" ||
-  incomingProductKind === "ALPINE_SKI_PACK" ||
-  incomingProductKind === "RANDO_PACK"
-) {
-  return {
-    confidence: 0,
-    reason: "NEW_PRODUCT",
-  };
-}
 
   const gtins = uniqueIdentifiers(
     [
@@ -90,13 +79,14 @@ if (
 
   if (gtins.length > 0) {
     const productFromIdentifier =
-      await findProductByIdentifier(
+      await findCompatibleProductByIdentifier(
         prisma,
         siteId,
         ProductIdentifierType.GTIN,
         gtins,
         "",
-        ""
+        "",
+        aggregated
       );
 
     if (productFromIdentifier) {
@@ -118,7 +108,14 @@ if (
       },
     });
 
-    if (product) {
+    if (
+      product &&
+      await isCompatibleExistingProduct(
+        prisma,
+        product.id,
+        aggregated
+      )
+    ) {
       return {
         productId: product.id,
         confidence: 100,
@@ -134,13 +131,14 @@ if (
 
   if (merchantParentExternalIds.length > 0) {
     const productFromIdentifier =
-      await findProductByIdentifier(
+      await findCompatibleProductByIdentifier(
         prisma,
         siteId,
         ProductIdentifierType.MERCHANT_PARENT_ID,
         merchantParentExternalIds,
         "",
-        item.merchantSlug
+        item.merchantSlug,
+        aggregated
       );
 
     if (productFromIdentifier) {
@@ -163,7 +161,14 @@ if (
       },
     });
 
-    if (offer) {
+    if (
+      offer &&
+      await isCompatibleExistingProduct(
+        prisma,
+        offer.productId,
+        aggregated
+      )
+    ) {
       return {
         productId: offer.productId,
         confidence: 100,
@@ -190,7 +195,14 @@ if (
       },
     });
 
-    if (offer) {
+    if (
+      offer &&
+      await isCompatibleExistingProduct(
+        prisma,
+        offer.productId,
+        aggregated
+      )
+    ) {
       return {
         productId: offer.productId,
         confidence: 99,
@@ -211,13 +223,14 @@ if (
 
   if (brandKey && styleCodes.length > 0) {
     const productFromIdentifier =
-      await findProductByIdentifier(
+      await findCompatibleProductByIdentifier(
         prisma,
         siteId,
         ProductIdentifierType.STYLE_CODE,
         styleCodes,
         brandKey,
-        ""
+        "",
+        aggregated
       );
 
     if (productFromIdentifier) {
@@ -241,13 +254,14 @@ if (
 
   if (brandKey && manufacturerReferences.length > 0) {
     const productFromIdentifier =
-      await findProductByIdentifier(
+      await findCompatibleProductByIdentifier(
         prisma,
         siteId,
         ProductIdentifierType.MANUFACTURER_REFERENCE,
         manufacturerReferences,
         brandKey,
-        ""
+        "",
+        aggregated
       );
 
     if (productFromIdentifier) {
@@ -272,7 +286,14 @@ if (
       },
     });
 
-    if (product) {
+    if (
+      product &&
+      await isCompatibleExistingProduct(
+        prisma,
+        product.id,
+        aggregated
+      )
+    ) {
       return {
         productId: product.id,
         confidence: 97,
@@ -313,10 +334,17 @@ if (
         },
       });
 
-      if (product) {
-        return {
-          productId: product.id,
-          confidence: 90,
+      if (
+      product &&
+      await isCompatibleExistingProduct(
+        prisma,
+        product.id,
+        aggregated
+      )
+    ) {
+      return {
+        productId: product.id,
+        confidence: 90,
           reason: "BRAND_NORMALIZED_NAME",
         };
       }
@@ -428,32 +456,51 @@ async function findCompatibleProductByIdentifier(
   merchantSlug: string,
   aggregated: AggregatedFeedItem
 ): Promise<{ productId: number } | null> {
-  const candidate =
-    await findProductByIdentifier(
-      prisma,
-      siteId,
-      type,
-      values,
-      brandKey,
-      merchantSlug
-    );
+  const cleanedValues = uniqueIdentifiers(values);
 
-  if (!candidate) {
+  if (cleanedValues.length === 0) {
     return null;
   }
 
-  const compatible =
-    await isCompatibleExistingProduct(
+  const candidates = await prisma.productIdentifier.findMany({
+    where: {
+      siteId,
+      type,
+      value: {
+        in: cleanedValues,
+      },
+      brandKey,
+      merchantSlug,
+    },
+    orderBy: {
+      updatedAt: "desc",
+    },
+    select: {
+      productId: true,
+    },
+  });
+
+  const seenProductIds = new Set<number>();
+
+  for (const candidate of candidates) {
+    if (seenProductIds.has(candidate.productId)) {
+      continue;
+    }
+
+    seenProductIds.add(candidate.productId);
+
+    const compatible = await isCompatibleExistingProduct(
       prisma,
       candidate.productId,
       aggregated
     );
 
-  if (!compatible) {
-    return null;
+    if (compatible) {
+      return candidate;
+    }
   }
 
-  return candidate;
+  return null;
 }
 
 async function isCompatibleExistingProduct(
@@ -503,12 +550,14 @@ async function isCompatibleExistingProduct(
       "sourceCategoryPath"
     );
 
+  // Le chemin source marchand est la preuve la plus fiable de la nature
+  // du produit. Les catégories historiques peuvent avoir été polluées.
   const existingKind =
-    resolveProductKindFromSlug(
-      category?.slug
-    ) ||
     resolveProductKindFromPath(
       existingPath
+    ) ||
+    resolveProductKindFromSlug(
+      category?.slug
     );
 
   if (!existingKind) {
