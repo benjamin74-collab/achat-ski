@@ -32,11 +32,6 @@ export async function matchFeedItem(
     brandName || item.brand
   );
   
-  const incomingProductKind =
-  resolveGuardedProductKind(
-    aggregated
-  );
-
 const sourceGroupKeys = uniqueIdentifiers([
   ...aggregated.sourceGroupKeys,
   aggregated.groupKey,
@@ -355,39 +350,6 @@ if (sourceGroupKeys.length > 0) {
     confidence: 0,
     reason: "NEW_PRODUCT",
   };
-}
-
-async function findProductByIdentifier(
-  prisma: PrismaClient,
-  siteId: string,
-  type: ProductIdentifierType,
-  values: string[],
-  brandKey: string,
-  merchantSlug: string
-): Promise<{ productId: number } | null> {
-  const cleanedValues = uniqueIdentifiers(values);
-
-  if (cleanedValues.length === 0) {
-    return null;
-  }
-
-  return prisma.productIdentifier.findFirst({
-    where: {
-      siteId,
-      type,
-      value: {
-        in: cleanedValues,
-      },
-      brandKey,
-      merchantSlug,
-    },
-    orderBy: {
-      updatedAt: "desc",
-    },
-    select: {
-      productId: true,
-    },
-  });
 }
 
 function buildBrandWhere(

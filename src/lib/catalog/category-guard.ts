@@ -135,6 +135,30 @@ const RANDO_EXCLUSIVE_SLUGS = [
   "sacs-airbag",
 ];
 
+/*
+ * Les skis et packs de randonnée sont exclusifs des branches
+ * ski alpin / packs ski alpin. Ce cleanup croisé empêche un réimport
+ * de conserver ou de réintroduire ces relations contradictoires.
+ */
+const RANDO_SKI_CROSS_FAMILY_CLEANUP_SLUGS = [
+  ...RANDO_EXCLUSIVE_SLUGS,
+
+  "skis",
+  "skis-piste",
+  "skis-all-mountain",
+  "skis-freeride",
+  "skis-freestyle",
+  "skis-junior",
+
+  "packs-skis",
+  "packs-skis-piste",
+  "packs-skis-all-mountain",
+  "packs-skis-freeride",
+  "packs-skis-freestyle",
+  "packs-skis-junior",
+];
+
+
 export function applyCategoryGuardToAggregatedItems(
   items: AggregatedFeedItem[],
   source: FeedCategoryMappings
@@ -701,7 +725,7 @@ function buildRandoCategoryPlan(
     return {
       primarySlug: "packs-ski-randonnee",
       allowedSlugs: ["packs-ski-randonnee"],
-      cleanupSlugs: RANDO_EXCLUSIVE_SLUGS,
+      cleanupSlugs: RANDO_SKI_CROSS_FAMILY_CLEANUP_SLUGS,
     };
   }
 
@@ -711,7 +735,7 @@ function buildRandoCategoryPlan(
     return {
       primarySlug: "skis-randonnee",
       allowedSlugs: ["skis-randonnee"],
-      cleanupSlugs: RANDO_EXCLUSIVE_SLUGS,
+      cleanupSlugs: RANDO_SKI_CROSS_FAMILY_CLEANUP_SLUGS,
     };
   }
 

@@ -104,6 +104,16 @@ const brandName =
     brandName
   );
 
+const preserveExistingClassification =
+  match.productId
+    ? await shouldPreserveExistingClassification(
+        prisma,
+        match.productId,
+        merchant.id,
+        match.reason
+      )
+    : false;
+
 const product = match.productId
   ? await updateMatchedProduct(
       prisma,
@@ -111,7 +121,8 @@ const product = match.productId
       match.productId,
       brandId,
       brandName,
-      stats
+      stats,
+      preserveExistingClassification
     )
   : await createProduct(
       prisma,
@@ -121,13 +132,15 @@ const product = match.productId
       stats
     );
 
-	await syncProductCategories(
-	  prisma,
-	  product.id,
-	  primaryCategory.id,
-	  categories.map((category) => category.id),
-	  aggregated.categoryCleanupIds ?? []
-	);
+if (!preserveExistingClassification) {
+  await syncProductCategories(
+    prisma,
+    product.id,
+    primaryCategory.id,
+    categories.map((category) => category.id),
+    aggregated.categoryCleanupIds ?? []
+  );
+}
 
   await syncProductIdentifiers(
     prisma,
@@ -318,7 +331,8 @@ async function updateMatchedProduct(
   productId: number,
   brandId: number | undefined,
   brandName: string | undefined,
-  stats: ImportStats
+  stats: ImportStats,
+  preserveExistingClassification = false
 ) {
   const {
     item,
@@ -355,10 +369,18 @@ async function updateMatchedProduct(
       item.brand
     );
 
-  const nextAttributes =
+  const incomingAttributes =
     buildProductAttributes(
       aggregated
     );
+
+  const nextAttributes =
+    preserveExistingClassification
+      ? preserveClassificationAttributes(
+          currentProduct.attributes,
+          incomingAttributes
+        )
+      : incomingAttributes;
 
   /*
    * Les valeurs absentes du flux ne doivent pas effacer
@@ -377,7 +399,9 @@ async function updateMatchedProduct(
       writableLegacyGtin ??
       currentProduct.gtin,
     categoryId:
-      primaryCategory.id,
+      preserveExistingClassification
+        ? currentProduct.categoryId
+        : primaryCategory.id,
     description:
       item.description ||
       currentProduct.description,
@@ -570,6 +594,78 @@ async function createProduct(
 
   return product;
 }
+
+/**
+ * Si un nouvel import retrouve une fiche déjà alimentée par un autre marchand
+ * grâce à un identifiant produit fiable, la taxonomie existante reste
+ * l'autorité. Le nouvel import peut toujours ajouter/actualiser son offre.
+ */
+async function shouldPreserveExistingClassification(
+  prisma: PrismaClient,
+  productId: number,
+  incomingMerchantId: number,
+  matchReason: string
+): Promise<boolean> {
+  const reliableCrossMerchantReasons = new Set([
+    "GTIN",
+    "BRAND_STYLE_CODE",
+    "BRAND_MANUFACTURER_REFERENCE",
+  ]);
+
+  if (!reliableCrossMerchantReasons.has(matchReason)) {
+    return false;
+  }
+
+  const otherMerchantOffer = await prisma.offer.findFirst({
+    where: {
+      productId,
+      merchantId: {
+        not: incomingMerchantId,
+      },
+    },
+    select: {
+      id: true,
+    },
+  });
+
+  return Boolean(otherMerchantOffer);
+}
+
+function preserveClassificationAttributes(
+  currentAttributes: Prisma.JsonValue | null,
+  incomingAttributes: Prisma.InputJsonValue
+): Prisma.InputJsonValue {
+  const current =
+    currentAttributes &&
+    typeof currentAttributes === "object" &&
+    !Array.isArray(currentAttributes)
+      ? (currentAttributes as Record<string, unknown>)
+      : {};
+
+  const incoming =
+    incomingAttributes &&
+    typeof incomingAttributes === "object" &&
+    !Array.isArray(incomingAttributes)
+      ? (incomingAttributes as Record<string, unknown>)
+      : {};
+
+  return {
+    ...incoming,
+    sourceCategoryPath:
+      current.sourceCategoryPath ??
+      incoming.sourceCategoryPath ??
+      null,
+    primaryCategorySlug:
+      current.primaryCategorySlug ??
+      incoming.primaryCategorySlug ??
+      null,
+    categorySlugs:
+      current.categorySlugs ??
+      incoming.categorySlugs ??
+      [],
+  } as Prisma.InputJsonValue;
+}
+
 
 function stableJsonStringify(
   value: unknown
