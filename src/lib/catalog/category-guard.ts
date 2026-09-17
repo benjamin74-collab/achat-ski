@@ -480,6 +480,70 @@ function buildAlpineSkiCategoryPlan(
   }
 
   /*
+   * Certains marchands (notamment Alpinstore) utilisent "Ski alpin"
+   * comme catégorie source générique pour plusieurs natures de produit.
+   * Sur ce chemin générique seulement, on applique quelques garde-fous
+   * textuels très explicites et volontairement conservateurs.
+   */
+  if (path === "ski alpin") {
+    const text = buildGuardSearchText(aggregated);
+
+    if (
+      text.includes("pack ski ") ||
+      text.includes("pack skis ") ||
+      text.startsWith("pack ski ") ||
+      text.startsWith("pack skis ")
+    ) {
+      const primarySlug =
+        inferAlpinePackSlug(aggregated);
+
+      return {
+        primarySlug,
+        allowedSlugs: [primarySlug],
+        cleanupSlugs: ALPINE_SKI_EXCLUSIVE_SLUGS,
+      };
+    }
+
+    if (
+      text.includes("baton de ski") ||
+      text.includes("batons de ski") ||
+      text.includes("ski pole") ||
+      text.includes("ski poles")
+    ) {
+      const primarySlug =
+        inferAlpinePoleSlug(aggregated);
+
+      return {
+        primarySlug,
+        allowedSlugs: [primarySlug],
+        cleanupSlugs: ALPINE_SKI_EXCLUSIVE_SLUGS,
+      };
+    }
+
+    /*
+     * Les semelles / sole blocks sont des accessoires de ski et non
+     * des skis. La catégorie "protections-ski" correspond à
+     * "Protections & accessoires ski".
+     *
+     * cleanupSlugs retire aussi les anciennes relations alpines
+     * incompatibles lors de l'import.
+     */
+    if (
+      text.includes("sole block") ||
+      text.includes("semelle alpine") ||
+      text.includes("semelles alpine") ||
+      text.includes("semelle de chaussure") ||
+      text.includes("semelles de chaussure")
+    ) {
+      return {
+        primarySlug: "protections-ski",
+        allowedSlugs: ["protections-ski"],
+        cleanupSlugs: ALPINE_SKI_EXCLUSIVE_SLUGS,
+      };
+    }
+  }
+
+  /*
    * La nature du produit est prioritaire sur sa pratique :
    * un pack ne doit jamais être classé comme ski nu, et inversement.
    * On teste donc la feuille exacte du chemin source marchand.
