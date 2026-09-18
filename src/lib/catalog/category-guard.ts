@@ -158,6 +158,16 @@ const RANDO_SKI_CROSS_FAMILY_CLEANUP_SLUGS = [
   "packs-skis-junior",
 ];
 
+const ALPINE_SKI_CROSS_FAMILY_CLEANUP_SLUGS = [
+  ...ALPINE_SKI_EXCLUSIVE_SLUGS,
+  "skis-randonnee",
+  "skis-randonnee-legers",
+  "skis-freerando",
+  "packs-ski-randonnee",
+  "packs-ski-freerando",
+];
+
+
 
 export function applyCategoryGuardToAggregatedItems(
   items: AggregatedFeedItem[],
@@ -524,7 +534,7 @@ function buildAlpineSkiCategoryPlan(
       return {
         primarySlug,
         allowedSlugs: [primarySlug],
-        cleanupSlugs: ALPINE_SKI_EXCLUSIVE_SLUGS,
+        cleanupSlugs: ALPINE_SKI_CROSS_FAMILY_CLEANUP_SLUGS,
       };
     }
 
@@ -579,7 +589,7 @@ function buildAlpineSkiCategoryPlan(
     return {
       primarySlug,
       allowedSlugs: [primarySlug],
-      cleanupSlugs: ALPINE_SKI_EXCLUSIVE_SLUGS,
+      cleanupSlugs: ALPINE_SKI_CROSS_FAMILY_CLEANUP_SLUGS,
     };
   }
 
@@ -590,7 +600,7 @@ function buildAlpineSkiCategoryPlan(
     return {
       primarySlug,
       allowedSlugs: [primarySlug],
-      cleanupSlugs: ALPINE_SKI_EXCLUSIVE_SLUGS,
+      cleanupSlugs: ALPINE_SKI_CROSS_FAMILY_CLEANUP_SLUGS,
     };
   }
 
@@ -711,12 +721,74 @@ function buildRandoCategoryPlan(
     aggregated.item.categoryPath
   );
 
-  if (!path.includes("ski de randonnee")) {
+  const isRandoPath =
+    path.includes("ski de randonnee") ||
+    path.includes("ski randonnee");
+
+  if (!isRandoPath) {
     return null;
   }
 
   if (path.includes("vetement ski de randonnee")) {
     return null;
+  }
+
+  /*
+   * Alpinstore peut utiliser "Ski de randonnee" comme catégorie générique.
+   * Ce chemin seul ne prouve donc pas qu'il s'agit d'un ski.
+   */
+  if (
+    path === "ski de randonnee" ||
+    path === "ski randonnee"
+  ) {
+    /*
+     * IMPORTANT : buildGuardSearchText() contient categoryPath.
+     * Ici on ne regarde que le libellé produit pour éviter que le chemin
+     * générique fasse passer automatiquement tous les produits pour des skis.
+     */
+    const productText =
+      buildProductOnlyGuardSearchText(aggregated);
+
+    if (
+      productText.includes("sac a dos") ||
+      productText.includes("backpack") ||
+      productText.includes("rucksack")
+    ) {
+      return {
+        primarySlug: "sacs-ski",
+        allowedSlugs: ["sacs-ski"],
+        cleanupSlugs: RANDO_SKI_CROSS_FAMILY_CLEANUP_SLUGS,
+      };
+    }
+
+    if (
+      productText.includes("ski de randonnee") ||
+      productText.includes("skis de randonnee")
+    ) {
+      return {
+        primarySlug: "skis-randonnee",
+        allowedSlugs: ["skis-randonnee"],
+        cleanupSlugs: RANDO_SKI_CROSS_FAMILY_CLEANUP_SLUGS,
+      };
+    }
+
+    return null;
+  }
+
+  /*
+   * Flux génériques de packs complets :
+   * "Packs ski de randonnee avec fixation", "... avec peaux", etc.
+   * La nature PACK est prioritaire sur les composants inclus.
+   */
+  if (
+    path.startsWith("packs ski de randonnee avec ") ||
+    path.startsWith("pack ski de randonnee avec ")
+  ) {
+    return {
+      primarySlug: "packs-ski-randonnee",
+      allowedSlugs: ["packs-ski-randonnee"],
+      cleanupSlugs: RANDO_SKI_CROSS_FAMILY_CLEANUP_SLUGS,
+    };
   }
 
   if (
@@ -1259,6 +1331,19 @@ function buildGuardSearchText(
       aggregated.item.cleanName,
       aggregated.item.categoryPath,
       aggregated.groupKey,
+    ]
+      .filter(Boolean)
+      .join(" ")
+  );
+}
+
+function buildProductOnlyGuardSearchText(
+  aggregated: AggregatedFeedItem
+): string {
+  return normalizeGuardSearchText(
+    [
+      aggregated.item.title,
+      aggregated.item.cleanName,
     ]
       .filter(Boolean)
       .join(" ")
