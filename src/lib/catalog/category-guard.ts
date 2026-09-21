@@ -167,6 +167,18 @@ const ALPINE_SKI_CROSS_FAMILY_CLEANUP_SLUGS = [
   "packs-ski-freerando",
 ];
 
+/*
+ * Nettoyage croise snowboard : le chemin source marchand determine la
+ * nature du produit (planche, pack, splitboard, boots ou fixation).
+ * Toutes les anciennes relations snowboard incompatibles sont retirees ;
+ * la racine snowboard est ensuite reintroduite comme ancetre.
+ */
+const SNOWBOARD_BOARD_CLEANUP_SLUGS = [...SNOWBOARD_EXCLUSIVE_SLUGS];
+const SNOWBOARD_PACK_CLEANUP_SLUGS = [...SNOWBOARD_EXCLUSIVE_SLUGS];
+const SNOWBOARD_SPLITBOARD_CLEANUP_SLUGS = [...SNOWBOARD_EXCLUSIVE_SLUGS];
+const SNOWBOARD_BOOT_CLEANUP_SLUGS = [...SNOWBOARD_EXCLUSIVE_SLUGS];
+const SNOWBOARD_BINDING_CLEANUP_SLUGS = [...SNOWBOARD_EXCLUSIVE_SLUGS];
+
 
 
 export function applyCategoryGuardToAggregatedItems(
@@ -245,7 +257,7 @@ function buildSnowboardCategoryPlan(
       allowedSlugs: [
         "packs-snowboard",
       ],
-      cleanupSlugs: SNOWBOARD_EXCLUSIVE_SLUGS,
+      cleanupSlugs: SNOWBOARD_PACK_CLEANUP_SLUGS,
     };
   }
 
@@ -264,7 +276,7 @@ if (
       "planches-snowboard",
       primarySlug,
     ],
-    cleanupSlugs: SNOWBOARD_EXCLUSIVE_SLUGS,
+    cleanupSlugs: SNOWBOARD_BOARD_CLEANUP_SLUGS,
   };
 }
 
@@ -279,7 +291,7 @@ if (
       allowedSlugs: [
         "splitboard",
       ],
-      cleanupSlugs: SNOWBOARD_EXCLUSIVE_SLUGS,
+      cleanupSlugs: SNOWBOARD_SPLITBOARD_CLEANUP_SLUGS,
     };
   }
 
@@ -307,7 +319,7 @@ if (
         "boots-snowboard",
         primarySlug,
       ],
-      cleanupSlugs: SNOWBOARD_EXCLUSIVE_SLUGS,
+      cleanupSlugs: SNOWBOARD_BOOT_CLEANUP_SLUGS,
     };
   }
 
@@ -335,7 +347,7 @@ if (
         "fixations-snowboard",
         primarySlug,
       ],
-      cleanupSlugs: SNOWBOARD_EXCLUSIVE_SLUGS,
+      cleanupSlugs: SNOWBOARD_BINDING_CLEANUP_SLUGS,
     };
   }
 
