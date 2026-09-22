@@ -1,5 +1,6 @@
 // src/lib/currentSite.ts
 import { headers } from "next/headers";
+import { getSiteConfig } from "@/config/site";
 
 /**
  * Récupère le host courant proprement.
@@ -60,8 +61,13 @@ export async function getCurrentSiteId(): Promise<string> {
  * URL complète du site courant
  * utile pour canonical SEO
  */
+/**
+ * URL publique canonique du site courant.
+ * Utilise le domaine configuré pour conserver le www.
+ */
 export async function getCurrentSiteUrl(): Promise<string> {
-  const host = await getCurrentHost();
-  const protocol = process.env.NODE_ENV === "development" ? "http" : "https";
-  return `${protocol}://${host}`;
+  const siteId = await getCurrentSiteId();
+  const siteConfig = getSiteConfig(siteId);
+
+  return siteConfig.domain.replace(/\/+$/, "");
 }
