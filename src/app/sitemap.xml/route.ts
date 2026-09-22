@@ -101,13 +101,11 @@ export async function GET(req: Request) {
      * Un produit doit :
      * - être publié
      * - être actif
-     * - avoir au moins une offre active et non archivée
+     * - rester dans le sitemap même sans offre active
      *
      * Si le siteId est disponible :
      * - le produit doit également être publié et actif
      *   pour le site courant via SiteProduct
-     * - l'offre doit appartenir à un programme d'affiliation
-     *   du site courant lorsqu'un programme est associé
      */
     prisma.product.findMany({
       where: {
@@ -127,23 +125,6 @@ export async function GET(req: Request) {
             }
           : {}),
 
-        offers: {
-          some: {
-            active: true,
-            archivedAt: null,
-
-            ...(siteId
-              ? {
-                  affiliateProgram: {
-                    is: {
-                      siteId,
-                      active: true,
-                    },
-                  },
-                }
-              : {}),
-          },
-        },
       },
 
       select: {
