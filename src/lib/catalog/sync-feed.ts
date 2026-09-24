@@ -479,14 +479,31 @@ export async function syncFeedContent({
           item
         );
 
-      if (
-        !validation.valid
-      ) {
-        stats.skippedRows += 1;
-        stats.errors += 1;
-
-        continue;
+if (!validation.valid) {
+  if (stats.errors === 0) {
+    console.error(
+      "[FEED VALIDATION] Premier produit rejeté",
+      {
+        errors: validation.errors,
+        item: {
+          merchantSlug: item.merchantSlug,
+          externalId: item.externalId,
+          gtin: item.gtin,
+          manufacturerReference: item.manufacturerReference,
+          title: item.title,
+          price: item.price,
+          affiliateUrl: item.affiliateUrl,
+          categoryPath: item.categoryPath,
+        },
       }
+    );
+  }
+
+  stats.skippedRows += 1;
+  stats.errors += 1;
+
+  continue;
+}
 
       const mappedCategoryResolution =
         resolveFeedCategories(
