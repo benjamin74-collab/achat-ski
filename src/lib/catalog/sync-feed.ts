@@ -655,43 +655,121 @@ if (!validation.valid) {
       );
     }
 
-    const importOne =
-      async (
-        aggregated:
-          AggregatedFeedItem
-      ): Promise<number | null> => {
-        const started =
-          Date.now();
 
-        try {
-          const imported =
-			  await importAggregatedFeedItem(
-				prisma,
-				aggregated,
-				merchant,
-				runtime.affiliateProgramId,
-				runtime.feedSourceId,
-				feedKey,
-				runtime.siteId,
-				startedAt,
-				stats,
-				brandCache
-			  );
 
-          const duration =
-            Date.now() - started;
 
-          if (duration > 3000) {
-}
 
-          return (
-            imported.product.id
-          );
-        } catch (error) {
-          stats.errors += 1;
-return null;
+const importStartedAt = Date.now();
+let processedProducts = 0;
+
+const totalProducts =
+  warmupItems.length +
+  parallelItems.length;
+
+const logProgress = () => {
+  processedProducts += 1;
+
+  if (
+    processedProducts % 100 === 0 ||
+    processedProducts === totalProducts
+  ) {
+    const elapsedSeconds =
+      Math.round(
+        (Date.now() - importStartedAt) / 1000
+      );
+
+    const productsPerSecond =
+      elapsedSeconds > 0
+        ? (
+            processedProducts /
+            elapsedSeconds
+          ).toFixed(2)
+        : "0";
+
+    console.log(
+      `[IMPORT PROGRESS] ${processedProducts}/${totalProducts} produits - ${elapsedSeconds}s - ${productsPerSecond} produits/s`
+    );
+  }
+};
+
+
+
+
+const importOne =
+  async (
+    aggregated:
+      AggregatedFeedItem
+  ): Promise<number | null> => {
+    const started =
+      Date.now();
+
+    try {
+      const imported =
+        await importAggregatedFeedItem(
+          prisma,
+          aggregated,
+          merchant,
+          runtime.affiliateProgramId,
+          runtime.feedSourceId,
+          feedKey,
+          runtime.siteId,
+          startedAt,
+          stats,
+          brandCache
+        );
+
+      const duration =
+        Date.now() - started;
+
+      if (duration > 5000) {
+        console.warn(
+          "[SLOW PRODUCT]",
+          {
+            durationMs: duration,
+            title:
+              aggregated.item.title,
+            gtin:
+              aggregated.item.gtin,
+            externalId:
+              aggregated.item.externalId,
+            brand:
+              aggregated.item.brand,
+          }
+        );
+      }
+
+      return imported.product.id;
+    } catch (error) {
+      stats.errors += 1;
+
+      console.error(
+        "[IMPORT PRODUCT ERROR]",
+        {
+          title:
+            aggregated.item.title,
+          gtin:
+            aggregated.item.gtin,
+          externalId:
+            aggregated.item.externalId,
+          brand:
+            aggregated.item.brand,
+          error:
+            error instanceof Error
+              ? error.message
+              : String(error),
         }
-      };
+      );
+
+      return null;
+    } finally {
+      logProgress();
+    }
+  };
+
+
+
+
+
 
     /*
      * AmorÃ§age des nouvelles marques.
