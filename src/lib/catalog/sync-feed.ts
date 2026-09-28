@@ -47,6 +47,7 @@ import {
 } from "./validate";
 
 import {
+  buildProductSlug,
   normalizeBrandKey,
 } from "./normalize";
 
@@ -788,46 +789,72 @@ for (
      * Cela rÃ©duit fortement le temps mur sans saturer le pool
      * PostgreSQL/Neon.
      */
-for (
+/*
+     * Des variantes d'un même produit peuvent partager le même slug.
+     * On conserve la concurrence entre produits différents, mais les
+     * éléments partageant un slug sont importés séquentiellement afin
+     * d'éviter une course Prisma sur Product.slug.
+     * Les règles de matching/EAN restent inchangées.
+     */
+    const parallelGroups =
+      new Map<string, AggregatedFeedItem[]>();
+
+    for (const aggregated of safeParallelItems) {
+      const productSlug =
+        buildProductSlug(aggregated.item) ||
+        `__feed_group_${parallelGroups.size}`;
+
+      const existingGroup =
+        parallelGroups.get(productSlug);
+
+      if (existingGroup) {
+        existingGroup.push(aggregated);
+      } else {
+        parallelGroups.set(productSlug, [aggregated]);
+      }
+    }
+
+    const groupedParallelItems =
+      Array.from(parallelGroups.values());
+
+    for (
       let index = 0;
-      index <
-      safeParallelItems.length;
-      index +=
-        IMPORT_CONCURRENCY
+      index < groupedParallelItems.length;
+      index += IMPORT_CONCURRENCY
     ) {
       const batch =
-        safeParallelItems.slice(
+        groupedParallelItems.slice(
           index,
-          index +
-            IMPORT_CONCURRENCY
+          index + IMPORT_CONCURRENCY
         );
-const productIds =
+
+      const productIds =
         (
           await Promise.all(
-            batch.map(
-              importOne
-            )
+            batch.map(async (productGroup) => {
+              const ids: number[] = [];
+
+              for (const aggregated of productGroup) {
+                const productId =
+                  await importOne(aggregated);
+
+                if (productId) {
+                  ids.push(productId);
+                }
+              }
+
+              return ids;
+            })
           )
-        ).filter(
-          (
-            productId
-          ): productId is number =>
-            productId !== null
-        );
-/*
-       * Au lieu d'un upsert SiteProduct par produit :
-       * - un updateMany pour tous les produits existants ;
-       * - un createMany avec skipDuplicates pour les nouveaux.
-       *
-       * On passe ainsi de N requÃªtes Ã  2 requÃªtes par lot.
-       */
-await syncSiteProductsBulk(
+        ).flat();
+
+      await syncSiteProductsBulk(
         prisma,
         runtime.siteId,
         productIds,
         startedAt
       );
-}
+    }
 
     await reconcileMissingOffers({
       prisma,

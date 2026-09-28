@@ -578,10 +578,8 @@ async function createProduct(
    * une fausse date de mise à jour. Le prochain import pourra
    * l'enrichir via updateMatchedProduct().
    */
-let product;
-
-try {
-  product = await prisma.product.upsert({
+const product =
+  await prisma.product.upsert({
     where: {
       slug,
     },
@@ -591,22 +589,6 @@ try {
       slug,
     },
   });
-} catch (error) {
-  console.error(
-    "[PRODUCT UPSERT FAILED]",
-    {
-      slug,
-      name,
-      gtin,
-      externalId: item.externalId,
-      manufacturerReference: item.manufacturerReference,
-      brand: item.brand,
-    },
-    error
-  );
-
-  throw error;
-}
 
   stats.createdProducts += 1;
 
