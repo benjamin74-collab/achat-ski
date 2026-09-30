@@ -168,7 +168,11 @@ export function formatBrandDisplayName(
 export function normalizeAvailability(
   value: string | null | undefined
 ): boolean {
-  const normalized = normalizeText(value).toLowerCase();
+  const normalized = normalizeText(value)
+    .toLowerCase()
+    .replace(/[_-]+/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
 
   if (!normalized) return false;
 
