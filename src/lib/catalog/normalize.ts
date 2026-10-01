@@ -1,4 +1,7 @@
 import type { NormalizedFeedItem } from "./feed-types";
+import {
+  normalizeBrand as normalizeKnownBrand,
+} from "../brand-normalization";
 
 export function normalizeText(value: string | null | undefined): string {
   if (!value) return "";
@@ -48,8 +51,24 @@ export function normalizeEan(
 export function normalizeBrandName(
   value: string | null | undefined
 ): string | undefined {
+  const normalized =
+    normalizeText(value);
+
+  if (!normalized) {
+    return undefined;
+  }
+
+  const knownBrand =
+    normalizeKnownBrand(
+      normalized
+    );
+
+  if (knownBrand) {
+    return knownBrand.name;
+  }
+
   return resolveBrandAlias(
-    value
+    normalized
   );
 }
 
