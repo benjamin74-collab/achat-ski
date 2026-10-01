@@ -9,7 +9,6 @@ import { prisma } from "@/lib/prisma";
 import { getSiteConfig } from "@/config/site";
 import { getFontClasses, getFontFamilyVar } from "@/config/fonts";
 import { getCurrentSiteId, getCurrentSiteUrl } from "@/lib/currentSite";
-import Script from "next/script";
 
 export async function generateMetadata(): Promise<Metadata> {
   const siteId = await getCurrentSiteId();
@@ -177,7 +176,10 @@ export default async function RootLayout({
 
   const fontClasses = getFontClasses([fontSans as never, fontDisplay as never]);
 
-  const hasGoogleCmp = !!adSettings?.enabled && !!adSettings.adsenseClient;
+  const adsenseClient =
+  adSettings?.enabled && adSettings.adsenseClient
+    ? adSettings.adsenseClient
+    : null;
 
   return (
     <html
@@ -193,32 +195,22 @@ export default async function RootLayout({
     >
       <body className="min-h-screen bg-white text-ink antialiased" suppressHydrationWarning>
         <Providers>
-          {hasGoogleCmp ? (
-            <Script
-              id="adsense-script"
-              async
-              strategy="afterInteractive"
-              src={`https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=${encodeURIComponent(
-                adSettings!.adsenseClient!,
-              )}`}
-              crossOrigin="anonymous"
-            />
-          ) : null}
 
           <TrackingScripts
-            enabledAnalytics={tracking?.enabledAnalytics}
-            enabledAds={tracking?.enabledAds}
-            enabledGtm={tracking?.enabledGtm}
-            ga4MeasurementId={tracking?.ga4MeasurementId}
-            googleAdsId={tracking?.googleAdsId}
-            googleAdsConversionLabel={tracking?.googleAdsConversionLabel}
-            gtmContainerId={tracking?.gtmContainerId}
-          />
+		  enabledAnalytics={tracking?.enabledAnalytics}
+		  enabledAds={tracking?.enabledAds}
+		  enabledGtm={tracking?.enabledGtm}
+		  ga4MeasurementId={tracking?.ga4MeasurementId}
+		  googleAdsId={tracking?.googleAdsId}
+		  googleAdsConversionLabel={tracking?.googleAdsConversionLabel}
+		  gtmContainerId={tracking?.gtmContainerId}
+		  adsenseClient={adsenseClient}
+		/>
 
           <Header />
           <main className="container-page py-6">{children}</main>
           <Footer />
-          <CookieBanner disabled={hasGoogleCmp} />
+          <CookieBanner />
         </Providers>
       </body>
     </html>

@@ -68,6 +68,8 @@ export async function importAggregatedFeedItem(
   prisma: PrismaClient,
   aggregated: AggregatedFeedItem,
   merchant: Merchant,
+  affiliateProgramId: number,
+  feedSourceId: number,
   feedKey: string,
   siteId: string,
   seenAt: Date,
@@ -102,6 +104,16 @@ const brandName =
     brandName
   );
 
+const preserveExistingClassification =
+  match.productId
+    ? await shouldPreserveExistingClassification(
+        prisma,
+        match.productId,
+        merchant.id,
+        match.reason
+      )
+    : false;
+
 const product = match.productId
   ? await updateMatchedProduct(
       prisma,
@@ -109,7 +121,8 @@ const product = match.productId
       match.productId,
       brandId,
       brandName,
-      stats
+      stats,
+      preserveExistingClassification
     )
   : await createProduct(
       prisma,
@@ -119,12 +132,15 @@ const product = match.productId
       stats
     );
 
+if (!preserveExistingClassification) {
   await syncProductCategories(
     prisma,
     product.id,
     primaryCategory.id,
-    categories.map((category) => category.id)
+    categories.map((category) => category.id),
+    aggregated.categoryCleanupIds ?? []
   );
+}
 
   await syncProductIdentifiers(
     prisma,
@@ -135,15 +151,17 @@ const product = match.productId
     aggregated
   );
 
-  const offer = await upsertOffer(
-    prisma,
-    aggregated,
-    merchant.id,
-    product.id,
-    feedKey,
-    seenAt,
-    stats
-  );
+const offer = await upsertOffer(
+  prisma,
+  aggregated,
+  merchant.id,
+  product.id,
+  affiliateProgramId,
+  feedSourceId,
+  feedKey,
+  seenAt,
+  stats
+);
 
   return {
     product,
@@ -313,7 +331,8 @@ async function updateMatchedProduct(
   productId: number,
   brandId: number | undefined,
   brandName: string | undefined,
-  stats: ImportStats
+  stats: ImportStats,
+  preserveExistingClassification = false
 ) {
   const {
     item,
@@ -350,10 +369,18 @@ async function updateMatchedProduct(
       item.brand
     );
 
-  const nextAttributes =
+  const incomingAttributes =
     buildProductAttributes(
       aggregated
     );
+
+  const nextAttributes =
+    preserveExistingClassification
+      ? preserveClassificationAttributes(
+          currentProduct.attributes,
+          incomingAttributes
+        )
+      : incomingAttributes;
 
   /*
    * Les valeurs absentes du flux ne doivent pas effacer
@@ -372,7 +399,9 @@ async function updateMatchedProduct(
       writableLegacyGtin ??
       currentProduct.gtin,
     categoryId:
-      primaryCategory.id,
+      preserveExistingClassification
+        ? currentProduct.categoryId
+        : primaryCategory.id,
     description:
       item.description ||
       currentProduct.description,
@@ -549,22 +578,94 @@ async function createProduct(
    * une fausse date de mise à jour. Le prochain import pourra
    * l'enrichir via updateMatchedProduct().
    */
-  const product =
-    await prisma.product.upsert({
-      where: {
-        slug,
-      },
-      update: {},
-      create: {
-        ...productData,
-        slug,
-      },
-    });
+const product =
+  await prisma.product.upsert({
+    where: {
+      slug,
+    },
+    update: {},
+    create: {
+      ...productData,
+      slug,
+    },
+  });
 
   stats.createdProducts += 1;
 
   return product;
 }
+
+/**
+ * Si un nouvel import retrouve une fiche déjà alimentée par un autre marchand
+ * grâce à un identifiant produit fiable, la taxonomie existante reste
+ * l'autorité. Le nouvel import peut toujours ajouter/actualiser son offre.
+ */
+async function shouldPreserveExistingClassification(
+  prisma: PrismaClient,
+  productId: number,
+  incomingMerchantId: number,
+  matchReason: string
+): Promise<boolean> {
+  const reliableCrossMerchantReasons = new Set([
+    "GTIN",
+    "BRAND_STYLE_CODE",
+    "BRAND_MANUFACTURER_REFERENCE",
+  ]);
+
+  if (!reliableCrossMerchantReasons.has(matchReason)) {
+    return false;
+  }
+
+  const otherMerchantOffer = await prisma.offer.findFirst({
+    where: {
+      productId,
+      merchantId: {
+        not: incomingMerchantId,
+      },
+    },
+    select: {
+      id: true,
+    },
+  });
+
+  return Boolean(otherMerchantOffer);
+}
+
+function preserveClassificationAttributes(
+  currentAttributes: Prisma.JsonValue | null,
+  incomingAttributes: Prisma.InputJsonValue
+): Prisma.InputJsonValue {
+  const current =
+    currentAttributes &&
+    typeof currentAttributes === "object" &&
+    !Array.isArray(currentAttributes)
+      ? (currentAttributes as Record<string, unknown>)
+      : {};
+
+  const incoming =
+    incomingAttributes &&
+    typeof incomingAttributes === "object" &&
+    !Array.isArray(incomingAttributes)
+      ? (incomingAttributes as Record<string, unknown>)
+      : {};
+
+  return {
+    ...incoming,
+    sourceCategoryPath:
+      current.sourceCategoryPath ??
+      incoming.sourceCategoryPath ??
+      null,
+    primaryCategorySlug:
+      current.primaryCategorySlug ??
+      incoming.primaryCategorySlug ??
+      null,
+    categorySlugs:
+      current.categorySlugs ??
+      incoming.categorySlugs ??
+      [],
+  } as Prisma.InputJsonValue;
+}
+
 
 function stableJsonStringify(
   value: unknown
@@ -574,45 +675,37 @@ function stableJsonStringify(
       return input.map(normalize);
     }
 
-    if (
-      input !== null &&
-      typeof input === "object"
-    ) {
+    if (input !== null && typeof input === "object") {
       return Object.fromEntries(
-        Object.entries(
-          input as Record<string, unknown>
-        )
-          .sort(([a], [b]) =>
-            a.localeCompare(b)
-          )
-          .map(([key, nestedValue]) => [
-            key,
-            normalize(nestedValue),
-          ])
+        Object.entries(input as Record<string, unknown>)
+          .sort(([a], [b]) => a.localeCompare(b))
+          .map(([key, nestedValue]) => [key, normalize(nestedValue)])
       );
     }
 
     return input;
   };
 
-  return JSON.stringify(
-    normalize(value)
-  );
+  return JSON.stringify(normalize(value));
 }
 
 
 /**
- * Enregistre la catégorie principale ainsi que toutes
- * les catégories secondaires du produit.
+ * Enregistre la catégorie principale ainsi que les catégories secondaires.
  *
- * Les anciennes relations ne sont pas supprimées brutalement :
- * un même produit peut être enrichi par plusieurs marchands.
+ * Par défaut, les anciennes relations sont conservées pour permettre
+ * l'enrichissement multi-marchands.
+ *
+ * Lorsqu'un category guard fournit une liste de nettoyage, seules les
+ * catégories incompatibles de la même famille sont supprimées.
  */
+ 
 async function syncProductCategories(
   prisma: PrismaClient,
   productId: number,
   primaryCategoryId: number,
-  categoryIds: number[]
+  categoryIds: number[],
+  cleanupCategoryIds: number[] = []
 ) {
   const uniqueCategoryIds = Array.from(
     new Set([
@@ -621,6 +714,21 @@ async function syncProductCategories(
     ])
   );
 
+	const uniqueCleanupCategoryIds =
+	  Array.from(
+		new Set(cleanupCategoryIds)
+	  );
+
+	if (uniqueCleanupCategoryIds.length > 0) {
+	  await prisma.productCategory.deleteMany({
+		where: {
+		  productId,
+		  categoryId: {
+			in: uniqueCleanupCategoryIds,
+		  },
+		},
+	  });
+	}
   /*
    * Une seule relation doit porter isPrimary=true.
    */
@@ -663,6 +771,8 @@ async function upsertOffer(
   aggregated: AggregatedFeedItem,
   merchantId: number,
   productId: number,
+  affiliateProgramId: number,
+  feedSourceId: number,
   feedKey: string,
   seenAt: Date,
   stats: ImportStats
@@ -734,6 +844,9 @@ async function upsertOffer(
 
     merchantProductUrl:
       item.merchantProductUrl ?? null,
+
+	affiliateProgramId,
+	feedSourceId,
 
     active:
       true,

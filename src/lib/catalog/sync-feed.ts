@@ -47,12 +47,17 @@ import {
 } from "./validate";
 
 import {
+  buildProductSlug,
   normalizeBrandKey,
 } from "./normalize";
 
 import {
   createHash,
 } from "node:crypto";
+
+import {
+  applyCategoryGuardToAggregatedItems,
+} from "./category-guard";
 
 const IMPORT_CONCURRENCY = 6;
 const BULK_CHUNK_SIZE = 500;
@@ -475,14 +480,31 @@ export async function syncFeedContent({
           item
         );
 
-      if (
-        !validation.valid
-      ) {
-        stats.skippedRows += 1;
-        stats.errors += 1;
-
-        continue;
+if (!validation.valid) {
+  if (stats.errors === 0) {
+    console.error(
+      "[FEED VALIDATION] Premier produit rejeté",
+      {
+        errors: validation.errors,
+        item: {
+          merchantSlug: item.merchantSlug,
+          externalId: item.externalId,
+          gtin: item.gtin,
+          manufacturerReference: item.manufacturerReference,
+          title: item.title,
+          price: item.price,
+          affiliateUrl: item.affiliateUrl,
+          categoryPath: item.categoryPath,
+        },
       }
+    );
+  }
+
+  stats.skippedRows += 1;
+  stats.errors += 1;
+
+  continue;
+}
 
       const mappedCategoryResolution =
         resolveFeedCategories(
@@ -515,10 +537,16 @@ export async function syncFeedContent({
     stats.acceptedRows =
       accepted.length;
 
-    const grouped =
-      aggregateFeedItems(
-        accepted
-      );
+	let grouped =
+	  aggregateFeedItems(
+		accepted
+	  );
+
+	grouped =
+	  applyCategoryGuardToAggregatedItems(
+		grouped,
+		categorySource
+	  );
 
     stats.groupedProducts =
       grouped.length;
@@ -627,41 +655,121 @@ export async function syncFeedContent({
       );
     }
 
-    const importOne =
-      async (
-        aggregated:
-          AggregatedFeedItem
-      ): Promise<number | null> => {
-        const started =
-          Date.now();
 
-        try {
-          const imported =
-            await importAggregatedFeedItem(
-              prisma,
-              aggregated,
-              merchant,
-              feedKey,
-			  runtime.siteId,
-              startedAt,
-              stats,
-              brandCache
-            );
 
-          const duration =
-            Date.now() - started;
 
-          if (duration > 3000) {
-}
 
-          return (
-            imported.product.id
-          );
-        } catch (error) {
-          stats.errors += 1;
-return null;
+const importStartedAt = Date.now();
+let processedProducts = 0;
+
+const totalProducts =
+  warmupItems.length +
+  parallelItems.length;
+
+const logProgress = () => {
+  processedProducts += 1;
+
+  if (
+    processedProducts % 100 === 0 ||
+    processedProducts === totalProducts
+  ) {
+    const elapsedSeconds =
+      Math.round(
+        (Date.now() - importStartedAt) / 1000
+      );
+
+    const productsPerSecond =
+      elapsedSeconds > 0
+        ? (
+            processedProducts /
+            elapsedSeconds
+          ).toFixed(2)
+        : "0";
+
+    console.log(
+      `[IMPORT PROGRESS] ${processedProducts}/${totalProducts} produits - ${elapsedSeconds}s - ${productsPerSecond} produits/s`
+    );
+  }
+};
+
+
+
+
+const importOne =
+  async (
+    aggregated:
+      AggregatedFeedItem
+  ): Promise<number | null> => {
+    const started =
+      Date.now();
+
+    try {
+      const imported =
+        await importAggregatedFeedItem(
+          prisma,
+          aggregated,
+          merchant,
+          runtime.affiliateProgramId,
+          runtime.feedSourceId,
+          feedKey,
+          runtime.siteId,
+          startedAt,
+          stats,
+          brandCache
+        );
+
+      const duration =
+        Date.now() - started;
+
+      if (duration > 5000) {
+        console.warn(
+          "[SLOW PRODUCT]",
+          {
+            durationMs: duration,
+            title:
+              aggregated.item.title,
+            gtin:
+              aggregated.item.gtin,
+            externalId:
+              aggregated.item.externalId,
+            brand:
+              aggregated.item.brand,
+          }
+        );
+      }
+
+      return imported.product.id;
+    } catch (error) {
+      stats.errors += 1;
+
+      console.error(
+        "[IMPORT PRODUCT ERROR]",
+        {
+          title:
+            aggregated.item.title,
+          gtin:
+            aggregated.item.gtin,
+          externalId:
+            aggregated.item.externalId,
+          brand:
+            aggregated.item.brand,
+          error:
+            error instanceof Error
+              ? error.message
+              : String(error),
         }
-      };
+      );
+
+      return null;
+    } finally {
+      logProgress();
+    }
+  };
+
+
+
+
+
 
     /*
      * AmorÃ§age des nouvelles marques.
@@ -759,46 +867,72 @@ for (
      * Cela rÃ©duit fortement le temps mur sans saturer le pool
      * PostgreSQL/Neon.
      */
-for (
+/*
+     * Des variantes d'un même produit peuvent partager le même slug.
+     * On conserve la concurrence entre produits différents, mais les
+     * éléments partageant un slug sont importés séquentiellement afin
+     * d'éviter une course Prisma sur Product.slug.
+     * Les règles de matching/EAN restent inchangées.
+     */
+    const parallelGroups =
+      new Map<string, AggregatedFeedItem[]>();
+
+    for (const aggregated of safeParallelItems) {
+      const productSlug =
+        buildProductSlug(aggregated.item) ||
+        `__feed_group_${parallelGroups.size}`;
+
+      const existingGroup =
+        parallelGroups.get(productSlug);
+
+      if (existingGroup) {
+        existingGroup.push(aggregated);
+      } else {
+        parallelGroups.set(productSlug, [aggregated]);
+      }
+    }
+
+    const groupedParallelItems =
+      Array.from(parallelGroups.values());
+
+    for (
       let index = 0;
-      index <
-      safeParallelItems.length;
-      index +=
-        IMPORT_CONCURRENCY
+      index < groupedParallelItems.length;
+      index += IMPORT_CONCURRENCY
     ) {
       const batch =
-        safeParallelItems.slice(
+        groupedParallelItems.slice(
           index,
-          index +
-            IMPORT_CONCURRENCY
+          index + IMPORT_CONCURRENCY
         );
-const productIds =
+
+      const productIds =
         (
           await Promise.all(
-            batch.map(
-              importOne
-            )
+            batch.map(async (productGroup) => {
+              const ids: number[] = [];
+
+              for (const aggregated of productGroup) {
+                const productId =
+                  await importOne(aggregated);
+
+                if (productId) {
+                  ids.push(productId);
+                }
+              }
+
+              return ids;
+            })
           )
-        ).filter(
-          (
-            productId
-          ): productId is number =>
-            productId !== null
-        );
-/*
-       * Au lieu d'un upsert SiteProduct par produit :
-       * - un updateMany pour tous les produits existants ;
-       * - un createMany avec skipDuplicates pour les nouveaux.
-       *
-       * On passe ainsi de N requÃªtes Ã  2 requÃªtes par lot.
-       */
-await syncSiteProductsBulk(
+        ).flat();
+
+      await syncSiteProductsBulk(
         prisma,
         runtime.siteId,
         productIds,
         startedAt
       );
-}
+    }
 
     await reconcileMissingOffers({
       prisma,

@@ -102,12 +102,17 @@ export type SitePagesContent = {
   brands?: BrandsPageContent;
 };
 
+export type EditorialConfig = {
+  defaultAuthorName: string;
+};
+
 export type SiteConfig = {
   id: string;
   name: string;
   domain: string;
   tagline?: string;
   pagesContent?: SitePagesContent;
+  editorial: EditorialConfig;
   /**
    * Fallback uniquement.
    * Les valeurs réelles proviennent de SiteSettings (backoffice).

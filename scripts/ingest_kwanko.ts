@@ -3,6 +3,7 @@ import { parse } from "csv-parse/sync";
 import fs from "fs";
 import path from "path";
 import { slugify } from "../src/lib/slug";
+import { normalizeBrand } from "../src/lib/brand-normalization";
 
 const prisma = new PrismaClient();
 
@@ -69,7 +70,12 @@ function normalizeRow(row: RawRow): NormRow | null {
 
   const productName = pick(row, ["product_name", "name", "title"]) ?? "";
   const brandRaw = pick(row, ["brand", "marque"]) ?? "";
-  const brand = brandRaw ? titleCaseBrand(brandRaw) : brandRaw;
+  const normalizedBrand = brandRaw ? normalizeBrand(brandRaw) : null;
+  const brand = normalizedBrand
+  ? normalizedBrand.name
+  : brandRaw
+    ? titleCaseBrand(brandRaw)
+    : brandRaw;
   const modelRaw = pick(row, ["model", "product", "title", "name"]) ?? productName;
   const season = pick(row, ["season", "saison"]) ?? null;
 
@@ -138,23 +144,37 @@ async function upsertOne(row: NormRow) {
     },
   });
 
-  const brandSlug = slugify(row.brand);
+	const normalizedBrand = normalizeBrand(row.brand);
 
-  const brand = await prisma.brand.upsert({
-    where: { slug: brandSlug },
-    update: {
-      name: row.brand,
-      active: true,
-    },
-    create: {
-      slug: brandSlug,
-      name: row.brand,
-      active: true,
-    },
-  });
+	const canonicalBrandName =
+	  normalizedBrand?.name ?? row.brand;
+
+	const canonicalBrandSlug =
+	  normalizedBrand?.slug ?? slugify(row.brand);
+
+	const brand = await prisma.brand.upsert({
+	  where: {
+		slug: canonicalBrandSlug,
+	  },
+	  update: {
+		name: canonicalBrandName,
+		active: true,
+	  },
+	  create: {
+		slug: canonicalBrandSlug,
+		name: canonicalBrandName,
+		active: true,
+	  },
+	});
 
   const productSlug = slugify(
-    [row.brand, row.model, row.season ?? ""].filter(Boolean).join(" ")
+  [
+    canonicalBrandName,
+    row.model,
+    row.season ?? "",
+  ]
+    .filter(Boolean)
+    .join(" ")
   );
 
   const product = await prisma.product.upsert({
@@ -162,7 +182,7 @@ async function upsertOne(row: NormRow) {
     update: {
       name: row.model,
       model: row.model,
-      brand: row.brand,
+      brand: canonicalBrandName,
       brandId: brand.id,
       season: row.season,
       active: true,
@@ -171,7 +191,7 @@ async function upsertOne(row: NormRow) {
       slug: productSlug,
       name: row.model,
       model: row.model,
-      brand: row.brand,
+      brand: canonicalBrandName,
       brandId: brand.id,
       season: row.season,
       active: true,

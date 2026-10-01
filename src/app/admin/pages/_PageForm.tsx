@@ -6,6 +6,9 @@ import { useRouter } from "next/navigation";
 import { slugify } from "@/lib/slug";
 import MediaPicker from "@/components/admin/MediaPicker";
 import RichTextEditor from "@/components/admin/RichTextEditor";
+import PageProductsField, {
+  type PageProductItem,
+} from "./_PageProductsField";
 
 type GuideCategoryOption = {
   id: number;
@@ -33,9 +36,10 @@ type PageData = {
 
   kind?: "GUIDE" | "COMPARATIF" | "ARTICLE";
   guideCategoryId?: number | null;
+  products?: PageProductItem[];
 };
 
-type TabKey = "general" | "content" | "seo";
+type TabKey = "general" | "content" | "products" | "seo";
 
 function TabPanel({
   active,
@@ -135,7 +139,7 @@ export default function PageForm({
     window.open(`/pages/${currentSlug}`, "_blank", "noopener,noreferrer");
   }
 
-  const showGuideCategory = kind === "GUIDE";
+  const showGuideCategory = kind === "GUIDE" || kind === "COMPARATIF";
 
   return (
     <form action={onSubmit} className="grid gap-4">
@@ -195,6 +199,22 @@ export default function PageForm({
         >
           Contenu
         </button>
+		<button
+		  type="button"
+		  onClick={() => setActiveTab("products")}
+		  className={`px-3 py-2 text-sm border-b-2 -mb-px ${
+			activeTab === "products"
+			  ? "border-brand-500 text-brand-600 font-semibold"
+			  : "border-transparent text-slate-500 hover:text-slate-700"
+		  }`}
+		>
+		  Produits associés
+		  {initial?.products?.length ? (
+			<span className="ml-2 inline-flex items-center justify-center min-w-5 h-5 px-1.5 rounded-full bg-slate-100 text-xs text-slate-600">
+			  {initial.products.length}
+			</span>
+		  ) : null}
+		</button>
         <button
           type="button"
           onClick={() => setActiveTab("seo")}
@@ -241,7 +261,7 @@ export default function PageForm({
           {showGuideCategory ? (
             <div className="grid gap-2">
               <label className="text-sm font-medium text-slate-700">
-                Catégorie de guide
+				Catégorie éditoriale
               </label>
               <select
                 name="guideCategoryId"
@@ -256,7 +276,7 @@ export default function PageForm({
                 ))}
               </select>
               <p className="text-xs text-slate-500">
-                Visible dans le hub Guides et dans le menu sous “Guides”.
+                Utilisée pour classer les guides et comparatifs dans le hub éditorial.
               </p>
             </div>
           ) : (
@@ -346,6 +366,35 @@ export default function PageForm({
           />
         </div>
       </TabPanel>
+	  
+	  <TabPanel active={activeTab === "products"}>
+		  <div className="card grid gap-4">
+			{initial?.id ? (
+			  <>
+				<div>
+				  <h2 className="font-semibold text-slate-800">
+					Produits associés à cette page
+				  </h2>
+
+				  <p className="text-sm text-slate-500 mt-1">
+					Ces produits pourront être utilisés pour
+					afficher automatiquement la sélection,
+					les prix et les offres marchands dans les
+					guides et comparatifs.
+				  </p>
+				</div>
+
+				<PageProductsField
+				  initial={initial.products ?? []}
+				/>
+			  </>
+			) : (
+			  <div className="rounded-xl border border-dashed border-slate-300 p-6 text-sm text-slate-500">
+				Enregistrez d&apos;abord la page. Vous pourrez ensuite lui associer des produits.
+			  </div>
+			)}
+		  </div>
+		</TabPanel>
 
       <TabPanel active={activeTab === "seo"}>
         <div className="card grid gap-4">

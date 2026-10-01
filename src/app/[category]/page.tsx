@@ -92,7 +92,7 @@ export default async function CategoryPage({
     );
   }
 
-  const pageSize = 12;
+  const pageSize = 24;
   const skip = (page - 1) * pageSize;
 
   /*
@@ -160,32 +160,42 @@ export default async function CategoryPage({
     where.season = season;
   }
 
-  const [total, productsRaw] = await Promise.all([
-    prisma.product.count({ where }),
-    prisma.product.findMany({
-      where,
-      orderBy: sort === "newest" ? { id: "desc" } : undefined,
-      skip,
-      take: pageSize,
-      include: {
-		  category: {
-			select: {
-			  name: true,
-			  slug: true,
-			},
-		  },
-		  offers: {
-		    where: {
-		      active: true,
-		    },
-		  },
-		},
-    }),
-  ]);
+  const total = await prisma.product.count({ where });
 
-  const products = productsRaw.map((p) => {
-    const allOffers = p.offers;
-    const totals = allOffers.map((o) => totalCents(o.priceCents, o.shippingCents ?? 0));
+  /*
+   * IMPORTANT :
+   * Prisma ne permet pas ici de trier simplement par le nombre d'offres
+   * FILTREES (actives / en stock) avant pagination. Un _count relationnel
+   * compterait aussi les anciennes offres inactives.
+   *
+   * On récupère donc les produits de la catégorie avec leurs offres actives,
+   * on calcule la disponibilité et les prix, puis on trie AVANT pagination.
+   * Ainsi, un produit sans offre ne peut jamais remonter en première page
+   * devant un produit actuellement achetable.
+   */
+  const productsRaw = await prisma.product.findMany({
+    where,
+    include: {
+      category: {
+        select: {
+          name: true,
+          slug: true,
+        },
+      },
+      offers: {
+        where: {
+          active: true,
+          inStock: true,
+        },
+      },
+    },
+  });
+
+  const productsWithMetrics = productsRaw.map((p) => {
+    const availableOffers = p.offers;
+    const totals = availableOffers.map((o) =>
+      totalCents(o.priceCents, o.shippingCents ?? 0),
+    );
     const minTotal = totals.length ? Math.min(...totals) : null;
     const maxTotal = totals.length ? Math.max(...totals) : null;
 
@@ -193,18 +203,52 @@ export default async function CategoryPage({
       ...p,
       minTotal,
       maxTotal,
-      offerCount: allOffers.length,
+      offerCount: availableOffers.length,
     };
   });
 
-  const sorted =
-    sort === "price-asc"
-      ? [...products].sort(
-          (a, b) => (a.minTotal ?? Number.POSITIVE_INFINITY) - (b.minTotal ?? Number.POSITIVE_INFINITY),
-        )
-      : sort === "price-desc"
-        ? [...products].sort((a, b) => (b.minTotal ?? -1) - (a.minTotal ?? -1))
-        : products;
+  /*
+   * Règle commune à tous les tris :
+   * - les produits ayant au moins une offre disponible passent toujours avant
+   *   les produits sans offre ;
+   * - les produits sans offre sont conservés pour leurs pages SEO, mais
+   *   relégués à la fin du catalogue.
+   */
+  const sortedAll = [...productsWithMetrics].sort((a, b) => {
+    const aAvailable = a.offerCount > 0 ? 1 : 0;
+    const bAvailable = b.offerCount > 0 ? 1 : 0;
+
+    if (aAvailable !== bAvailable) {
+      return bAvailable - aAvailable;
+    }
+
+    if (sort === "price-asc") {
+      if (a.minTotal !== null && b.minTotal !== null) {
+        if (a.minTotal !== b.minTotal) {
+          return a.minTotal - b.minTotal;
+        }
+      }
+    } else if (sort === "price-desc") {
+      if (a.maxTotal !== null && b.maxTotal !== null) {
+        if (a.maxTotal !== b.maxTotal) {
+          return b.maxTotal - a.maxTotal;
+        }
+      }
+    } else {
+      if (a.offerCount !== b.offerCount) {
+        return b.offerCount - a.offerCount;
+      }
+    }
+
+    return b.id - a.id;
+  });
+
+  /*
+   * Pagination APRES le classement global.
+   * C'est indispensable pour que les produits sans offre arrivent réellement
+   * sur les dernières pages et non à la fin de chaque lot de 24.
+   */
+  const sorted = sortedAll.slice(skip, skip + pageSize);
 
   const pages = Math.max(1, Math.ceil(total / pageSize));
   const safeHtml = cat.content ? sanitizeHtml(cat.content) : "";
@@ -265,35 +309,24 @@ export default async function CategoryPage({
           ? "http://schema.org/ItemListOrderDescending"
           : "http://schema.org/ItemListUnordered",
     numberOfItems: sorted.length,
-    itemListElement: sorted.map((p, idx) => {
-      const title = [p.brand, p.model, p.season].filter(Boolean).join(" ");
-      const url = `${site}/p/${p.slug}`;
-      const lowPrice = typeof p.minTotal === "number" ? (p.minTotal / 100).toFixed(2) : undefined;
-      const highPrice = typeof p.maxTotal === "number" ? (p.maxTotal / 100).toFixed(2) : undefined;
+	itemListElement: sorted.map((p, idx) => {
+	  const title = [p.brand, p.model, p.season]
+		.filter(Boolean)
+		.join(" ");
 
-      return {
-        "@type": "ListItem",
-        position: idx + 1,
-        url,
-        item: {
-          "@type": "Product",
-          name: title,
-          url,
-          category: cat.name,
-          ...(lowPrice
-            ? {
-                offers: {
-                  "@type": "AggregateOffer",
-                  priceCurrency: "EUR",
-                  lowPrice,
-                  ...(highPrice ? { highPrice } : {}),
-                  offerCount: p.offerCount,
-                },
-              }
-            : {}),
-        },
-      };
-    }),
+	  const url = `${site}/p/${p.slug}`;
+
+	  return {
+		"@type": "ListItem",
+		position: idx + 1,
+		item: {
+		  "@type": "WebPage",
+		  "@id": url,
+		  url,
+		  name: title,
+		},
+	  };
+	}),
   };
 
   const webPageJsonLd = {

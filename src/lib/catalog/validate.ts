@@ -32,6 +32,10 @@ export function validateFeedItem(
     errors.push("Prix invalide ou manquant.");
   }
 
+  if (item.price <= 1) {
+    errors.push(`Prix anormalement bas : ${item.price}.`);
+  }
+
   if (item.gtin && !isValidGtin(item.gtin)) {
     errors.push(`GTIN invalide : ${item.gtin}`);
   }

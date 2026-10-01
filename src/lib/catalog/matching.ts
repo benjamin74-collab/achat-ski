@@ -15,6 +15,7 @@ import {
   normalizeGtin,
   normalizeIdentifierValue,
   normalizeProductName,
+  normalizeText,
 } from "./normalize";
 
 export async function matchFeedItem(
@@ -30,6 +31,39 @@ export async function matchFeedItem(
   const brandKey = normalizeBrandKey(
     brandName || item.brand
   );
+  
+const sourceGroupKeys = uniqueIdentifiers([
+  ...aggregated.sourceGroupKeys,
+  aggregated.groupKey,
+]);
+
+if (sourceGroupKeys.length > 0) {
+  const productFromSourceGroup =
+    await findCompatibleProductByIdentifier(
+      prisma,
+      siteId,
+      ProductIdentifierType.SOURCE_GROUP_KEY,
+      sourceGroupKeys,
+      "",
+      item.merchantSlug,
+      aggregated
+    );
+
+  if (productFromSourceGroup) {
+    return {
+      productId:
+        productFromSourceGroup.productId,
+      confidence: 100,
+      reason: "MERCHANT_PARENT_EXTERNAL_ID",
+    };
+  }
+}
+
+/*
+ * Tous les types gardés (pack, ski nu, snowboard, nordique, rando, etc.)
+ * peuvent être rapprochés uniquement avec un produit existant du même type.
+ * La compatibilité est contrôlée pour chaque stratégie de matching ci-dessous.
+ */
 
   const gtins = uniqueIdentifiers(
     [
@@ -40,13 +74,14 @@ export async function matchFeedItem(
 
   if (gtins.length > 0) {
     const productFromIdentifier =
-      await findProductByIdentifier(
+      await findCompatibleProductByIdentifier(
         prisma,
         siteId,
         ProductIdentifierType.GTIN,
         gtins,
         "",
-        ""
+        "",
+        aggregated
       );
 
     if (productFromIdentifier) {
@@ -68,7 +103,14 @@ export async function matchFeedItem(
       },
     });
 
-    if (product) {
+    if (
+      product &&
+      await isCompatibleExistingProduct(
+        prisma,
+        product.id,
+        aggregated
+      )
+    ) {
       return {
         productId: product.id,
         confidence: 100,
@@ -84,13 +126,14 @@ export async function matchFeedItem(
 
   if (merchantParentExternalIds.length > 0) {
     const productFromIdentifier =
-      await findProductByIdentifier(
+      await findCompatibleProductByIdentifier(
         prisma,
         siteId,
         ProductIdentifierType.MERCHANT_PARENT_ID,
         merchantParentExternalIds,
         "",
-        item.merchantSlug
+        item.merchantSlug,
+        aggregated
       );
 
     if (productFromIdentifier) {
@@ -113,7 +156,14 @@ export async function matchFeedItem(
       },
     });
 
-    if (offer) {
+    if (
+      offer &&
+      await isCompatibleExistingProduct(
+        prisma,
+        offer.productId,
+        aggregated
+      )
+    ) {
       return {
         productId: offer.productId,
         confidence: 100,
@@ -140,7 +190,14 @@ export async function matchFeedItem(
       },
     });
 
-    if (offer) {
+    if (
+      offer &&
+      await isCompatibleExistingProduct(
+        prisma,
+        offer.productId,
+        aggregated
+      )
+    ) {
       return {
         productId: offer.productId,
         confidence: 99,
@@ -161,13 +218,14 @@ export async function matchFeedItem(
 
   if (brandKey && styleCodes.length > 0) {
     const productFromIdentifier =
-      await findProductByIdentifier(
+      await findCompatibleProductByIdentifier(
         prisma,
         siteId,
         ProductIdentifierType.STYLE_CODE,
         styleCodes,
         brandKey,
-        ""
+        "",
+        aggregated
       );
 
     if (productFromIdentifier) {
@@ -191,13 +249,14 @@ export async function matchFeedItem(
 
   if (brandKey && manufacturerReferences.length > 0) {
     const productFromIdentifier =
-      await findProductByIdentifier(
+      await findCompatibleProductByIdentifier(
         prisma,
         siteId,
         ProductIdentifierType.MANUFACTURER_REFERENCE,
         manufacturerReferences,
         brandKey,
-        ""
+        "",
+        aggregated
       );
 
     if (productFromIdentifier) {
@@ -222,7 +281,14 @@ export async function matchFeedItem(
       },
     });
 
-    if (product) {
+    if (
+      product &&
+      await isCompatibleExistingProduct(
+        prisma,
+        product.id,
+        aggregated
+      )
+    ) {
       return {
         productId: product.id,
         confidence: 97,
@@ -263,10 +329,17 @@ export async function matchFeedItem(
         },
       });
 
-      if (product) {
-        return {
-          productId: product.id,
-          confidence: 90,
+      if (
+      product &&
+      await isCompatibleExistingProduct(
+        prisma,
+        product.id,
+        aggregated
+      )
+    ) {
+      return {
+        productId: product.id,
+        confidence: 90,
           reason: "BRAND_NORMALIZED_NAME",
         };
       }
@@ -277,39 +350,6 @@ export async function matchFeedItem(
     confidence: 0,
     reason: "NEW_PRODUCT",
   };
-}
-
-async function findProductByIdentifier(
-  prisma: PrismaClient,
-  siteId: string,
-  type: ProductIdentifierType,
-  values: string[],
-  brandKey: string,
-  merchantSlug: string
-): Promise<{ productId: number } | null> {
-  const cleanedValues = uniqueIdentifiers(values);
-
-  if (cleanedValues.length === 0) {
-    return null;
-  }
-
-  return prisma.productIdentifier.findFirst({
-    where: {
-      siteId,
-      type,
-      value: {
-        in: cleanedValues,
-      },
-      brandKey,
-      merchantSlug,
-    },
-    orderBy: {
-      updatedAt: "desc",
-    },
-    select: {
-      productId: true,
-    },
-  });
 }
 
 function buildBrandWhere(
@@ -340,4 +380,500 @@ function uniqueIdentifiers(
         .filter((value): value is string => Boolean(value))
     )
   );
+}
+
+type GuardedProductKind =
+  | "SNOWBOARD_PACK"
+  | "SNOWBOARD_BOARD"
+  | "SNOWBOARD_SPLITBOARD"
+  | "SNOWBOARD_BOOT"
+  | "SNOWBOARD_BINDING"
+  | "SNOWBOARD_BAG"
+  | "NORDIC_PACK"
+  | "NORDIC_SKI"
+  | "NORDIC_BOOT"
+  | "NORDIC_BINDING"
+  | "NORDIC_MAINTENANCE"
+  | "NORDIC_POLE"
+  | "ALPINE_SKI_PACK"
+  | "ALPINE_SKI"
+  | "ALPINE_BOOT"
+  | "ALPINE_BINDING"
+  | "ALPINE_POLE"
+  | "RANDO_PACK"
+  | "RANDO_SKI"
+  | "RANDO_BOOT"
+  | "RANDO_BINDING"
+  | "RANDO_POLE"
+  | "RANDO_SKIN"
+  | "RANDO_CRAMPON"
+  | "RANDO_AVALANCHE";
+  
+async function findCompatibleProductByIdentifier(
+  prisma: PrismaClient,
+  siteId: string,
+  type: ProductIdentifierType,
+  values: string[],
+  brandKey: string,
+  merchantSlug: string,
+  aggregated: AggregatedFeedItem
+): Promise<{ productId: number } | null> {
+  const cleanedValues = uniqueIdentifiers(values);
+
+  if (cleanedValues.length === 0) {
+    return null;
+  }
+
+  const candidates = await prisma.productIdentifier.findMany({
+    where: {
+      siteId,
+      type,
+      value: {
+        in: cleanedValues,
+      },
+      brandKey,
+      merchantSlug,
+    },
+    orderBy: {
+      updatedAt: "desc",
+    },
+    select: {
+      productId: true,
+    },
+  });
+
+  const seenProductIds = new Set<number>();
+
+  for (const candidate of candidates) {
+    if (seenProductIds.has(candidate.productId)) {
+      continue;
+    }
+
+    seenProductIds.add(candidate.productId);
+
+    const compatible = await isCompatibleExistingProduct(
+      prisma,
+      candidate.productId,
+      aggregated
+    );
+
+    if (compatible) {
+      return candidate;
+    }
+  }
+
+  return null;
+}
+
+async function isCompatibleExistingProduct(
+  prisma: PrismaClient,
+  productId: number,
+  aggregated: AggregatedFeedItem
+): Promise<boolean> {
+  const incomingKind =
+    resolveGuardedProductKind(
+      aggregated
+    );
+
+  if (!incomingKind) {
+    return true;
+  }
+
+  const product =
+    await prisma.product.findUnique({
+      where: {
+        id: productId,
+      },
+      select: {
+        categoryId: true,
+        attributes: true,
+      },
+    });
+
+  if (!product) {
+    return false;
+  }
+
+  const category =
+    product.categoryId
+      ? await prisma.category.findUnique({
+          where: {
+            id: product.categoryId,
+          },
+          select: {
+            slug: true,
+          },
+        })
+      : null;
+
+  const existingPath =
+    readJsonStringAttribute(
+      product.attributes,
+      "sourceCategoryPath"
+    );
+
+  // Le chemin source marchand est la preuve la plus fiable de la nature
+  // du produit. Les catégories historiques peuvent avoir été polluées.
+  const existingKind =
+    resolveProductKindFromPath(
+      existingPath
+    ) ||
+    resolveProductKindFromSlug(
+      category?.slug
+    );
+
+  if (!existingKind) {
+    return true;
+  }
+
+  return existingKind === incomingKind;
+}
+
+function resolveGuardedProductKind(
+  aggregated: AggregatedFeedItem
+): GuardedProductKind | null {
+  return (
+    resolveProductKindFromPath(
+      aggregated.item.categoryPath
+    ) ||
+    resolveProductKindFromSlug(
+      aggregated.primaryCategory.slug
+    )
+  );
+}
+
+function resolveProductKindFromSlug(
+  slug: string | null | undefined
+): GuardedProductKind | null {
+  switch (slug) {
+    case "packs-snowboard":
+      return "SNOWBOARD_PACK";
+
+    case "planches-snowboard":
+    case "snowboard-freestyle":
+    case "snowboard-all-mountain":
+    case "snowboard-freeride":
+      return "SNOWBOARD_BOARD";
+
+    case "splitboard":
+      return "SNOWBOARD_SPLITBOARD";
+
+    case "boots-snowboard":
+    case "boots-snowboard-freestyle":
+    case "boots-snowboard-freeride":
+      return "SNOWBOARD_BOOT";
+
+    case "fixations-snowboard":
+    case "fixations-snowboard-straps":
+    case "fixations-snowboard-rear-entry":
+    case "fixations-splitboard":
+      return "SNOWBOARD_BINDING";
+
+    case "housses-snowboard":
+      return "SNOWBOARD_BAG";
+	  
+	case "packs-skating":
+	case "packs-ski-classique":
+	  return "NORDIC_PACK";
+
+	case "skis-skating":
+	case "skis-classique":
+	  return "NORDIC_SKI";
+
+	case "chaussures-skating":
+	case "chaussures-classique":
+	  return "NORDIC_BOOT";
+
+	case "fixations-skating":
+	case "fixations-classique":
+	  return "NORDIC_BINDING";
+
+	case "entretien-ski-nordique":
+	case "fart-glisse":
+	case "fart-retenue":
+	case "outils-fartage":
+	  return "NORDIC_MAINTENANCE";
+
+	case "packs-skis":
+	case "packs-skis-piste":
+	case "packs-skis-all-mountain":
+	case "packs-skis-freeride":
+	case "packs-skis-freestyle":
+	case "packs-skis-junior":
+	  return "ALPINE_SKI_PACK";
+
+	case "skis":
+	case "skis-piste":
+	case "skis-all-mountain":
+	case "skis-freeride":
+	case "skis-freestyle":
+	case "skis-junior":
+	  return "ALPINE_SKI";
+
+	case "chaussures-ski":
+	case "chaussures-ski-piste":
+	case "chaussures-ski-freeride":
+	case "chaussures-ski-performance":
+	case "chaussures-ski-junior":
+	  return "ALPINE_BOOT";
+
+	case "fixations-ski":
+	case "fixations-ski-piste":
+	case "fixations-ski-all-mountain":
+	case "fixations-ski-freeride":
+	  return "ALPINE_BINDING";
+
+	case "batons-ski":
+	case "batons-ski-piste":
+	case "batons-ski-freeride":
+	case "batons-ski-junior":
+	  return "ALPINE_POLE";
+	  
+	case "packs-ski-randonnee":
+	case "packs-ski-freerando":
+	  return "RANDO_PACK";
+
+	case "skis-randonnee":
+	case "skis-randonnee-legers":
+	case "skis-freerando":
+	  return "RANDO_SKI";
+
+	case "chaussures-ski-randonnee":
+	case "chaussures-ski-rando-legeres":
+	case "chaussures-freerando":
+	  return "RANDO_BOOT";
+
+	case "fixations-ski-randonnee":
+	case "fixations-inserts":
+	case "fixations-hybrides":
+	case "fixations-chassis":
+	  return "RANDO_BINDING";
+
+	case "batons-ski-randonnee":
+	  return "RANDO_POLE";
+
+	case "peaux-phoque":
+	case "peaux-avec-colle":
+	case "peaux-sans-colle":
+	case "peaux-predecoupees":
+	  return "RANDO_SKIN";
+
+	case "couteaux-ski-rando":
+	case "freins-leash-ski-rando":
+	  return "RANDO_CRAMPON";
+
+	case "securite-avalanche":
+	case "dva-arva":
+	case "pelles-avalanche":
+	case "sondes-avalanche":
+	case "sacs-airbag":
+	  return "RANDO_AVALANCHE";
+
+    default:
+      return null;
+  }
+}
+
+function resolveProductKindFromPath(
+  value: string | null | undefined
+): GuardedProductKind | null {
+  const path =
+    normalizeCategoryPath(value);
+
+  if (path.includes("snowboard")) {
+    if (
+      path.includes("pack snowboard") ||
+      path.includes("snowboard > packs")
+    ) {
+      return "SNOWBOARD_PACK";
+    }
+
+    if (
+      path.includes("planche de snowboard") ||
+      path.includes("snowboard > planches")
+    ) {
+      return "SNOWBOARD_BOARD";
+    }
+
+    if (
+      path.includes("splitboard")
+    ) {
+      return "SNOWBOARD_SPLITBOARD";
+    }
+
+    if (
+      path.includes("boots snowboard") ||
+      path.includes("snowboard > boots")
+    ) {
+      return "SNOWBOARD_BOOT";
+    }
+
+    if (
+      path.includes("fixation snowboard") ||
+      path.includes("fixations snowboard") ||
+      path.includes("snowboard > fixations")
+    ) {
+      return "SNOWBOARD_BINDING";
+    }
+
+    if (
+      path.includes("housse snowboard") ||
+      path.includes("bagagerie snowboard")
+    ) {
+      return "SNOWBOARD_BAG";
+    }
+  }
+
+  if (
+    path.includes("ski de fond")
+  ) {
+    if (
+      path.includes("pack ski de fond")
+    ) {
+      return "NORDIC_PACK";
+    }
+
+    if (
+      path.includes("chaussure ski de fond")
+    ) {
+      return "NORDIC_BOOT";
+    }
+
+    if (
+      path.includes("fixation ski de fond")
+    ) {
+      return "NORDIC_BINDING";
+    }
+
+    if (
+      path.includes("ski de fond > materiel ski de fond > ski de fond") ||
+      path.includes("materiel ski de fond > ski de fond")
+    ) {
+      return "NORDIC_SKI";
+    }
+
+    if (
+      path.includes("fart ski de fond") ||
+      path.includes("brosse a farter") ||
+      path.includes("outil de fartage")
+    ) {
+      return "NORDIC_MAINTENANCE";
+    }
+
+    if (
+      path.includes("baton ski de fond")
+    ) {
+      return "NORDIC_POLE";
+    }
+  }
+  
+  if (
+  path.includes("ski alpin")
+) {
+  if (
+    path.includes("pack ski")
+  ) {
+    return "ALPINE_SKI_PACK";
+  }
+
+  if (
+    path.includes("chaussure de ski")
+  ) {
+    return "ALPINE_BOOT";
+  }
+
+  if (
+    path.includes("fixation ski")
+  ) {
+    return "ALPINE_BINDING";
+  }
+
+  if (
+    path.includes("baton de ski")
+  ) {
+    return "ALPINE_POLE";
+  }
+
+  if (
+    path.includes("materiel ski > ski")
+  ) {
+    return "ALPINE_SKI";
+  }
+}
+
+  if (path.includes("ski de randonnee")) {
+  if (path.includes("pack ski de randonnee")) {
+    return "RANDO_PACK";
+  }
+
+  if (path.includes("chaussure ski de randonnee")) {
+    return "RANDO_BOOT";
+  }
+
+  if (path.includes("fixation ski de randonnee")) {
+    return "RANDO_BINDING";
+  }
+
+  if (path.includes("baton ski de randonnee")) {
+    return "RANDO_POLE";
+  }
+
+  if (path.includes("peau de phoque")) {
+    return "RANDO_SKIN";
+  }
+
+  if (path.includes("couteaux ski de rando")) {
+    return "RANDO_CRAMPON";
+  }
+
+  if (path.includes("securite avalanche")) {
+    return "RANDO_AVALANCHE";
+  }
+
+  if (
+    path.includes("materiel ski de randonnee > ski de randonnee")
+  ) {
+    return "RANDO_SKI";
+  }
+}
+
+  return null;
+}
+
+function readJsonStringAttribute(
+  attributes: Prisma.JsonValue | null | undefined,
+  key: string
+): string {
+  if (
+    !attributes ||
+    typeof attributes !== "object" ||
+    Array.isArray(attributes)
+  ) {
+    return "";
+  }
+
+  const value =
+    (
+      attributes as Record<
+        string,
+        unknown
+      >
+    )[key];
+
+  return typeof value === "string"
+    ? value
+    : "";
+}
+
+function normalizeCategoryPath(
+  value: string | null | undefined
+): string {
+  return normalizeText(value)
+    .toLowerCase()
+    .replace(
+      /\s*(>|\/|\||»|→)\s*/g,
+      " > "
+    )
+    .replace(/\s+/g, " ")
+    .trim();
 }
