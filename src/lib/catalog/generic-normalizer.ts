@@ -448,16 +448,31 @@ function htmlToText(
   }
 
   const text = String(value)
+    // Transforme les lignes de tableaux techniques "clé / valeur".
+    .replace(
+      /<tr(?:\s[^>]*)?>\s*<td(?:\s[^>]*)?>([\s\S]*?)<\/td>\s*<td(?:\s[^>]*)?>([\s\S]*?)<\/td>\s*<\/tr>/gi,
+      (_match, label: string, content: string) =>
+        `${label.trim()} : ${content.trim()}\n\n`
+    )
+
+    // Supprime les conteneurs des tableaux.
+    .replace(
+	  /<\/?(?:table|tbody|thead|tfoot)(?:\s[^>]*)?>/gi,
+	  "\n\n"
+	)
+
     // Conserve les séparations utiles avant de retirer les balises.
-    .replace(/<br\s*\/?>/gi, "\n")
+    .replace(/<br\s*\/?>/gi, "\n\n")
     .replace(/<\/p\s*>/gi, "\n\n")
     .replace(/<p(?:\s[^>]*)?>/gi, "\n\n")
     .replace(/<\/div\s*>/gi, "\n\n")
     .replace(/<div(?:\s[^>]*)?>/gi, "")
     .replace(/<\/li\s*>/gi, "\n")
     .replace(/<li(?:\s[^>]*)?>/gi, "- ")
+
     // Supprime les autres balises HTML.
     .replace(/<[^>]+>/g, "")
+
     // Normalise les espaces sans perdre les paragraphes.
     .replace(/\r\n?/g, "\n")
     .replace(/[ \t]+/g, " ")
