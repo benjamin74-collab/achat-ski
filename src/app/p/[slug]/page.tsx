@@ -9,6 +9,7 @@ import type { Metadata } from "next";
 import type { Prisma } from "@prisma/client";
 import { slugify } from "@/lib/slug";
 import { getCurrentSiteUrl } from "@/lib/currentSite";
+import { sanitizeHtml } from "@/lib/sanitize";
 
 export const runtime = "nodejs";
 export const revalidate = 60;
@@ -33,6 +34,13 @@ export async function generateMetadata({
       season: true,
       slug: true,
       description: true,
+	  content: {
+		select: {
+			metaTitle: true,
+			metaDescription: true,
+			status: true,
+		  },
+	  },
       category: {
         select: {
           name: true,
@@ -62,22 +70,33 @@ export async function generateMetadata({
 
   const url = `${site}/p/${p.slug}`;
 
-  const desc = `Découvrez ${name} : caractéristiques, prix et offres disponibles chez les marchands référencés sur Meilleur-Ski.`;
+const editorialContent =
+  p.content?.status === "PUBLISHED"
+    ? p.content
+    : null;
 
-  return {
-    title: `${name} — Comparatif prix et offres`,
+const metaTitle =
+  editorialContent?.metaTitle?.trim() ||
+  `${name} — Comparatif prix et offres`;
+
+const desc =
+  editorialContent?.metaDescription?.trim() ||
+  `Découvrez ${name} : caractéristiques, prix et offres disponibles chez les marchands référencés sur Meilleur-Ski.`;
+
+return {
+  title: metaTitle,
     description: desc,
     alternates: {
       canonical: url,
     },
     openGraph: {
-      title: `${name} — Comparatif prix et offres`,
+      title: metaTitle,
       description: desc,
       url,
     },
     twitter: {
       card: "summary_large_image",
-      title: `${name} — Comparatif prix et offres`,
+      title: metaTitle,
       description: desc,
     },
   };
@@ -122,6 +141,13 @@ export default async function ProductPage({
         slug,
       },
       include: {
+        content: {
+          select: {
+            description: true,
+            metaDescription: true,
+            status: true,
+          },
+        },
         category: {
           select: {
             name: true,
@@ -282,11 +308,25 @@ export default async function ProductPage({
 
   const canonicalUrl = `${site}/p/${product.slug}`;
 
-  const desc =
-    product.description?.trim() ?? null;
+  const editorialContent =
+    product.content?.status === "PUBLISHED"
+      ? product.content
+      : null;
+
+  const editorialDescription =
+    editorialContent?.description?.trim() || null;
+
+  const sanitizedEditorialDescription =
+    editorialDescription
+      ? sanitizeHtml(editorialDescription)
+      : null;
+
+  const feedDescription =
+    product.description?.trim() || null;
 
   const pageDescription =
-    desc ||
+    editorialContent?.metaDescription?.trim() ||
+    feedDescription ||
     `Comparez les prix de ${title}, consultez les offres disponibles et trouvez le meilleur marchand partenaire.`;
 
   const baseSpecs: Array<
@@ -864,20 +904,22 @@ export default async function ProductPage({
                 {product.model}
               </h2>
 
-              {desc ? (
+              {sanitizedEditorialDescription ? (
+                <div
+                  className="prose mt-4 max-w-none text-sm leading-7 text-slate-700 md:text-base md:leading-8"
+                  dangerouslySetInnerHTML={{
+                    __html: sanitizedEditorialDescription,
+                  }}
+                />
+              ) : feedDescription ? (
                 <div className="mt-4 space-y-4 text-sm leading-7 text-slate-700 md:text-base md:leading-8">
-                  {desc
+                  {feedDescription
                     .split(/\n{2,}/)
-                    .map(
-                      (
-                        paragraph,
-                        index
-                      ) => (
-                        <p key={index}>
-                          {paragraph.trim()}
-                        </p>
-                      )
-                    )}
+                    .map((paragraph, index) => (
+                      <p key={index}>
+                        {paragraph.trim()}
+                      </p>
+                    ))}
                 </div>
               ) : (
                 <p className="mt-4 text-sm leading-7 text-slate-600">
