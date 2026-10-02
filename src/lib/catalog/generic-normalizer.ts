@@ -64,6 +64,7 @@ export type FeedColumnTransform =
   | "BRAND"
   | "PRODUCT_NAME"
   | "HTML"
+  | "HTML_TO_TEXT"
   | "BOOLEAN"
   | "AVAILABILITY";
 
@@ -234,10 +235,9 @@ export function normalizeGenericFeedRow(
     title,
     cleanName,
 	brand,
-
-	description: decodeHtml(
-	  mappedValues.description
-	),
+    description: toOptionalDescription(
+      mappedValues.description
+    ),
 
     categoryPath:
       toOptionalString(
@@ -437,6 +437,55 @@ function defaultTransformForField(
 /**
  * Applique une transformation déclarative à une valeur brute.
  */
+function htmlToText(
+  value: unknown
+): string | undefined {
+  if (
+    value === null ||
+    value === undefined
+  ) {
+    return undefined;
+  }
+
+  const text = String(value)
+    // Conserve les séparations utiles avant de retirer les balises.
+    .replace(/<br\s*\/?>/gi, "\n")
+    .replace(/<\/p\s*>/gi, "\n\n")
+    .replace(/<p(?:\s[^>]*)?>/gi, "\n\n")
+    .replace(/<\/div\s*>/gi, "\n\n")
+    .replace(/<div(?:\s[^>]*)?>/gi, "")
+    .replace(/<\/li\s*>/gi, "\n")
+    .replace(/<li(?:\s[^>]*)?>/gi, "- ")
+    // Supprime les autres balises HTML.
+    .replace(/<[^>]+>/g, "")
+    // Normalise les espaces sans perdre les paragraphes.
+    .replace(/\r\n?/g, "\n")
+    .replace(/[ \t]+/g, " ")
+    .replace(/ *\n */g, "\n")
+    .replace(/\n{3,}/g, "\n\n")
+    .trim();
+
+  if (!text) {
+    return undefined;
+  }
+
+  // decodeHtml normalise les espaces : on le fait paragraphe par
+  // paragraphe afin de conserver les doubles retours à la ligne.
+  const paragraphs = text
+    .split(/\n{2,}/)
+    .map((paragraph) =>
+      decodeHtml(paragraph)
+    )
+    .filter(
+      (paragraph): paragraph is string =>
+        Boolean(paragraph)
+    );
+
+  return paragraphs.length > 0
+    ? paragraphs.join("\n\n")
+    : undefined;
+}
+
 function applyColumnTransform(
   value: unknown,
   transform: FeedColumnTransform
@@ -483,9 +532,11 @@ function applyColumnTransform(
       return normalizeProductName(
         safeString(value)
       );
+    case "HTML":
+      return decodeHtml(value);
 
-	case "HTML":
-	return decodeHtml(value);
+    case "HTML_TO_TEXT":
+      return htmlToText(value);
 
     case "BOOLEAN":
       return parseBoolean(value);
@@ -503,6 +554,24 @@ function applyColumnTransform(
 function toOptionalString(
   value: unknown
 ): string | undefined {
+  return safeString(value);
+}
+
+function toOptionalDescription(
+  value: unknown
+): string | undefined {
+  if (
+    value === null ||
+    value === undefined
+  ) {
+    return undefined;
+  }
+
+  if (typeof value === "string") {
+    const trimmed = value.trim();
+    return trimmed || undefined;
+  }
+
   return safeString(value);
 }
 

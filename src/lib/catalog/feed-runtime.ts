@@ -50,6 +50,7 @@ const SUPPORTED_TRANSFORMS =
     "BRAND",
     "PRODUCT_NAME",
     "HTML",
+    "HTML_TO_TEXT",
     "BOOLEAN",
     "AVAILABILITY",
   ]);
