@@ -62,9 +62,7 @@ export async function generateMetadata({
 
   const url = `${site}/p/${p.slug}`;
 
-  const desc =
-    p.description?.trim() ||
-    `Comparez les prix de ${name}, consultez les offres disponibles et trouvez le meilleur marchand partenaire.`;
+  const desc = `Découvrez ${name} : caractéristiques, prix et offres disponibles chez les marchands référencés sur Meilleur-Ski.`;
 
   return {
     title: `${name} — Comparatif prix et offres`,
