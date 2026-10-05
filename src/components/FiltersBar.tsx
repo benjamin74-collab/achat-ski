@@ -13,6 +13,21 @@ function clamp(value: number, min: number, max: number) {
   return Math.min(Math.max(value, min), max);
 }
 
+function getPriceParam(
+  searchParams: ReturnType<typeof useSearchParams>,
+  name: string,
+): number | null {
+  const rawValue = searchParams.get(name);
+
+  if (rawValue === null || rawValue.trim() === "") {
+    return null;
+  }
+
+  const value = Number(rawValue);
+
+  return Number.isFinite(value) ? value : null;
+}
+
 export default function FiltersBar({
   brands,
   minPrice,
@@ -33,9 +48,9 @@ export default function FiltersBar({
   function getInitialMin() {
     if (!hasPriceRange) return rangeMin;
 
-    const value = Number(searchParams.get("minPrice"));
+    const value = getPriceParam(searchParams, "minPrice");
 
-    if (!Number.isFinite(value)) {
+    if (value === null) {
       return rangeMin;
     }
 
@@ -45,9 +60,9 @@ export default function FiltersBar({
   function getInitialMax() {
     if (!hasPriceRange) return rangeMax;
 
-    const value = Number(searchParams.get("maxPrice"));
+    const value = getPriceParam(searchParams, "maxPrice");
 
-    if (!Number.isFinite(value)) {
+    if (value === null) {
       return rangeMax;
     }
 
@@ -75,16 +90,18 @@ export default function FiltersBar({
       return;
     }
 
-    const urlMin = Number(searchParams.get("minPrice"));
-    const urlMax = Number(searchParams.get("maxPrice"));
+    const urlMin = getPriceParam(searchParams, "minPrice");
+    const urlMax = getPriceParam(searchParams, "maxPrice");
 
-    const nextMin = Number.isFinite(urlMin)
-      ? clamp(urlMin, rangeMin, rangeMax)
-      : rangeMin;
+    const nextMin =
+      urlMin !== null
+        ? clamp(urlMin, rangeMin, rangeMax)
+        : rangeMin;
 
-    const nextMax = Number.isFinite(urlMax)
-      ? clamp(urlMax, rangeMin, rangeMax)
-      : rangeMax;
+    const nextMax =
+      urlMax !== null
+        ? clamp(urlMax, rangeMin, rangeMax)
+        : rangeMax;
 
     setSelectedMinPrice(Math.min(nextMin, nextMax));
     setSelectedMaxPrice(Math.max(nextMin, nextMax));
