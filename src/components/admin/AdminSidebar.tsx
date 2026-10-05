@@ -59,6 +59,11 @@ const NAV_SECTIONS: NavSection[] = [
   {
     title: "Contenu",
     items: [
+	  {
+		href: "/admin/products/content",
+		label: "Contenu produits",
+		desc: "Descriptions et SEO des produits",
+	  },
       {
         href: "/admin/pages",
         label: "Pages",

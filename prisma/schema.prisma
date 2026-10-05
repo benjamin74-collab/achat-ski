@@ -260,11 +260,12 @@ model Product {
   category   Category?         @relation("ProductPrimaryCategory", fields: [categoryId], references: [id], onDelete: SetNull)
   categories ProductCategory[]
 
-  slug        String   @unique
+  slug        String          @unique
   attributes  Json?
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @default(now()) @updatedAt
+  createdAt   DateTime        @default(now())
+  updatedAt   DateTime        @default(now()) @updatedAt
   description String?
+  content     ProductContent?
 
   normalizedName        String?
   manufacturerReference String?
@@ -837,6 +838,11 @@ enum CategoryEnrichmentMatchMode {
   ALL
 }
 
+enum ProductContentStatus {
+  DRAFT
+  PUBLISHED
+}
+
 model FeedImport {
   id         Int      @id @default(autoincrement())
   merchant   Merchant @relation(fields: [merchantId], references: [id])
@@ -1068,6 +1074,19 @@ model SiteSettings {
   updatedAt DateTime @updatedAt
 
   @@index([siteId])
+}
+
+model ProductContent {
+  id              Int                  @id @default(autoincrement())
+  productId       Int                  @unique
+  metaTitle       String?
+  metaDescription String?
+  description     String?
+  status          ProductContentStatus @default(DRAFT)
+  createdAt       DateTime             @default(now())
+  updatedAt       DateTime             @updatedAt
+
+  product Product @relation(fields: [productId], references: [id], onDelete: Cascade)
 }
 
 model MediaAsset {
