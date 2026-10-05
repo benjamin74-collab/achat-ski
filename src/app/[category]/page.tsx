@@ -1391,9 +1391,9 @@ export default async function CategoryPage({
             .length >
             0 && (
             <section className="rounded-3xl border border-ring bg-white p-5 md:p-6 shadow-card">
-              <h2 className="text-xl font-semibold text-slate-900">
-                Sous-catégories
-              </h2>
+              <div className="text-xl font-semibold text-slate-900">
+			    Sous-catégories
+			  </div>
 
               <p className="mt-2 text-sm text-slate-600">
                 Explore les
