@@ -90,12 +90,17 @@ export function normalizeBrandName(
 export function normalizeBrandKey(
   value: string | null | undefined
 ): string {
-  let normalized =
-    normalizeText(value);
+  let normalized = normalizeText(value);
 
   if (!normalized) {
     return "";
   }
+
+  // Appliquer les alias officiels avant
+  // de générer la clé de comparaison.
+  normalized =
+    normalizeBrandName(normalized) ??
+    normalized;
 
   normalized = normalized
     .replace(/[øØ]/g, "o")
@@ -104,11 +109,8 @@ export function normalizeBrandKey(
     .toLowerCase()
     .trim();
 
-  /*
-   * Pour le matching des marques uniquement,
-   * "The North Face" et "North Face"
-   * doivent être considérés comme identiques.
-   */
+  // The North Face et North Face
+  // doivent conserver la même clé.
   normalized = normalized.replace(
     /^the\s+/i,
     ""

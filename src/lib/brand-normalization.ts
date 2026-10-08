@@ -59,7 +59,29 @@ const BRAND_ALIASES: Record<string, NormalizedBrand> = {
     name: "Nitro",
     slug: "nitro",
   },
-
+  
+  // Jack & Jones
+  "jack&jones": {
+    name: "Jack&jones",
+    slug: "jack-jones",
+  },
+  "jack & jones": {
+    name: "Jack&jones",
+    slug: "jack-jones",
+  },
+  "jack jones": {
+    name: "Jack&jones",
+    slug: "jack-jones",
+  },
+  "jack jones junior": {
+    name: "Jack&jones",
+    slug: "jack-jones",
+  },
+  "jack&jones junior": {
+    name: "Jack&jones",
+    slug: "jack-jones",
+  },
+  
   // Roxy
   "roxy": {
     name: "Roxy",
