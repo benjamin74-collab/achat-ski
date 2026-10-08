@@ -405,16 +405,31 @@ export function buildProductSlug(
   );
 }
 
+/** Empêche la fusion d'une planche et de son pack, sans modifier les noms affichés. */
+export function snowboardProductKind(item: Pick<NormalizedFeedItem, "categoryPath">): string {
+  const path = normalizeText(item.categoryPath).toLowerCase();
+  if (!path.includes("snowboard")) return "";
+  if (/pack[s]? snowboard|snowboard\s*>\s*packs?/.test(path)) return "pack";
+  if (/planche[s]? de snowboard|snowboard\s*>\s*planches?/.test(path)) return "board";
+  if (/splitboard/.test(path)) return "splitboard";
+  if (/boots? snowboard|snowboard\s*>\s*boots?/.test(path)) return "boot";
+  if (/fixations? snowboard|snowboard\s*>\s*fixations?/.test(path)) return "binding";
+  if (/housse[s]? snowboard/.test(path)) return "bag";
+  return "";
+}
+
 export function buildProductGroupKey(item: NormalizedFeedItem): string {
   const merchant = slugify(item.merchantSlug) || "merchant";
+  const kind = snowboardProductKind(item);
+  const prefix = kind ? `${merchant}:snowboard-${kind}` : merchant;
 
   if (item.parentExternalId) {
-    return `${merchant}:parent:${normalizeText(item.parentExternalId).toUpperCase()}`;
+    return `${prefix}:parent:${normalizeText(item.parentExternalId).toUpperCase()}`;
   }
 
   if (item.brand && item.manufacturerReference) {
     return [
-      merchant,
+      prefix,
       "manufacturer",
       normalizeText(item.brand).toUpperCase(),
       normalizeText(item.manufacturerReference).toUpperCase(),
@@ -425,7 +440,7 @@ export function buildProductGroupKey(item: NormalizedFeedItem): string {
     cleanProductDisplayName(item);
 
   return [
-    merchant,
+    prefix,
     "name",
     normalizeText(item.brand).toUpperCase(),
     normalizeProductName(displayName || item.cleanName || item.title),

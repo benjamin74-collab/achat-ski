@@ -11,7 +11,7 @@ import type {
   NormalizedFeedItem,
 } from "./feed-types";
 
-import { matchFeedItem } from "./matching";
+import { matchFeedItem, isCompatibleExistingProduct } from "./matching";
 
 import {
   buildProductSlug,
@@ -492,22 +492,37 @@ async function createProduct(
   const normalizedName =
     normalizeProductName(name);
 
-  const slug =
-    buildProductSlug(item) ||
-    "produit";
+  const baseSlug = buildProductSlug(item) || "produit";
+  let slug = baseSlug;
 
   const gtin =
     normalizeGtin(item.gtin);
 
-  const existingProduct =
-    await prisma.product.findUnique({
-      where: {
-        slug,
-      },
-      select: {
-        id: true,
-      },
+  let existingProduct = await prisma.product.findUnique({
+    where: { slug },
+    select: { id: true },
+  });
+
+  // Une collision de slug ne signifie pas que pack et planche sont identiques.
+  if (existingProduct && !(await isCompatibleExistingProduct(prisma, existingProduct.id, aggregated))) {
+    slug = `${baseSlug}-${primaryCategory.slug}`;
+    existingProduct = await prisma.product.findUnique({
+      where: { slug },
+      select: { id: true },
     });
+    if (existingProduct && !(await isCompatibleExistingProduct(prisma, existingProduct.id, aggregated))) {
+      // Évite d'écraser un produit d'une autre nature, même en cas de collision rare.
+      slug = `${baseSlug}-${primaryCategory.slug}-${slugify(aggregated.groupKey).slice(-45)}`.slice(0, 180);
+      existingProduct = await prisma.product.findUnique({
+        where: { slug },
+        select: { id: true },
+      });
+    }
+  }
+
+  if (existingProduct && !(await isCompatibleExistingProduct(prisma, existingProduct.id, aggregated))) {
+    throw new Error(`Collision de slug entre types de produits incompatibles : ${slug}`);
+  }
 
   /*
    * Un slug déjà présent correspond à une fiche existante.
