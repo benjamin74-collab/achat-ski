@@ -487,6 +487,39 @@ function buildAlpineSkiCategoryPlan(
     return null;
   }
 
+  // Intersport regroupe skis nus et ensembles skis + fixations sous « Skis ».
+  // Ne classer en pack que si le libelle contient une reference de fixation
+  // explicite ; ne jamais deduire un pack de la seule categorie marchande.
+  if (path === "ski & snowboard > ski > skis alpin > skis") {
+    const title = buildProductOnlyGuardSearchText(aggregated);
+    const hasBindings =
+      /\b(?:avec|with)\s+fixations?\b/.test(title) ||
+      /\b(?:xpress|lithium|xp(?:ress)?\s*(?:10|11|12|jr\s*7)|nx\s*12|m\s*10\s*gw|mi\s*12\s*gw)\b/.test(title) ||
+      /\b(?:m10|m11|m12|xp10|xp11|xpjr7|nx12)\b/.test(title);
+
+    if (hasBindings) {
+      const currentSlug = aggregated.primaryCategory.slug;
+      const skiToPack: Record<string, string> = {
+        "skis-piste": "packs-skis-piste",
+        "skis-all-mountain": "packs-skis-all-mountain",
+        "skis-freeride": "packs-skis-freeride",
+        "skis-freestyle": "packs-skis-freestyle",
+        "skis-junior": "packs-skis-junior",
+      };
+      const primarySlug = /\b(enfant|junior|jr|xpjr7)\b/.test(title)
+        ? "packs-skis-junior"
+        : /\b(forza|nova|addikt|s\s*max|speed|hero|pure joy)\b/.test(title)
+          ? "packs-skis-piste"
+          : skiToPack[currentSlug] ?? "packs-skis-all-mountain";
+
+      return {
+        primarySlug,
+        allowedSlugs: [primarySlug],
+        cleanupSlugs: ALPINE_SKI_CROSS_FAMILY_CLEANUP_SLUGS,
+      };
+    }
+  }
+
   /*
    * Certains marchands (notamment Alpinstore) utilisent "Ski alpin"
    * comme catégorie source générique pour plusieurs natures de produit.
