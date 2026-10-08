@@ -87,8 +87,16 @@ export default function PriceTable({ offers }: { offers: OfferRow[] }) {
                 ) : null}
               </div>
 
-              <div className="text-sm font-semibold text-slate-900">
-                {money(offer.priceCents, offer.currency)}
+              <div>
+                <div className="text-sm font-semibold text-slate-900">
+                  {money(offer.priceCents, offer.currency)}
+                </div>
+                <p className="mt-1.5 max-w-[15rem] text-[11px] leading-4 font-normal text-slate-600">
+                  Prix pouvant inclure une remise ou un code promo à appliquer chez le marchand.{" "}
+                  <Link href="/comment-ca-marche" className="font-semibold text-brand-700 hover:underline">
+                    En savoir plus
+                  </Link>
+                </p>
               </div>
 
               <div className="text-sm text-slate-600">
@@ -177,6 +185,12 @@ export default function PriceTable({ offers }: { offers: OfferRow[] }) {
                   <div className="font-semibold">
                     {money(offer.priceCents, offer.currency)}
                   </div>
+                  <p className="mt-1 text-[11px] leading-4 text-slate-600">
+                    Remise ou code promo possible.{" "}
+                    <Link href="/comment-ca-marche" className="font-semibold text-brand-700 hover:underline">
+                      Détails
+                    </Link>
+                  </p>
                 </div>
 
                 <div>

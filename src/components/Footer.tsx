@@ -251,6 +251,11 @@ export default async function Footer() {
 
           <ul className="flex flex-wrap items-center gap-x-4 gap-y-2 text-xs">
             <li>
+              <Link className="text-slate-500 hover:text-brand-700" href="/comment-ca-marche">
+                Comment ça marche ?
+              </Link>
+            </li>
+            <li>
               <Link className="text-slate-500 hover:text-brand-700" href="/mentions-legales">
                 Mentions légales
               </Link>
