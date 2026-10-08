@@ -465,7 +465,7 @@ async function findCompatibleProductByIdentifier(
   return null;
 }
 
-async function isCompatibleExistingProduct(
+export async function isCompatibleExistingProduct(
   prisma: PrismaClient,
   productId: number,
   aggregated: AggregatedFeedItem

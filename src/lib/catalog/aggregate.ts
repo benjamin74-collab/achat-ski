@@ -72,13 +72,9 @@ export function aggregateFeedItems(
             representative
           ),
 
-        externalId:
-          representative.parentExternalId ??
-          representative.externalId,
-
-        parentExternalId:
-          representative.parentExternalId ??
-          representative.externalId,
+        // L'offre représente la variante sélectionnée (prix, lien et image).
+        externalId: bestOfferVariant.externalId ?? representative.externalId,
+        parentExternalId: bestOfferVariant.parentExternalId ?? representative.parentExternalId,
 
         price: bestOfferVariant.price,
         oldPrice: bestOfferVariant.oldPrice,
