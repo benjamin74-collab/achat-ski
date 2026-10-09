@@ -1127,6 +1127,16 @@ async function reconcileMissingOffers({
   startedAt,
   stats,
 }: ReconcileOptions): Promise<void> {
+  // Protection temporaire :
+  // Tonton Outdoor a changé sa structure de catégories.
+  // On conserve ses anciennes offres pendant la transition.
+  if (runtime.feedSourceId === 2) {
+    console.log(
+      "[FEED RECONCILIATION] Tonton Outdoor : " +
+      "désactivation des offres absentes suspendue."
+    );
+    return;
+  }
   /*
    * Sécurité SEO :
    *
