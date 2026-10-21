@@ -539,6 +539,18 @@ export default async function ProductPage({
     ],
   };
 
+  // Le GTIN principal est stocké sur Product ; certains produits ont aussi des SKU.
+  // Ne publier qu'un GTIN-13 valide et éviter de choisir arbitrairement
+  // le GTIN d'une variante lorsque plusieurs SKU existent.
+  const mainGtin = product.gtin?.trim();
+  const skuGtin =
+    product.skus.length === 1
+      ? product.skus[0].gtin?.trim()
+      : undefined;
+  const validGtin = [mainGtin, skuGtin].find(
+    (value) => value && /^\d{13}$/.test(value)
+  );
+
   const productJsonLd = {
     "@context": "https://schema.org",
     "@type": "Product",
@@ -561,15 +573,7 @@ export default async function ProductPage({
     sku:
       product.skus?.[0]?.variant ??
       undefined,
-    ...(product.skus?.[0]?.gtin &&
-    /^\d{13}$/.test(
-      product.skus[0].gtin
-    )
-      ? {
-          gtin13:
-            product.skus[0].gtin,
-        }
-      : {}),
+    ...(validGtin ? { gtin13: validGtin } : {}),
     category:
       product.category?.name ??
       undefined,
