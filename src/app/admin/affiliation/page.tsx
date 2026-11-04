@@ -168,6 +168,7 @@ export default async function AdminAffiliationPage() {
                 <th className="px-4 py-3">
                   Offres
                 </th>
+                <th className="px-4 py-3">Mode import</th>
                 <th className="px-4 py-3">État</th>
                 <th className="px-4 py-3">
                   Actions
@@ -191,6 +192,7 @@ export default async function AdminAffiliationPage() {
                   <td className="px-4 py-3">
                     {merchant.platform}
                   </td>
+				  
 
                   <td className="px-4 py-3">
                     {
@@ -201,6 +203,12 @@ export default async function AdminAffiliationPage() {
 
                   <td className="px-4 py-3">
                     {merchant._count.offers}
+                  </td>
+
+                  <td className="px-4 py-3 text-xs font-medium">
+                    {merchant.allowProductCreation
+                      ? "Produits + offres"
+                      : "Offres uniquement"}
                   </td>
 
                   <td className="px-4 py-3">

@@ -27,6 +27,7 @@ type Props = {
     platform: string;
     network: string;
     programId: string;
+	allowProductCreation: boolean;
     status: string;
     active: boolean;
   };
@@ -184,6 +185,49 @@ export default function MerchantForm({
             />
           </Field>
         </div>
+
+		<fieldset className="mt-5 rounded-xl border border-slate-200 p-4">
+		  <legend className="px-2 text-sm font-semibold text-slate-900">
+			Mode d&apos;importation du catalogue
+		  </legend>
+
+		  <div className="mt-3 space-y-4">
+			<label className="flex items-start gap-3">
+			  <input
+				type="radio"
+				name="allowProductCreation"
+				value="true"
+				defaultChecked={initialValues.allowProductCreation}
+				className="mt-1"
+			  />
+			  <span>
+				<strong className="block text-sm">Produits + offres</strong>
+				<span className="text-xs text-slate-600">
+				  Autorise la création de nouvelles fiches produits.
+				</span>
+			  </span>
+			</label>
+
+			<label className="flex items-start gap-3">
+			  <input
+				type="radio"
+				name="allowProductCreation"
+				value="false"
+				defaultChecked={!initialValues.allowProductCreation}
+				className="mt-1"
+			  />
+			  <span>
+				<strong className="block text-sm">
+				  Offres uniquement — EAN existant
+				</strong>
+				<span className="text-xs text-slate-600">
+				  Ajoute uniquement des offres aux produits déjà référencés.
+				  Les EAN inconnus sont ignorés.
+				</span>
+			  </span>
+			</label>
+		  </div>
+		</fieldset>
 
         <label className="mt-5 flex items-start gap-3 rounded-xl border border-slate-200 p-4">
           <input

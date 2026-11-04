@@ -90,6 +90,7 @@ export type FeedRuntime = {
     name: string;
     slug: string;
     platform: MerchantPlatform;
+    allowProductCreation: boolean;
   };
 
   affiliateNetwork: {
@@ -263,6 +264,7 @@ export async function loadFeedRuntime(
           .merchant.slug,
 
       platform: merchantPlatform,
+      allowProductCreation: feedSource.affiliateProgram.merchant.allowProductCreation,
     },
 
     affiliateNetwork: {

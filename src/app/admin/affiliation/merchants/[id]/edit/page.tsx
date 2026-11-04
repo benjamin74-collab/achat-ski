@@ -44,6 +44,7 @@ export default async function EditMerchantPage({
             network: merchant.network || "",
             programId:
               merchant.programId || "",
+			allowProductCreation: merchant.allowProductCreation,
             status: merchant.status || "",
             active: merchant.active,
           }}

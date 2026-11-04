@@ -381,6 +381,7 @@ model Merchant {
 
   websiteUrl String? @db.VarChar(512)
   active     Boolean @default(true)
+  allowProductCreation Boolean @default(true)
 
   offers            Offer[]
   feedImports       FeedImport[]
