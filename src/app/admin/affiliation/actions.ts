@@ -625,6 +625,7 @@ function parseMerchantForm(formData: FormData):
         network: string | null;
         programId: string | null;
         status: string | null;
+		allowProductCreation: boolean;
         websiteUrl: string | null;
         active: boolean;
       };
@@ -690,6 +691,8 @@ function parseMerchantForm(formData: FormData):
       programId: nullableString(
         getString(formData, "programId")
       ),
+	  allowProductCreation:
+		formData.get("allowProductCreation") !== "false",
       status: nullableString(
         getString(formData, "status")
       ),

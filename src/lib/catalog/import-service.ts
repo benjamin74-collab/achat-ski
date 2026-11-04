@@ -82,6 +82,20 @@ export async function importAggregatedFeedItem(
     categories,
   } = aggregated;
 
+  if (!merchant.allowProductCreation) {
+    const matched = await findExistingProductByGtin(prisma, aggregated, siteId);
+    if (matched.reason !== "FOUND") {
+      if (matched.reason === "MISSING") stats.skippedMissingEan += 1;
+      else if (matched.reason === "AMBIGUOUS") stats.skippedAmbiguousEan += 1;
+      else stats.skippedUnknownEan += 1;
+      stats.skippedRows += aggregated.sourceItemCount;
+      return null;
+    }
+    const product = await prisma.product.findUniqueOrThrow({ where: { id: matched.productId } });
+    const offer = await upsertOffer(prisma, aggregated, merchant.id, product.id, affiliateProgramId, feedSourceId, feedKey, seenAt, stats);
+    return { product, offer, match: { productId: product.id, confidence: 1, reason: "GTIN" as const }, primaryCategory, categories };
+  }
+
 const resolvedBrand =
   await upsertBrand(
     prisma,
@@ -170,6 +184,34 @@ const offer = await upsertOffer(
     primaryCategory,
     categories,
   };
+}
+
+/** Strict GTIN matching: no title, slug or merchant-reference fallback. */
+async function findExistingProductByGtin(
+  prisma: PrismaClient, aggregated: AggregatedFeedItem, siteId: string
+): Promise<{ reason: "FOUND"; productId: number } | { reason: "MISSING" | "UNKNOWN" | "AMBIGUOUS" }> {
+  const gtins = Array.from(new Set([
+    ...aggregated.variantGtins, aggregated.item.gtin,
+  ].map(normalizeGtin).filter((v): v is string => Boolean(v))));
+  if (!gtins.length) return { reason: "MISSING" };
+  const [products, identifiers, skus] = await Promise.all([
+    prisma.product.findMany({ where: { gtin: { in: gtins } }, select: { id: true } }),
+    prisma.productIdentifier.findMany({ where: { siteId, type: ProductIdentifierType.GTIN, value: { in: gtins } }, select: { productId: true } }),
+    prisma.sku.findMany({ where: { gtin: { in: gtins } }, select: { productId: true } }),
+  ]);
+  const candidateIds = Array.from(new Set([
+    ...products.map(p => p.id), ...identifiers.map(p => p.productId), ...skus.map(p => p.productId),
+  ]));
+  if (!candidateIds.length) return { reason: "UNKNOWN" };
+  const visible = await prisma.siteProduct.findMany({
+    where: { siteId, productId: { in: candidateIds }, active: true, published: true, archivedAt: null },
+    select: { productId: true },
+  });
+  const visibleIds = new Set(visible.map(p => p.productId));
+  const matches = candidateIds.filter(id => visibleIds.has(id));
+  if (!matches.length) return { reason: "UNKNOWN" };
+  if (candidateIds.length !== 1 || matches.length !== 1) return { reason: "AMBIGUOUS" };
+  return { reason: "FOUND", productId: matches[0] };
 }
 
 async function upsertBrand(

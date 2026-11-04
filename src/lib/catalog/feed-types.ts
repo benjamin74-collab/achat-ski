@@ -110,6 +110,9 @@ export type ImportStats = {
   acceptedRows: number;
   skippedRows: number;
   groupedProducts: number;
+  skippedUnknownEan: number;
+  skippedAmbiguousEan: number;
+  skippedMissingEan: number;
 
   createdProducts: number;
   updatedProducts: number;
@@ -139,6 +142,9 @@ export function createEmptyImportStats(
     acceptedRows: 0,
     skippedRows: 0,
     groupedProducts: 0,
+    skippedUnknownEan: 0,
+    skippedAmbiguousEan: 0,
+    skippedMissingEan: 0,
 
     createdProducts: 0,
     updatedProducts: 0,

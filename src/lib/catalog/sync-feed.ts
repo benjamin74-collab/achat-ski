@@ -564,10 +564,9 @@ if (!validation.valid) {
      * Cela Ã©vite que upsertBrand() recharge toute la table Brand
      * pour chaque nouvelle clÃ© rencontrÃ©e pendant l'import.
      */
-    const brandCache =
-      await buildBrandCache(
-        prisma
-      );
+    const brandCache = runtime.merchant.allowProductCreation
+      ? await buildBrandCache(prisma)
+      : new Map<string, { id: number; name: string }>();
 
     const merchant = {
       id:
@@ -597,6 +596,7 @@ if (!validation.valid) {
 
       active:
         true,
+      allowProductCreation: runtime.merchant.allowProductCreation,
 
       createdAt:
         startedAt,
@@ -635,6 +635,7 @@ if (!validation.valid) {
 
       if (
         brandKey &&
+        runtime.merchant.allowProductCreation &&
         !brandKeysSeen.has(
           brandKey
         )
@@ -738,7 +739,7 @@ const importOne =
         );
       }
 
-      return imported.product.id;
+      return imported?.product.id ?? null;
     } catch (error) {
       stats.errors += 1;
 
@@ -823,6 +824,7 @@ const warmupProductIds:
 
       if (
         brandKey &&
+        runtime.merchant.allowProductCreation &&
         !brandCache.has(
           brandKey
         )
@@ -995,6 +997,7 @@ await Promise.all([
             stats.errors,
 
           finishedAt,
+          notes: `EAN inconnus: ${stats.skippedUnknownEan}; absents: ${stats.skippedMissingEan}; ambigus: ${stats.skippedAmbiguousEan}`,
         },
       }),
 

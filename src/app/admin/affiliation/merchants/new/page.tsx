@@ -22,6 +22,7 @@ export default function NewMerchantPage() {
             platform: "OTHER",
             network: "",
             programId: "",
+			allowProductCreation: true,
             status: "",
             active: true,
           }}
