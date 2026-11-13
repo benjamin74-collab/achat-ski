@@ -41,6 +41,7 @@ import {
 import {
   importAggregatedFeedItem,
 } from "./import-service";
+import { syncDeltaOffers } from "./delta-offers";
 
 import {
   validateFeedItem,
@@ -557,6 +558,43 @@ if (!validation.valid) {
       throw new Error(
         "Aucun produit n'a Ã©tÃ© retenu. La rÃ©conciliation est annulÃ©e afin d'Ã©viter une dÃ©sactivation massive."
       );
+    }
+
+    if (mode === "DELTA") {
+      const delta = await syncDeltaOffers({
+        prisma, grouped, siteId: runtime.siteId,
+        merchantId: runtime.merchant.id,
+        feedKey, feedSourceId: runtime.feedSourceId,
+        affiliateProgramId: runtime.affiliateProgramId, stats,
+      });
+      const status = delta.safeToReconcile ? "SUCCESS" : "PARTIAL";
+      const finishedAt = new Date();
+      await Promise.all([
+        prisma.feedImport.update({
+          where: { id: feedImport.id },
+          data: {
+            status, importedRows: stats.acceptedRows,
+            skippedRows: stats.skippedRows,
+            createdProducts: 0, updatedProducts: 0,
+            createdOffers: stats.createdOffers, updatedOffers: stats.updatedOffers,
+            unchangedOffers: delta.unchangedOffers,
+            deactivatedOffers: stats.deactivatedOffers,
+            errorsCount: stats.errors, finishedAt,
+            notes: delta.safeToReconcile ? "DELTA offres uniquement" : "DELTA partiel : réconciliation suspendue",
+          },
+        }),
+        prisma.feedSource.update({
+          where: { id: runtime.feedSourceId },
+          data: {
+            lastRunAt: startedAt, lastSuccessAt: delta.safeToReconcile ? finishedAt : undefined,
+            lastStatus: status, lastErrorMessage: delta.safeToReconcile ? null : "Références non rapprochées ou lignes ignorées",
+            lastContentHash: delta.safeToReconcile ? contentHash : runtime.lastContentHash,
+            lastContentHashAt: delta.safeToReconcile ? finishedAt : runtime.lastContentHashAt,
+            nextRunAt: calculateNextRunAt(runtime.frequency, finishedAt),
+          },
+        }),
+      ]);
+      return { feedImportId: feedImport.id, feedKey, status, ...stats };
     }
 
     /*
