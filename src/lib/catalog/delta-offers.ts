@@ -155,25 +155,46 @@ export async function syncDeltaOffers({
       }
     }
 
-    if (identity.size > 1 || candidates.size > 1) {
+    // Priorité à l'offre déjà connue dans CE flux. Les EAN des variantes
+    // peuvent légitimement pointer vers plusieurs produits historiques :
+    // ils ne doivent pas rendre ambigu un identifiant marchand stable.
+    if (identity.size > 1) {
       ambiguous++;
       stats.skippedRows += group.sourceItemCount;
       continue;
     }
+
     let existing = identity.size === 1 ? byId.get([...identity][0]) : undefined;
-    if (!existing && candidates.size === 1) {
-      const linked = byProduct.get([...candidates][0]);
-      if (linked && linked.feedKey === feedKey) existing = byId.get(linked.id);
-      else if (linked) {
+    if (existing) {
+      // Un EAN unique contradictoire est un signal de risque ; plusieurs
+      // EAN contradictoires ne sont pas une preuve de mauvais rattachement.
+      if (candidates.size === 1 && !candidates.has(existing.productId)) {
         ambiguous++;
         stats.skippedRows += group.sourceItemCount;
         continue;
       }
-    }
-    if (existing && candidates.size === 1 && !candidates.has(existing.productId)) {
-      ambiguous++;
-      stats.skippedRows += group.sourceItemCount;
-      continue;
+    } else {
+      // Sans identifiant marchand connu, ne retenir que les produits
+      // rattachés à une offre de ce flux. Une seule correspondance suffit.
+      const linkedInFeed = [...candidates].filter(productId => {
+        const linked = byProduct.get(productId);
+        return linked?.feedKey === feedKey && byId.has(linked.id);
+      });
+      if (linkedInFeed.length === 1) {
+        const linked = byProduct.get(linkedInFeed[0]);
+        existing = linked ? byId.get(linked.id) : undefined;
+      } else if (linkedInFeed.length > 1 || candidates.size > 1) {
+        ambiguous++;
+        stats.skippedRows += group.sourceItemCount;
+        continue;
+      } else if (candidates.size === 1) {
+        const linked = byProduct.get([...candidates][0]);
+        if (linked) {
+          ambiguous++;
+          stats.skippedRows += group.sourceItemCount;
+          continue;
+        }
+      }
     }
     if (existing && seen.has(existing.id)) {
       ambiguous++;
