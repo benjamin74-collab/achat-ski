@@ -7,10 +7,9 @@ on:
   workflow_dispatch:
     inputs:
       feedSourceId:
-        description: "ID du flux à importer. Laisser vide pour traiter les flux dus."
+        description: "ID du flux à importer. Laisser vide pour les flux dus."
         required: false
         type: string
-
       mode:
         description: "Mode pour un flux manuel"
         required: true
@@ -19,11 +18,10 @@ on:
         options:
           - full
           - delta
-
       maxFeeds:
         description: "Nombre maximum de flux dus à traiter"
         required: true
-        default: "1"
+        default: "20"
         type: string
 
 concurrency:
@@ -31,45 +29,68 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
-  catalog-sync:
-    name: Catalog Sync
+  select-feeds:
+    name: Select due feeds
     runs-on: ubuntu-latest
-    timeout-minutes: 60
-
+    timeout-minutes: 10
+    outputs:
+      feeds: ${{ steps.select.outputs.feeds }}
+      count: ${{ steps.select.outputs.count }}
     env:
       DATABASE_URL: ${{ secrets.DATABASE_URL }}
       DIRECT_URL: ${{ secrets.DIRECT_URL }}
-
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
-
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
           node-version: "20"
           cache: "npm"
-
       - name: Install dependencies
         run: npm ci --include=dev
-
       - name: Generate Prisma client
         run: npx prisma generate
-
-      - name: Run scheduled delta sync
-        if: github.event_name == 'schedule'
+      - name: Select feeds
+        id: select
         env:
           NODE_ENV: production
-        run: npm run catalog:sync:due-feeds -- --maxFeeds=20
+          EVENT_NAME: ${{ github.event_name }}
+          INPUT_FEED_SOURCE_ID: ${{ inputs.feedSourceId }}
+          INPUT_MODE: ${{ inputs.mode }}
+          INPUT_MAX_FEEDS: ${{ inputs.maxFeeds }}
+        run: npx tsx prisma/select-due-feed-sources.ts
 
-      - name: Run manual selected feed
-        if: github.event_name == 'workflow_dispatch' && inputs.feedSourceId != ''
+  import-feed:
+    name: "Import feed ${{ matrix.feed.id }}"
+    needs: select-feeds
+    if: needs.select-feeds.outputs.count != '0'
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    strategy:
+      fail-fast: false
+      max-parallel: 1
+      matrix:
+        feed: ${{ fromJSON(needs.select-feeds.outputs.feeds) }}
+    env:
+      DATABASE_URL: ${{ secrets.DATABASE_URL }}
+      DIRECT_URL: ${{ secrets.DIRECT_URL }}
+      NODE_ENV: production
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "npm"
+      - name: Install dependencies
+        run: npm ci --include=dev
+      - name: Generate Prisma client
+        run: npx prisma generate
+      - name: Import selected feed
         env:
-          NODE_ENV: production
-        run: npm run catalog:sync:feed -- --feedSourceId=${{ inputs.feedSourceId }} --mode=${{ inputs.mode }} --trigger=MANUAL
-
-      - name: Run manual due feeds
-        if: github.event_name == 'workflow_dispatch' && inputs.feedSourceId == ''
-        env:
-          NODE_ENV: production
-        run: npm run catalog:sync:due-feeds -- --maxFeeds=${{ inputs.maxFeeds }}
+          FEED_SOURCE_ID: ${{ matrix.feed.id }}
+          FEED_SYNC_MODE: ${{ matrix.feed.mode }}
+          FEED_TRIGGER: ${{ matrix.feed.trigger }}
+        run: npm run catalog:sync:feed
