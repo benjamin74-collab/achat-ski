@@ -2,7 +2,9 @@ name: Catalog Sync
 
 on:
   schedule:
-    - cron: "17 3 * * *"
+    # Six passages par jour, un seul flux dû par exécution.
+    # Les horaires cron sont en UTC.
+    - cron: "17 1,5,9,13,17,21 * * *"
 
   workflow_dispatch:
     inputs:
@@ -60,7 +62,7 @@ jobs:
         if: github.event_name == 'schedule'
         env:
           NODE_ENV: production
-        run: npm run catalog:sync:due-feeds -- --maxFeeds=20
+        run: npm run catalog:sync:due-feeds -- --maxFeeds=1
 
       - name: Run manual selected feed
         if: github.event_name == 'workflow_dispatch' && inputs.feedSourceId != ''
