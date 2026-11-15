@@ -93,7 +93,23 @@ type SyncFeedContentOptions = {
 };
 
 
+function assertFeedModeAllowed(
+  runtime: FeedRuntime,
+  mode: SyncFeedMode
+): void {
+  if (mode !== "FULL") {
+    return;
+  }
 
+  if (!runtime.merchant.allowProductCreation) {
+    throw new Error(
+      `[SECURITE IMPORT] FULL interdit pour ` +
+      `"${runtime.merchant.name}" ` +
+      `sur le site "${runtime.siteId}". ` +
+      `Ce marchand n'est pas autorisé à créer des produits.`
+    );
+  }
+}
 
 
 
@@ -101,13 +117,15 @@ export async function syncFeedSourceById({
   prisma,
   feedSourceId,
   trigger = "CRON",
-  mode = "FULL",
+  mode = "DELTA",
 }: SyncFeedSourceOptions): Promise<FeedImportResult> {
   const runtime =
     await loadFeedRuntime(
       prisma,
       feedSourceId
     );
+
+  assertFeedModeAllowed(runtime, mode);
 
   await prisma.feedSource.update({
     where: {
@@ -205,7 +223,7 @@ export async function syncFeedContent({
   runtime,
   content,
   trigger = "MANUAL",
-  mode = "FULL",
+  mode = "DELTA",
   sourceUrl,
   filename,
 }: SyncFeedContentOptions): Promise<FeedImportResult> {
@@ -219,6 +237,7 @@ export async function syncFeedContent({
       prisma,
       runtime.feedSourceId
     );
+	assertFeedModeAllowed(runtime, mode);
 
   const contentHash =
     hashFeedContent(content);
