@@ -680,7 +680,7 @@ const siteConfig = getSiteConfig(siteId);
             <div className="mt-10 flex flex-wrap items-center justify-between gap-3 rounded-3xl border border-slate-200 bg-white p-4 shadow-sm">
               <div>
                 <p className="text-sm font-bold text-slate-950">Article utile ?</p>
-                <p className="text-sm text-slate-600">Partagez ce guide à d’autres passionnés de ski.</p>
+                <p className="text-sm text-slate-600">Partagez ce guide avec vos proches.</p>
               </div>
               <ShareButtons title={page.title} url={canonicalUrl} />
             </div>

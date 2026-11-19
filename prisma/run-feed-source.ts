@@ -57,7 +57,7 @@ function parseArgs(
         "--mode"
       ) ??
         process.env.FEED_SYNC_MODE ??
-        "FULL"
+        "DELTA"
     );
 
   return {

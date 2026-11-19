@@ -1,13 +1,28 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { getSiteConfig } from "@/config/site";
+import { getCurrentSiteId } from "@/lib/currentSite";
 
-export const metadata: Metadata = {
-  title: "Comment fonctionne Meilleur-Ski ? | Prix, promotions et affiliation",
-  description:
-    "Comprendre comment Meilleur-Ski compare les offres, affiche les prix, prend en compte les codes promotionnels et se rémunère.",
-};
+async function getCurrentSite() {
+  return getSiteConfig(await getCurrentSiteId());
+}
 
-export default function CommentCaMarchePage() {
+export async function generateMetadata(): Promise<Metadata> {
+  const site = await getCurrentSite();
+  return {
+    title: `Comment fonctionne ${site.name} ? | Prix, promotions et affiliation`,
+    description: `Comprendre comment ${site.name} compare les offres, affiche les prix, prend en compte les codes promotionnels et se rémunère.`,
+    alternates: { canonical: `${site.domain.replace(/\/+$/, "")}/comment-ca-marche` },
+  };
+}
+
+export default async function CommentCaMarchePage() {
+  const site = await getCurrentSite();
+  const subject = site.id === "meilleur-robot"
+    ? "aux robots du quotidien : entretien de la maison, cuisine, jardin et piscine"
+    : site.id === "meilleur-ski"
+      ? "au ski, au snowboard et aux sports d’hiver"
+      : "aux produits de son univers";
   return (
     <main className="container-page py-10 md:py-16">
       <div className="mx-auto max-w-3xl">
@@ -15,12 +30,12 @@ export default function CommentCaMarchePage() {
           Transparence
         </p>
         <h1 className="mt-3 text-3xl font-black tracking-tight text-slate-950 md:text-4xl">
-          Comment fonctionne Meilleur-Ski ?
+          Comment fonctionne {site.name} ?
         </h1>
         <p className="mt-5 text-base leading-8 text-slate-700">
-          Meilleur-Ski est un comparateur de prix et un guide d’achat dédié au ski,
-          au snowboard et aux sports d’hiver. Nous aidons les visiteurs à découvrir
-          des équipements et à comparer les offres de marchands spécialisés.
+          {site.name} est un comparateur de prix et un guide d’achat dédié {subject}.
+          Nous aidons les visiteurs à découvrir des produits et à comparer les offres
+          de marchands partenaires.
         </p>
 
         <div className="mt-9 space-y-9 rounded-3xl border border-slate-200 bg-white p-6 shadow-sm md:p-9">
@@ -40,7 +55,7 @@ export default function CommentCaMarchePage() {
             <p className="mt-3 leading-7 text-slate-700">
               Oui. Certains prix transmis par les marchands peuvent déjà tenir compte
               d’une remise ou d’un code promotionnel. Le prix initial affiché sur le
-              site du marchand peut alors être supérieur au prix indiqué sur Meilleur-Ski.
+              site du marchand peut alors être supérieur au prix indiqué sur {site.name}.
             </p>
             <p className="mt-3 leading-7 text-slate-700">
               Pour bénéficier du tarif annoncé, il peut être nécessaire de saisir un
@@ -50,7 +65,7 @@ export default function CommentCaMarchePage() {
             </p>
             <div className="mt-4 rounded-2xl border border-brand-100 bg-brand-50 p-4 text-sm leading-6 text-slate-800">
               Exemple : un article à 500 € chez un marchand peut apparaître à 450 €
-              sur Meilleur-Ski lorsqu’une remise de 10 % est applicable.
+              sur {site.name} lorsqu’une remise de 10 % est applicable.
               Cet exemple est illustratif et ne constitue pas une offre commerciale.
             </div>
           </section>
@@ -70,11 +85,11 @@ export default function CommentCaMarchePage() {
 
           <section>
             <h2 className="text-xl font-bold text-slate-950">
-              Comment Meilleur-Ski se rémunère-t-il ?
+              Comment {site.name} se rémunère-t-il ?
             </h2>
             <p className="mt-3 leading-7 text-slate-700">
               Certains liens vers les marchands sont affiliés. Si vous réalisez
-              un achat après avoir suivi l’un de ces liens, Meilleur-Ski peut
+              un achat après avoir suivi l’un de ces liens, {site.name} peut
               percevoir une commission versée par le marchand. Cette commission
               n’ajoute pas de frais spécifiques à votre commande.
             </p>
@@ -85,7 +100,7 @@ export default function CommentCaMarchePage() {
               Qui gère la commande et le service après-vente ?
             </h2>
             <p className="mt-3 leading-7 text-slate-700">
-              Meilleur-Ski ne vend pas directement les produits comparés.
+              {site.name} ne vend pas directement les produits comparés.
               Le paiement, la livraison, les retours et le service après-vente
               sont assurés par le marchand auprès duquel vous passez commande.
             </p>

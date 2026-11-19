@@ -11,13 +11,13 @@ on:
         required: false
         type: string
       mode:
-        description: "Mode pour un flux manuel"
+        description: "DELTA par défaut - FULL réservé aux marchands autorisés"
         required: true
-        default: "full"
+        default: "delta"
         type: choice
         options:
-          - full
           - delta
+          - full
       maxFeeds:
         description: "Nombre maximum de flux dus à traiter"
         required: true
