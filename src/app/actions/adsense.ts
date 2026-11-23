@@ -129,6 +129,7 @@ export async function saveAdvertisingSettings(formData: FormData) {
 
   revalidatePath("/");
   revalidatePath("/pages");
+  revalidatePath("/pages/[slug]", "page");
   revalidatePath("/admin/monetization/adsense");
 }
 

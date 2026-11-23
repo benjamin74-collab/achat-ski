@@ -123,15 +123,15 @@ function renderProductShortcodes(
 
   const result: React.ReactNode[] = [];
 
-  let cursor = 0;
+  let remainingHtml = html;
   let match: RegExpExecArray | null;
   let key = 0;
 
-  while ((match = regex.exec(html)) !== null) {
-    const before = html.slice(
-      cursor,
-      match.index
-    );
+  while ((match = regex.exec(remainingHtml)) !== null) {
+    const productMarker = "<!--ARTICLE_PRODUCT_BOUNDARY-->";
+    const marked = remainingHtml.slice(0, match.index) + productMarker
+      + remainingHtml.slice(match.index + match[0].length);
+    const { before, after } = splitHtmlByMarker(marked, productMarker);
 
     if (before) {
       result.push(
@@ -191,12 +191,11 @@ function renderProductShortcodes(
       );
     }
 
-    cursor =
-      match.index + match[0].length;
+    remainingHtml = after;
+    regex.lastIndex = 0;
   }
 
-  const remaining =
-    html.slice(cursor);
+  const remaining = remainingHtml;
 
   if (remaining) {
     result.push(
@@ -582,7 +581,7 @@ const siteConfig = getSiteConfig(siteId);
         </header>
 
         <section className="mt-6">
-		  <AdSlot slotKey="pageTop" />
+		  <AdSlot slotKey="pageTop" label="Publicité en haut de l’article" />
 		</section>
 
         {toc.length > 0 ? (
@@ -590,10 +589,10 @@ const siteConfig = getSiteConfig(siteId);
         ) : null}
 
         <div className="mt-8 grid grid-cols-1 items-start gap-7 lg:grid-cols-12">
-          <article className="lg:col-span-8">
+          <article className="min-w-0 lg:col-span-8">
             <div className="bg-white md:overflow-hidden md:rounded-[2rem] md:border md:border-slate-200 md:shadow-sm">
               <div className="px-4 py-6 md:p-8 lg:p-10">
-                <div className="prose max-w-none prose-headings:scroll-mt-28">
+                <div className="prose min-w-0 max-w-none prose-headings:scroll-mt-28">
 				  {renderProductShortcodes(
 					htmlBeforeAd,
 					page.products
@@ -601,7 +600,7 @@ const siteConfig = getSiteConfig(siteId);
 
 				  {hasMarker ? (
 					<div className="not-prose my-8">
-					  <AdSlot slotKey="pageInline" />
+					  <AdSlot slotKey="pageInline" label="Publicité au milieu de l’article" />
 					</div>
 				  ) : null}
 
@@ -615,11 +614,9 @@ const siteConfig = getSiteConfig(siteId);
               </div>
             </div>
 
-            {!hasMarker ? (
-			  <section className="my-7">
-				<AdSlot slotKey="pageInline" />
-			  </section>
-			) : null}
+            <section className="mt-7 min-w-0" aria-label="Publicité en fin d’article">
+              <AdSlot slotKey="pageBottom" />
+            </section>
 
             <section className="mt-10">
               <RelatedArticles currentSlug={page.slug} max={6} />
@@ -685,9 +682,6 @@ const siteConfig = getSiteConfig(siteId);
               <ShareButtons title={page.title} url={canonicalUrl} />
             </div>
 
-            <section className="mt-7">
-			  <AdSlot slotKey="pageBottom" />
-			</section>
           </article>
 
           <aside className="hidden space-y-5 lg:sticky lg:top-28 lg:col-span-4 lg:block">

@@ -3,6 +3,7 @@
 import { prisma } from "@/lib/prisma";
 import { getCurrentSiteId } from "@/lib/currentSite";
 import AdsenseUnit from "@/components/ads/AdsenseUnit";
+import ResponsiveAffiliateAd from "@/components/ads/ResponsiveAffiliateAd";
 
 type Props = {
   slotKey: "pageTop" | "pageInline" | "pageSidebar" | "pageBottom";
@@ -19,7 +20,7 @@ function relValue(nofollow: boolean, sponsored: boolean) {
 
 function adBox(children: React.ReactNode) {
   return (
-    <div className="overflow-hidden rounded-3xl border border-slate-200 bg-white p-3 shadow-sm md:p-4">
+    <div className="min-w-0 max-w-full overflow-hidden rounded-3xl border border-slate-200 bg-white p-3 shadow-sm md:p-4">
       <div className="mb-2 text-center text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-400">
         Publicité
       </div>
@@ -100,9 +101,9 @@ export default async function AdSlot({
     if (!placement.customHtml) return null;
 
     return adBox(
-      <div
+      <ResponsiveAffiliateAd
+        html={placement.customHtml}
         className={className}
-        dangerouslySetInnerHTML={{ __html: placement.customHtml }}
       />,
     );
   }
