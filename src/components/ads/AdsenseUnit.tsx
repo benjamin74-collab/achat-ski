@@ -15,7 +15,14 @@ function isPreviewContext() {
   try {
     const inIframe = window.self !== window.top;
     const ref = document.referrer || "";
-    return inIframe || ref.includes("google") || ref.includes("adsense");
+    let isAdsensePreview = false;
+    if (ref) {
+      try {
+        const host = new URL(ref).hostname;
+        isAdsensePreview = host === "adsense.google.com";
+      } catch { /* An invalid referrer is not a preview context. */ }
+    }
+    return inIframe || isAdsensePreview;
   } catch {
     return true;
   }
