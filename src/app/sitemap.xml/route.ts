@@ -5,6 +5,10 @@ import { getSiteConfig } from "@/config/site";
 
 export const runtime = "nodejs";
 
+// Reflect publication changes on every request, including after SQL updates.
+export const dynamic = "force-dynamic";
+export const revalidate = 0;
+
 function toIso(d: Date | null | undefined) {
   return d ? d.toISOString() : undefined;
 }
@@ -240,7 +244,9 @@ ${urls
   return new Response(xml, {
     headers: {
       "content-type": "application/xml; charset=utf-8",
-      "cache-control": "public, s-maxage=3600, stale-while-revalidate=86400",
+      "cache-control": "no-store, max-age=0",
+      "CDN-Cache-Control": "no-store",
+      "Vercel-CDN-Cache-Control": "no-store",
     },
   });
 }
