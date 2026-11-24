@@ -1,5 +1,6 @@
 // src/components/ads/AdSlot.tsx
 
+import { prepareAffiliateHtml } from "@/lib/affiliateHtml";
 import { prisma } from "@/lib/prisma";
 import { getCurrentSiteId } from "@/lib/currentSite";
 import AdsenseUnit from "@/components/ads/AdsenseUnit";
@@ -102,7 +103,7 @@ export default async function AdSlot({
 
     return adBox(
       <ResponsiveAffiliateAd
-        html={placement.customHtml}
+        html={prepareAffiliateHtml(placement.customHtml)}
         className={className}
       />,
     );

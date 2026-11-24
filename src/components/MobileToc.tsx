@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 type TocItem = {
   id: string;
@@ -11,10 +11,17 @@ type TocItem = {
 export default function MobileToc({ items }: { items: TocItem[] }) {
   const [open, setOpen] = useState(false);
 
+  useEffect(() => {
+    if (!open) return;
+    const close = (event: KeyboardEvent) => { if (event.key === "Escape") setOpen(false); };
+    window.addEventListener("keydown", close);
+    return () => window.removeEventListener("keydown", close);
+  }, [open]);
+
   if (!items.length) return null;
 
   return (
-    <div className="sticky top-[116px] z-40 -mx-4 mb-4 lg:hidden">
+    <div className="guide-mobile-toc sticky z-40 -mx-4 mb-4 lg:hidden">
       <button
         type="button"
         onClick={() => setOpen(true)}
@@ -39,7 +46,7 @@ export default function MobileToc({ items }: { items: TocItem[] }) {
 
           <div
             id="mobile-toc-panel"
-            className="fixed inset-x-3 top-[116px] z-50 max-h-[50vh] overflow-hidden rounded-2xl bg-white shadow-2xl ring-1 ring-slate-200"
+            className="fixed inset-x-3 top-[var(--site-header-height,116px)] z-50 max-h-[50vh] overflow-hidden rounded-2xl bg-white shadow-2xl ring-1 ring-slate-200"
           >
             <div className="flex h-11 items-center justify-between bg-brand-700 px-4 text-white">
               <span className="text-xs font-black uppercase tracking-[0.22em]">

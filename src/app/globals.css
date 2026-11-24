@@ -211,3 +211,13 @@
   .prose .guide-table table { font-size: .875rem; }
   .prose .guide-table th, .prose .guide-table td { padding: .8rem; }
 }
+/* Shared guide anchors: account for the measured header and mobile TOC. */
+.guide-mobile-toc { top: var(--site-header-height, 116px); }
+.guide-article :is(h2, h3)[id] {
+  scroll-margin-top: calc(var(--site-header-height, 116px) + 56px);
+}
+@media (min-width: 1024px) {
+  .guide-article :is(h2, h3)[id] {
+    scroll-margin-top: calc(var(--site-header-height, 116px) + 16px);
+  }
+}
