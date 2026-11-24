@@ -24,6 +24,7 @@ type PlacementData = {
   bannerLinkUrl: string | null;
   bannerTitle: string | null;
   customHtml: string | null;
+  customHtmlMobile: string | null;
   openInNewTab: boolean;
   nofollow: boolean;
   sponsored: boolean;
@@ -44,6 +45,7 @@ function getPlacement(
       bannerLinkUrl: "",
       bannerTitle: "",
       customHtml: "",
+      customHtmlMobile: "",
       openInNewTab: true,
       nofollow: true,
       sponsored: true,
@@ -196,7 +198,7 @@ export default async function AdminAdsensePage() {
                 </label>
 
                 <label className="block md:col-span-2">
-                  <span className="text-sm font-medium text-ink">HTML personnalisé</span>
+                  <span className="text-sm font-medium text-ink">HTML personnalisé — desktop</span>
                   <textarea
                     name={`${meta.key}_customHtml`}
                     defaultValue={p.customHtml ?? ""}
@@ -204,6 +206,22 @@ export default async function AdminAdsensePage() {
                     className="mt-2 w-full rounded-xl border border-ring bg-white px-3 py-2 font-mono text-xs"
                     placeholder="<a href='...'><img src='...' /></a>"
                   />
+                </label>
+
+                <label className="block md:col-span-2">
+                  <span className="text-sm font-medium text-ink">HTML personnalisé — mobile</span>
+                  <textarea
+                    name={`${meta.key}_customHtmlMobile`}
+                    defaultValue={p.customHtmlMobile ?? ""}
+                    rows={6}
+                    className="mt-2 w-full rounded-xl border border-ring bg-white px-3 py-2 font-mono text-xs"
+                    placeholder="Code partenaire pour une bannière carrée ou un pavé mobile"
+                  />
+                  <p className="mt-1 text-xs text-slate-500">
+                    Pour le type HTML personnalisé : mobile en dessous de 768 px, desktop à partir de 768 px.
+                    Si le code mobile est vide, le code desktop est utilisé. La sidebar reste masquée sur mobile.
+                    Collez ici le code mobile fourni par votre partenaire (par exemple 300 × 250 ou 300 × 300).
+                  </p>
                 </label>
 
                 <div className="grid grid-cols-1 gap-3 md:col-span-2 md:grid-cols-3">

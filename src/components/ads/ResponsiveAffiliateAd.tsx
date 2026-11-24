@@ -2,6 +2,8 @@
 
 import { useEffect, useRef, useState } from "react";
 
+import AffiliateScriptFrame from "./AffiliateScriptFrame";
+
 type Props = { html: string; className?: string };
 
 // Scale the complete fixed-size creative, not merely the iframe viewport.
@@ -48,8 +50,13 @@ export default function ResponsiveAffiliateAd({ html, className }: Props) {
       <div
         ref={creativeRef}
         style={{ width: "max-content", transform: `translateX(${layout.left}px) scale(${layout.scale})`, transformOrigin: "top left" }}
-        dangerouslySetInnerHTML={{ __html: html }}
-      />
+      >
+        {/<script\b/i.test(html) ? (
+          <AffiliateScriptFrame html={html} />
+        ) : (
+          <div dangerouslySetInnerHTML={{ __html: html }} />
+        )}
+      </div>
     </div>
   );
 }

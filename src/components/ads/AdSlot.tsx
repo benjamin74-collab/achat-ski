@@ -1,9 +1,10 @@
 // src/components/ads/AdSlot.tsx
 
+import { prepareAffiliateHtml } from "@/lib/affiliateHtml";
 import { prisma } from "@/lib/prisma";
 import { getCurrentSiteId } from "@/lib/currentSite";
 import AdsenseUnit from "@/components/ads/AdsenseUnit";
-import ResponsiveAffiliateAd from "@/components/ads/ResponsiveAffiliateAd";
+import DeviceAffiliateAd from "@/components/ads/DeviceAffiliateAd";
 
 type Props = {
   slotKey: "pageTop" | "pageInline" | "pageSidebar" | "pageBottom";
@@ -98,11 +99,13 @@ export default async function AdSlot({
   }
 
   if (placement.type === "CUSTOM_HTML") {
-    if (!placement.customHtml) return null;
+    if (!placement.customHtml?.trim() && !placement.customHtmlMobile?.trim()) return null;
 
     return adBox(
-      <ResponsiveAffiliateAd
-        html={placement.customHtml}
+      <DeviceAffiliateAd
+        desktopHtml={prepareAffiliateHtml(placement.customHtml ?? "")}
+        mobileHtml={prepareAffiliateHtml(placement.customHtmlMobile ?? "")}
+        desktopOnly={slotKey === "pageSidebar"}
         className={className}
       />,
     );

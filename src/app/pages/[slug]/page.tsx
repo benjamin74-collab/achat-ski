@@ -592,7 +592,7 @@ const siteConfig = getSiteConfig(siteId);
           <article className="min-w-0 lg:col-span-8">
             <div className="bg-white md:overflow-hidden md:rounded-[2rem] md:border md:border-slate-200 md:shadow-sm">
               <div className="px-4 py-6 md:p-8 lg:p-10">
-                <div className="prose min-w-0 max-w-none prose-headings:scroll-mt-28">
+                <div className="guide-article prose min-w-0 max-w-none">
 				  {renderProductShortcodes(
 					htmlBeforeAd,
 					page.products

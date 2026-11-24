@@ -4,7 +4,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import Logo from "./Logo";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 
 type FeaturedGuide = { id: number; title: string; slug: string };
 type FeaturedBrand = { id: number; name: string; slug: string };
@@ -292,6 +292,19 @@ function MobileCategoryPanel({
 }
 
 export default function Header() {
+  const headerRef = useRef<HTMLElement>(null);
+  useEffect(() => {
+    const header = headerRef.current;
+    if (!header) return;
+    const update = () => document.documentElement.style.setProperty(
+      "--site-header-height", `${Math.ceil(header.getBoundingClientRect().height)}px`,
+    );
+    const observer = new ResizeObserver(update);
+    observer.observe(header);
+    update();
+    return () => { observer.disconnect(); document.documentElement.style.removeProperty("--site-header-height"); };
+  }, []);
+
   const pathname = usePathname();
 
   const [searchPlaceholder, setSearchPlaceholder] = useState("Rechercher…");
@@ -360,7 +373,7 @@ export default function Header() {
   const orderedNavItems = useMemo(() => navItems, [navItems]);
 
   return (
-    <header className="sticky top-0 z-50 border-b border-ring clean-links">
+    <header ref={headerRef} className="sticky top-0 z-50 border-b border-ring clean-links">
       <div className="h-1 w-full brand-gradient" />
 
       <div className="bg-bg/80 supports-[backdrop-filter]:backdrop-blur">

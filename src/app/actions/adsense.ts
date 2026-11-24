@@ -80,6 +80,7 @@ export async function saveAdvertisingSettings(formData: FormData) {
     const bannerTitle = placementValue(formData, key, "bannerTitle");
 
     const customHtml = placementValue(formData, key, "customHtml");
+    const customHtmlMobile = placementValue(formData, key, "customHtmlMobile");
 
     const openInNewTab = placementBool(formData, key, "openInNewTab");
     const nofollow = placementBool(formData, key, "nofollow");
@@ -105,6 +106,7 @@ export async function saveAdvertisingSettings(formData: FormData) {
         bannerLinkUrl,
         bannerTitle,
         customHtml,
+        customHtmlMobile,
         openInNewTab,
         nofollow,
         sponsored,
@@ -120,6 +122,7 @@ export async function saveAdvertisingSettings(formData: FormData) {
         bannerLinkUrl,
         bannerTitle,
         customHtml,
+        customHtmlMobile,
         openInNewTab,
         nofollow,
         sponsored,
