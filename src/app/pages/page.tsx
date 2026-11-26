@@ -1,4 +1,5 @@
 /* eslint-disable @next/next/no-img-element */
+import type { Metadata } from "next";
 
 import Link from "next/link";
 import {
@@ -9,6 +10,11 @@ import { getSiteConfig } from "@/config/site";
 import { prisma } from "@/lib/prisma";
 
 export const revalidate = 300;
+
+export async function generateMetadata(): Promise<Metadata> {
+  const site = await getCurrentSiteUrl();
+  return { alternates: { canonical: `${site}/pages` } };
+}
 
 function formatDateISO(d: Date) {
   return d.toISOString().slice(0, 10);
@@ -197,10 +203,6 @@ export default async function PagesIndex() {
 
   return (
     <main className="container-page py-8">
-      <link
-        rel="canonical"
-        href={canonicalUrl}
-      />
 
       <script
         type="application/ld+json"

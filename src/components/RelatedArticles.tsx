@@ -1,6 +1,6 @@
 // src/components/RelatedArticles.tsx
 import Link from "next/link";
-import { prisma } from "@/lib/prisma";
+import { getRelatedArticles } from "@/lib/relatedArticles";
 
 function initials(title: string) {
   return title
@@ -11,21 +11,8 @@ function initials(title: string) {
     .join("");
 }
 
-export default async function RelatedArticles({ currentSlug, max = 6 }: { currentSlug: string; max?: number }) {
-  const items = await prisma.page.findMany({
-    where: { published: true, NOT: { slug: currentSlug } },
-    orderBy: { createdAt: "desc" },
-    take: max,
-    select: {
-      id: true,
-      slug: true,
-      title: true,
-      intro: true,
-      thumbnailUrl: true,
-      thumbnail: { select: { publicUrl: true } },
-      guideCategory: { select: { name: true } },
-    },
-  });
+export default async function RelatedArticles({ currentSlug, max = 3 }: { currentSlug: string; max?: number }) {
+  const items = await getRelatedArticles(currentSlug, max);
 
   if (items.length === 0) return null;
 
