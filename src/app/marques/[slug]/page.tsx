@@ -537,11 +537,6 @@ export default async function BrandPage({
 
   return (
     <div className="container-page py-8">
-      <link
-        rel="canonical"
-        href={canonicalUrl}
-      />
-
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{
