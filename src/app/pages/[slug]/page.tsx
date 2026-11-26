@@ -470,7 +470,6 @@ const siteConfig = getSiteConfig(siteId);
 
   return (
     <section id="top" className="bg-slate-50/70 pb-12">
-      <link rel="canonical" href={canonicalUrl} />
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbJsonLd) }} />
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(blogPostingJsonLd) }} />
 
@@ -619,7 +618,7 @@ const siteConfig = getSiteConfig(siteId);
             </section>
 
             <section className="mt-10">
-              <RelatedArticles currentSlug={page.slug} max={6} />
+              <RelatedArticles currentSlug={page.slug} max={3} />
             </section>
 
             {latest3.length > 0 ? (

@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import { prisma } from "@/lib/prisma";
 import Breadcrumbs from "@/components/Breadcrumbs";
 import {
@@ -8,6 +9,11 @@ import BrandsDirectory from "@/components/brands/BrandsDirectory";
 import { resolveBrandsContent } from "@/lib/siteContent";
 
 export const revalidate = 300;
+
+export async function generateMetadata(): Promise<Metadata> {
+  const site = await getCurrentSiteUrl();
+  return { alternates: { canonical: `${site}/marques` } };
+}
 
 export default async function BrandsDirectoryPage() {
   const [site, siteId] = await Promise.all([
@@ -87,7 +93,6 @@ export default async function BrandsDirectoryPage() {
 
   return (
     <div className="container-page py-8">
-      <link rel="canonical" href={canonicalUrl} />
 
       <script
         type="application/ld+json"
