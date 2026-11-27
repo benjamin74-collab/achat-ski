@@ -33,6 +33,17 @@ function getSiteSlugFromHost(host: string): string {
 export async function middleware(req: NextRequest) {
   const { pathname } = req.nextUrl;
 
+  // Consolidation éditoriale Meilleur-Ski uniquement, avant le rendu de page.
+  if (
+    pathname.replace(/\/$/, "") === "/pages/meilleures-chaussures-ski" &&
+    getSiteSlugFromHost(getHost(req)) === "meilleur-ski"
+  ) {
+    const target = req.nextUrl.clone();
+    target.pathname = "/pages/meilleures-chaussures-ski-2026-2027";
+    return NextResponse.redirect(target, 308);
+  }
+
+
   if (pathname.startsWith("/admin")) {
     const token = (await getToken({
       req,
@@ -63,5 +74,5 @@ export async function middleware(req: NextRequest) {
 }
 
 export const config = {
-  matcher: ["/admin/:path*"],
+  matcher: ["/admin/:path*", "/pages/meilleures-chaussures-ski"],
 };
